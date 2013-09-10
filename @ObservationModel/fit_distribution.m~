@@ -1,0 +1,62 @@
+function obj = fit_distribution(obj, dataPerClusterAndPosition)
+
+
+if strcmp(obj.dist_type,'histogram') || strcmp(obj.dist_type,'multivariateHistogram'),
+    for  m=1:length(ClusterIdx)
+        RhytPat.centerbins = (logspace(0, 1, nHistBins)-1) / 10;
+        RhytPat.centerbins(end) = 1;
+    end
+end
+
+% nMeters = length(ClusterIdx);
+learned_params = cell(nPatterns, nPos);
+
+
+%Init = generate_init_params_gmdistribution(dataPerClusterAndPosition);
+
+[~, nPatterns, nPos, ~] = size(dataPerClusterAndPosition);
+
+for iPattern=1:nPatterns % all clusters
+    
+    
+    for iPos=1:nPos
+        
+        featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
+        
+        if isempty(featureValues), break; end
+%         
+        switch obj.dist_type
+            case 'gamma'
+                PD = fitdist(featureValues, 'gamma');
+                learned_params{iPattern, iPos} = PD.Params';
+            case 'MOG'
+                options = statset('MaxIter', 200);
+                learned_params{iPattern, iPos} = gmdistribution.fit(featureValues, 2, 'Options', options, 'Regularize', 1e-10);
+            case 'MOG3'
+                options = statset('MaxIter', 200);
+                learned_params{iPattern, iPos} = gmdistribution.fit(featureValues, 3, 'Options', options, 'Regularize', 1e-10);
+            case 'gauss'
+                [learned_params{iPattern, iPos}(1,1), learned_params{iPattern, iPos}(2,1)] = ...
+                    normfit(featureValues);
+            case 'invGauss'
+                PD = fitdist(featureValues, 'inversegaussian');
+                learned_params{iPattern, iPos} = PD.Params';
+            case 'gauss0'
+                learned_params{iPattern, iPos}(1,1) = 0;
+                learned_params{iPattern, iPos}(2,1) = sqrt(sum(featureValues.^2)/(length(featureValues)-1));
+            case 'histogram'
+                learned_params{iPattern, iPos} = histc(featureValues, params.centerbins);
+                % normalize
+                learned_params{iPattern, iPos} = learned_params{iPattern, iPos} / sum(learned_params{iPattern, iPos});
+            case 'multivariateHistogram'
+                learned_params{iPattern, iPos} = hist3(featureValues{iPattern, iPos}, cell({params.centerbins, params.centerbins}));
+                % normalize
+                learned_params{iPattern, iPos} = learned_params{iPattern, iPos} ./ sum(learned_params{iPattern, iPos}(:));
+            otherwise
+                error('distribution type %s unknown !', obj.dist_type);
+        end
+        
+    end
+    RhytPat(iPattern).pdf = obj.dist_type;
+end
+end
