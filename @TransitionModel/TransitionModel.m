@@ -2,7 +2,8 @@ classdef TransitionModel
     % Transition Model Class
     properties (SetAccess=private)
         A               % sparse transition matrix [nStates x nStates]
-        M               % number of positions in a 4/4 bar
+        M               % number of max bar positions
+        Meff            % number of positions for each meter
         N               % number of tempo states
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
@@ -18,9 +19,9 @@ classdef TransitionModel
     end
     
     methods
-        function obj = TransitionModel(M, N, R, pn, pr, pt, rhythm2meter, minN, maxN)
-            
+        function obj = TransitionModel(M, Meff, N, R, pn, pr, pt, rhythm2meter, minN, maxN)
             obj.M = M;
+            obj.Meff = Meff;
             obj.N = N;
             obj.R = R;
             obj.pn = pn;
@@ -29,8 +30,8 @@ classdef TransitionModel
             obj.rhythm2meter = rhythm2meter;     
             obj.minN = minN;
             obj.maxN = maxN;
-            if maxN > N
-                error('N should be %i instead of %i\n', maxN, N);
+            if max(maxN) > N
+                error('N should be %i instead of %i\n', max(maxN), N);
             end
             
             numstates = M*N*R;
@@ -64,8 +65,7 @@ classdef TransitionModel
                     continue;
                 end
                 
-                meter = (ti+2)/4;
-                mj = mod(mi + ni - 1, round(M * meter)) + 1; % new position
+                mj = mod(mi + ni - 1, obj.Meff(ti)) + 1; % new position
                 % --------------------------------------------------------------
                 if mj < mi  % bar pointer crossed end of bar
                     % possible transitions: 3 x T x R
@@ -135,7 +135,6 @@ classdef TransitionModel
             % set probabilities for states with min and max tempo (borders of state space)
             for mi=1:M  % position
                 for rhi=1:R  % rhythmic patterns
-                    meter = (rhythm2meter(rhi)+2)/4;
                     % -----------------------------------------------
                     % ni = minimal tempo:
                     % -----------------------------------------------
@@ -143,7 +142,7 @@ classdef TransitionModel
                     % only 2 possible transitions
                     % 1) tempo constant
                     nj = ni;
-                    mj = mod(mi + ni - 1, round(M * meter)) + 1; % new position
+                    mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
                     i = sub2ind([M N R], mi, ni, rhi); % state i
                     j = sub2ind([M N R], mj, nj, rhi); % state j
                     ri(p) = i;  cj(p) = j;   val(p) = 1-pn;   p = p + 1;
@@ -158,7 +157,7 @@ classdef TransitionModel
                     % only 2 possible transitions
                     % 1) tempo constant
                     nj = ni;
-                    mj = mod(mi + ni - 1, round(M * meter)) + 1; % new position
+                    mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
                     i = sub2ind([M N R], mi, ni, rhi);
                     j = sub2ind([M N R], mj, nj, rhi);
                     ri(p) = i;  cj(p) = j;   val(p) = 1-pn;   p = p + 1;

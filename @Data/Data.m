@@ -41,14 +41,13 @@ classdef Data
                 error('Lab file %s not found\n', lab_fln);
             end
             obj.lab_fln = lab_fln;
-            obj.allowed_meter = [3; 4];
         end
         
         %         function obj = set_annots_path(obj, annots_path)
         %             obj.annots_path = annots_path;
         %         end
         
-        function obj = read_pattern_bars(obj, cluster_fln)
+        function obj = read_pattern_bars(obj, cluster_fln, meters)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             if exist(cluster_fln, 'file')
                 obj.bar2cluster = load(cluster_fln, '-ascii');
@@ -86,7 +85,7 @@ classdef Data
             if isempty(obj.meter)
                 obj = obj.read_meter();
             end
-            obj.meter_state2meter = unique(obj.meter, 'rows');
+            obj.meter_state2meter = meters;
             for iR=1:obj.n_clusters
                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
                 obj.rhythm2meter(iR) = find(obj.meter_state2meter(1, :) == m(1));

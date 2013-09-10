@@ -1,7 +1,8 @@
 classdef HMM
     % Hidden Markov Model Class
     properties (SetAccess=private)
-        M                   % number of positions in a 4/4 bar
+        M                   % number of (max) positions
+        Meff                % number of positions per meter
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         pn                  % probability of a switch in tempo
@@ -22,9 +23,10 @@ classdef HMM
     end
     
     methods
-        function obj = HMM(Params, rhythm2meter, meter_state2meter)
+        function obj = HMM(Params, rhythm2meter)
             
             obj.M = Params.M;
+            obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.pn = Params.pn;
@@ -35,17 +37,19 @@ classdef HMM
             obj.dist_type = Params.observationModelType;
             obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter = rhythm2meter;
-            obj.meter_state2meter = meter_state2meter;
+            obj.meter_state2meter = Params.meters;
             
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
             % convert from BPM into barpositions / audio frame
-            obj.minN = round(obj.M * obj.frame_length * minTempo / (4 * 60));
-            obj.maxN = round(obj.M * obj.frame_length * maxTempo / (4 * 60));
+            meter_denom = obj.meter_state2meter(2, :);
+            meter_denom = meter_denom(obj.rhythm2meter);
+            obj.minN = round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
+            obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
             
             % Create transition model
-            obj.trans_model = TransitionModel(obj.M, obj.N, obj.R, obj.pn, obj.pr, ...
+            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
             
             % Check transition model
@@ -59,7 +63,7 @@ classdef HMM
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.R, obj.barGrid);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
@@ -116,11 +120,10 @@ classdef HMM
             % meter path
             t_path = obj.rhythm2meter(r_path);
             % compute beat times and bar positions of beats
-            beats = obj.find_beat_times(m_path, t_path);
-            tempo = 4 * 60 * n_path / (obj.M * obj.frame_length);
+            meter = obj.meter_state2meter(:, t_path);
+            beats = obj.find_beat_times(m_path, meter);
+            tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             rhythm = r_path;
-            meter = t_path + 2;
-            
         end
     end
     
@@ -240,15 +243,25 @@ classdef HMM
             numframes = length(positionPath);
             
             % TODO: implement for changes in meter
-            if round(median(meterPath)) == 1
+            if round(median(meterPath(1, :))) == 3 % 3/4
                 numbeats = 3;
-            elseif round(median(meterPath)) == 2
+                denom = 4;
+            elseif round(median(meterPath(1, :))) == 4 % 4/4
                 numbeats = 4;
+                denom = 4;
+            elseif round(median(meterPath(1, :))) == 8 % 8/8
+                numbeats = 8;
+                denom = 8;
+            elseif round(median(meterPath(1, :))) == 9 % 9/8
+                numbeats = 9;
+                denom = 8;
             else
                 error('Meter %i not supported yet!\n', median(meterPath));
             end
             
-            beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
+            beatpositions =  round(linspace(1, obj.M, numbeats+1));
+            beatpositions = beatpositions(1:end-1);
+%             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
             
             beats = [];
             beatno = [];

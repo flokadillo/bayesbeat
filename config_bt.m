@@ -25,40 +25,44 @@ Params.loadFeaturesFromFile = 1;
 Params.smoothingWin = 0;
 Params.useTempoPrior = 1;
 Params.patternGiven = 0;
-Params.doLeaveOneOut = 1;
+Params.doLeaveOneOut = 0;
 Params.inferenceMethod = 'HMM_viterbi';
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
 % System description
-Params.M = 960; % number of states per 4/4 bar
-% Params.Meff = [3*Params.M/4; Params.M]; % triple / duple meter
-Params.N = 27;
+Params.M = 2560; % number of discrete position states
+Params.N = 33;
 Params.R = 2;
-Params.T = 2; % different meters (duple/triple)
-Params.meter = [3, 4; 4, 4]; % e.g., meter state 1 corresponds to 9/8
+Params.meters = [9, 8; ...
+                8, 8]; % e.g., meter state 1 corresponds to 9/8
+Params.T = size(Params.meters, 2);
+bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
+meter2M = Params.M ./ max(bar_durations);
+Params.Meff = round(bar_durations * meter2M);
+% for t=1:Params.T
+%     
+%     Params.Meff(t) = ceil(Params.meters(1, t) * Params.M / Params.meters(2, t)); % triple / duple meter
+% end
 Params.pn = 0.02;  % 7 for n dependent p_n
 Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
 Params.frame_length = 0.02;
-Params.barGrid = 64; % number of grid points per 4/4 bar
-if ismember(9, Params.meter) ;
-    Params.barGrid_max = ceil(Params.barGrid * 9 / 8);
-else
-    Params.barGrid_max = max(Params.barGrid); 
-end
-Params.init_n_gauss = 5;
+Params.barGrid = 64 * max(bar_durations); % number of grid points per 4/4 bar
+Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per 4/4 bar
+Params.init_n_gauss = 2;
 
 % train data
-Params.train_set = 'ballroom_boeck_hainsworth';
+Params.train_set = 'usul_ah';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
-Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-2d-', num2str(Params.R), '-songs.txt']);
+Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-2d-', ...
+    num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'ballroom_boeck_hainsworth';
+Params.test_set = 'usul_ah';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

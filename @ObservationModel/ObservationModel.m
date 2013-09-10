@@ -5,7 +5,9 @@ classdef ObservationModel
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter
+        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
         barGrid             % number of different observation model params per bar (e.g., 64)
+        barGrid_eff         % number of distributions to fit per meter
         dist_type           % type of parametric distribution
         obs_prob_fun_handle %
         learned_params      % cell array of learned parameters [nPatterns x nBarPos] 
@@ -17,14 +19,18 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter, M, N, R, barGrid)
+        function obj = ObservationModel(dist_type, rhythm2meter, meter_state2meter, M, N, R, barGrid)
             obj.rhythm2meter = rhythm2meter;
+            obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
             obj.lik_func_handle = set_lik_func_handle(obj);
             obj.M = M;
             obj.N = N;
             obj.R = R;
             obj.barGrid = barGrid;
+            bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
+            r2b = obj.barGrid ./ max(bar_durations);
+            obj.barGrid_eff = round(bar_durations * r2b);
             fprintf('* Set up observation model .');
             obj = obj.make_state2obs_idx();
         end
@@ -63,7 +69,7 @@ classdef ObservationModel
             nFrames = size(observations, 1);
             obsLik = zeros(obj.R, obj.barGrid, nFrames);
             for iR = 1:obj.R
-                barPos = obj.barGrid * (obj.rhythm2meter(iR) + 2)/4;
+                barPos = obj.barGrid_eff(obj.rhythm2meter(iR));
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...
                     obj.learned_params(iR, 1:barPos));
             end

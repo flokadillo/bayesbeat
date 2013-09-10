@@ -24,15 +24,14 @@ classdef BeatTracker
         end
         
         function obj = init_model(obj, Params)
-            obj.model = HMM(Params, obj.train_data.rhythm2meter, ...
-                obj.train_data.meter_state2meter);
+            obj.model = HMM(Params, obj.train_data.rhythm2meter);
         end
         
         function obj = init_train_data(obj, Params)
             % create train_data object
             obj.train_data = Data(Params.trainLab);
 %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
-            obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln);
+            obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters);
 %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.barGrid, ...
                 Params.featureDim, Params.featuresFln, Params.feat_type, Params.frame_length);
@@ -48,7 +47,7 @@ classdef BeatTracker
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
             if strcmp(Params.train_set, Params.test_set)
-                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln);
+                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters);
             end
         end
         
