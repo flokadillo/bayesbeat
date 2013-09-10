@@ -121,7 +121,7 @@ classdef HMM
             t_path = obj.rhythm2meter(r_path);
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
-            beats = obj.find_beat_times(m_path, meter);
+            beats = obj.find_beat_times(m_path, t_path);
             tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             rhythm = r_path;
         end
@@ -241,25 +241,25 @@ classdef HMM
             % 29.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             numframes = length(positionPath);
-            
+            meter = obj.meter_state2meter(:, meterPath);
             % TODO: implement for changes in meter
-            if round(median(meterPath(1, :))) == 3 % 3/4
+            if round(median(meter(1, :))) == 3 % 3/4
                 numbeats = 3;
                 denom = 4;
-            elseif round(median(meterPath(1, :))) == 4 % 4/4
+            elseif round(median(meter(1, :))) == 4 % 4/4
                 numbeats = 4;
                 denom = 4;
-            elseif round(median(meterPath(1, :))) == 8 % 8/8
+            elseif round(median(meter(1, :))) == 8 % 8/8
                 numbeats = 8;
                 denom = 8;
-            elseif round(median(meterPath(1, :))) == 9 % 9/8
+            elseif round(median(meter(1, :))) == 9 % 9/8
                 numbeats = 9;
                 denom = 8;
             else
                 error('Meter %i not supported yet!\n', median(meterPath));
             end
             
-            beatpositions =  round(linspace(1, obj.M, numbeats+1));
+            beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
             beatpositions = beatpositions(1:end-1);
 %             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
             

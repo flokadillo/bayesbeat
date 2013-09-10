@@ -23,7 +23,8 @@ classdef Feature
         function obj = load_feature(obj, input_fln)
             % parse input_data
             obj.input_fln = input_fln;
-            [fpath, fname, ] = fileparts(input_fln);
+            [fpath, ~, ~] = fileparts(input_fln);
+            fname = strrep(input_fln, [fpath, '/'], '');
             % compute feature from wav
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
@@ -36,7 +37,7 @@ classdef Feature
                         detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, fr{iDim}, 1/obj.frame_length );
                     end
                 else
-                    fprintf('compute_beats.m: activation file %s not found\n', fname) ;
+                    fprintf('Feature.load_feature: activation file not found\n') ;
                     fprintf('(%s)\n', fln) ;
                     return
                 end
