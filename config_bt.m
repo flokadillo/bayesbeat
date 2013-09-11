@@ -23,7 +23,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 % Simulation parameter
 Params.loadFeaturesFromFile = 1;
 Params.smoothingWin = 0;
-Params.useTempoPrior = 1;
+Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
 Params.inferenceMethod = 'HMM_viterbi';
@@ -31,11 +31,13 @@ Params.inferenceMethod = 'HMM_viterbi';
 % Params.trainTransitionMatrix = 1;
 
 % System description
-Params.M = 2560; % number of discrete position states
-Params.N = 33;
+% Params.M = 2560; % number of discrete position states
+% Params.N = 33;
+Params.M = 1280; % number of discrete position states
+Params.N = 27;
 Params.R = 2;
 Params.meters = [9, 8; ...
-                8, 8]; % e.g., meter state 1 corresponds to 9/8
+                 8, 8]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);

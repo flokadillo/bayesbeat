@@ -107,6 +107,14 @@ classdef BeatTracker
             results{3} = meter;
             results{4} = rhythm;
         end
+        
+        function [] = save_results(obj, results, save_dir, fname)
+            BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats']));
+            BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
+            BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
+            BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
+                obj.train_data.rhythm_names);
+        end
     end
     
     methods(Static)
@@ -122,24 +130,22 @@ classdef BeatTracker
             fclose(fid);
         end
         
-        function [] = save_rhythm(rhythm, save_fln)
+        function [] = save_rhythm(rhythm, save_fln, rhythm_names)
+            r = unique(rhythm);
             fid = fopen(save_fln, 'w');
-            fprintf(fid, '%i\n', rhythm');
+            for i=1:length(r)
+                fprintf(fid, '%s\n', rhythm_names{r(i)});
+                fprintf('%s\n', rhythm_names{r(i)});
+            end
             fclose(fid);
         end
         
         function [] = save_meter(meter, save_fln)
-            fid = fopen(save_fln, 'w');
-            fprintf(fid, '%i', meter);
-            fclose(fid);
+            m = unique(meter', 'rows')'
+            dlmwrite(save_fln, m, 'delimiter', '\t' );
         end
         
-        function [] = save_results(results, save_dir, fname)
-            BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats']));
-            BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
-            BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
-            BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']));
-        end
+        
         
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)

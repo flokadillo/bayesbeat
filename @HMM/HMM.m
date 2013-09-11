@@ -156,6 +156,7 @@ classdef HMM
             nStates = maxState + 1 - minState;
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
+            temp = zeros(nFrames, 3);
             if length(delta) > 65535
                 %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
@@ -175,9 +176,12 @@ classdef HMM
             ind_stepsize = obj.barGrid * obj.R;
             
             fprintf('    Decoding (viterbi) .');
+            logP_data = sparse(size(A, 1), nFrames);
             
             for iFrame = 1:nFrames
                 
+                p_ind = find(log(delta) > -10);
+                logP_data(p_ind - 1 + minState, iFrame) = delta(p_ind);
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
@@ -186,9 +190,9 @@ classdef HMM
                 % the same state i (row)
                 % same as repmat(delta, 1, col)
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
-                
+                temp(iFrame, 1) = sum(delta(1:20000));
                 [delta_max, psi_mat(:,iFrame)] = max(D * A);
-                
+                temp(iFrame, 2) = sum(delta_max(1:20000)) / sum(delta_max);
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
@@ -197,10 +201,11 @@ classdef HMM
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 delta_max = O .* delta_max';
-                
+%                 temp(iFrame, 2) = sum(O(1:20000)) / sum(O(:));
                 % normalize
                 norm_const = sum(delta_max);
                 delta = delta_max / norm_const;
+                temp(iFrame, 3) = sum(delta(1:20000));
                 [~, alpha(iFrame)] = max(delta);
                 loglik(iFrame) = log(norm_const);
                 if rem(iFrame, perc) == 0

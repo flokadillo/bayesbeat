@@ -10,6 +10,7 @@ classdef Data
         n_bars                          % number of bars of each file [nFiles x 1]
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
+        rhythm_names                    % cell array of rhythmic pattern names
         rhythm2meter                    % specifies for each bar the corresponding meter state
         meter_state2meter               % specifies meter for each meter state
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
@@ -42,11 +43,7 @@ classdef Data
             end
             obj.lab_fln = lab_fln;
         end
-        
-        %         function obj = set_annots_path(obj, annots_path)
-        %             obj.annots_path = annots_path;
-        %         end
-        
+               
         function obj = read_pattern_bars(obj, cluster_fln, meters)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             if exist(cluster_fln, 'file')
@@ -57,6 +54,16 @@ classdef Data
             obj.cluster_fln = cluster_fln;
             if ismember(0, obj.bar2cluster), obj.bar2cluster = obj.bar2cluster + 1; end
             obj.n_clusters = max(obj.bar2cluster);
+            % read pattern_labels
+            fln = strrep(cluster_fln, '.txt', '-rhythm_labels.txt');
+            if exist(fln, 'file')
+                fid = fopen(fln, 'r');
+                obj.rhythm_names = textscan(fid, '%s'); obj.rhythm_names = obj.rhythm_names{1};
+                fclose(fid);
+            else
+                % just call the rhythms by their ids
+                obj.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.n_clusters)', 'UniformOutput',false);
+            end
             % read annotations
             obj.n_bars = zeros(length(obj.file_list), 1);
             obj.bar2file = zeros(length(obj.bar2cluster), 1);

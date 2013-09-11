@@ -1,9 +1,9 @@
 classdef RhythmCluster
-% WORKFLOW:
-%
-% if patterns are given via labels
-% 1) RhythmCluster
-% 2) make_cluster_assignment_file
+    % WORKFLOW:
+    %
+    % if patterns are given via labels
+    % 1) RhythmCluster
+    % 2) make_cluster_assignment_file
     
     properties
         feature             % feature object
@@ -49,19 +49,13 @@ classdef RhythmCluster
                 for iCol=1:size(dataPerBar, 2)
                     dataPerSong(:, iCol) = accumarray(Output.bar2file', dataPerBar(:, iCol), [], @mean);
                 end
-                
                 % find songs that contain more than one bar and have
                 % allowed meter
                 ok_songs = ismember(1:length(fileList), unique(Output.bar2file));
-                
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat-', ...
                     num2str(obj.feature.feat_dim), 'd-', dataset, '-songs.txt']);
-                
                 dlmwrite(obj.feat_matrix_fln, dataPerSong(ok_songs, :), 'delimiter', '\t', 'precision', 4);
-                
-                
                 obj.ok_songs_fln = fullfile(obj.data_save_path, [dataset, '-train_ids.txt']);
-                
                 dlmwrite(obj.ok_songs_fln, unique(Output.bar2file)');
             else
                 error('%s not found', obj.train_lab_fln)
@@ -134,7 +128,7 @@ classdef RhythmCluster
                 if ~ismember(meter(fileCounter+1), [3, 4])
                     continue
                 end
-                fileCounter = fileCounter + 1;            
+                fileCounter = fileCounter + 1;
                 % determine number of bars
                 [nBars(iFile), ~] = Data.get_full_bars(beats);
                 if nBars(iFile) > 0
@@ -196,9 +190,9 @@ classdef RhythmCluster
                 countTimes = round(rem(beats(:, 2), 1) * 10);
                 % filter out meters that are not 3 or 4
                 meter(fileCounter+1) = max(countTimes);
-%                 if ~ismember(meter(fileCounter+1), [3, 4])
-%                     continue
-%                 end
+                %                 if ~ismember(meter(fileCounter+1), [3, 4])
+                %                     continue
+                %                 end
                 % get pattern id of file
                 [annotsPath, fname, ~] = fileparts(fileNames{iFile});
                 fprintf('- %s\n', fname);
@@ -227,6 +221,15 @@ classdef RhythmCluster
             obj.n_clusters = max(bar2pattern);
             dlmwrite(fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
                 num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'.txt']), bar2pattern);
+            % write rhythm names to file
+            fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-rhythm_labels.txt']);
+            fid = fopen(fln, 'w');
+            for i=1:length(rhythm_names)
+                fprintf(fid, '%s\n', rhythm_names{i});
+            end
+            fclose(fid);
+            save(fln, 'rhythm_names', 'ascii');
         end
     end
 end
