@@ -93,8 +93,8 @@ classdef BeatTracker
         
         function results = do_inference(obj, test_file_id, smooth_win)
             % load feature
-            [fPath, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
-            obj.feature = obj.feature.load_feature(fullfile(fPath, 'beat_activations', fname));
+%             [fPath, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
+            obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature);
             

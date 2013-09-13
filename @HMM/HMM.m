@@ -192,6 +192,7 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 temp(iFrame, 1) = sum(delta(1:20000));
                 [delta_max, psi_mat(:,iFrame)] = max(D * A);
+%                 delta_max = delta';
                 temp(iFrame, 2) = sum(delta_max(1:20000)) / sum(delta_max);
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
@@ -205,6 +206,10 @@ classdef HMM
                 % normalize
                 norm_const = sum(delta_max);
                 delta = delta_max / norm_const;
+%                 d2 = delta(1:20000);
+%                 d2(d2 < eps) = eps;
+%                 delta(1:20000) = d2;
+%                 delta(delta < eps) = eps;
                 temp(iFrame, 3) = sum(delta(1:20000));
                 [~, alpha(iFrame)] = max(delta);
                 loglik(iFrame) = log(norm_const);

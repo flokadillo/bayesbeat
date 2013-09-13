@@ -21,7 +21,7 @@ Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
-Params.loadFeaturesFromFile = 1;
+Params.loadFeaturesFromFile = 0;
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
@@ -33,20 +33,16 @@ Params.inferenceMethod = 'HMM_viterbi';
 % System description
 % Params.M = 2560; % number of discrete position states
 % Params.N = 33;
-Params.M = 1280; % number of discrete position states
-Params.N = 27;
+Params.M = 1920; % number of discrete position states
+Params.N = 40;
 Params.R = 2;
-Params.meters = [9, 8; ...
-                 8, 8]; % e.g., [9, 3; 8 4]
+Params.meters = [3, 4; ...
+                 4, 4]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
-% for t=1:Params.T
-%     
-%     Params.Meff(t) = ceil(Params.meters(1, t) * Params.M / Params.meters(2, t)); % triple / duple meter
-% end
-Params.pn = 0.02;  % 7 for n dependent p_n
+Params.pn = 0.002;  % 7 for n dependent p_n
 Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
@@ -56,15 +52,15 @@ Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per
 Params.init_n_gauss = 2;
 
 % train data
-Params.train_set = 'usul_ah';
+Params.train_set = 'ballroom_boeck_hainsworth';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-2d-', ...
-    num2str(Params.R), '.txt']);
+    num2str(Params.R), '-songs.txt']);
 
 % % test data
-Params.test_set = 'usul_ah';
+Params.test_set = 'collins';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

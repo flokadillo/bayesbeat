@@ -25,21 +25,38 @@ classdef Feature
             obj.input_fln = input_fln;
             [fpath, ~, ~] = fileparts(input_fln);
             fname = strrep(input_fln, [fpath, '/'], '');
+            if isempty(strfind(fname, 'wav'))
+                error('feature.load_feature: please supply WAV file instead of %s', fname);
+            end
             % compute feature from wav
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
-                fln = fullfile(fpath, [fname, '.', obj.feat_type{iDim}]);
-                if exist(fln,'file')
+                fln = fullfile(fpath, 'beat_activations', strrep(fname, '.wav', obj.feat_type{iDim}));
+                if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
-                    % adjust framerate of features
-                    if abs(1/fr{iDim} - obj.frame_length) > 0.001
-                        detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, fr{iDim}, 1/obj.frame_length );
+                else % compute features
+                    param.compress = 0;
+                    param.norm_each_file = 2; % 2 for z-score computation
+                    param.doMvavg = 1;
+                    param.offline = 1;
+                    param.logThresh = 30;           % Mean + 1.7 * Variance of all feature values
+                    param.normalizingConst = 35;
+                    if strfind(obj.feat_type{iDim}, 'lo230')
+                        param.min_f = 0;
+                        param.max_f = 230;
+                    elseif strfind(obj.feat_type{iDim}, 'hi250')
+                        param.min_f = 250;
+                        param.max_f = 44100;
+                    else
+                        error('Feature %s invalid' ,obj.feat_type{iDim});
                     end
-                else
-                    fprintf('Feature.load_feature: activation file not found\n') ;
-                    fprintf('(%s)\n', fln) ;
-                    return
+                    [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                end
+                
+                % adjust framerate of features
+                if abs(1/fr{iDim} - obj.frame_length) > 0.001
+                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, fr{iDim}, 1/obj.frame_length );
                 end
             end
             obj.feature = cell2mat(detfunc');
@@ -118,6 +135,14 @@ classdef Feature
             
             
         end
+        
+        [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
+        
+        [DetFunc, fr] = Compute_Bt_LogFiltSpecFlux(wavFileName, param);
+        
+        [S, t, f] = STFT(x, winsize, hopsize, fftsize, fs, type, online, plots, norm);
+        
+        [ out ] = mvavg( signal, winsize, type );
     end
     
 end
