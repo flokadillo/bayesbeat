@@ -1,11 +1,10 @@
 function functionHandle = set_lik_func_handle(obj)
-% [ functionHandle ] = get_likelihood_function( functionName )
+% functionHandle = set_lik_func_handle(obj)
 % creates a function handle to the function given by functionName
 %
 % ------------------------------------------------------------------------
 %INPUT parameters:
-% functionName  : string specifying the function name
-%                 e.g., 'gamma', 'fixed', 'hist'
+% 
 %
 %OUTPUT parameters:
 % functionHandle : function handles that refers to functionName

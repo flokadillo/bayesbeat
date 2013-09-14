@@ -167,7 +167,7 @@ classdef RhythmCluster
                 songClusterIds = load(obj.clusters_fln, '-ascii');
             end
             
-            
+
             bar2pattern = [];
             dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz'};
             
@@ -188,11 +188,7 @@ classdef RhythmCluster
             for iFile = 1:length(ok_songs)
                 beats = load(regexprep(fileNames{ok_songs(iFile)}, '.wav.*', '.beats'));
                 countTimes = round(rem(beats(:, 2), 1) * 10);
-                % filter out meters that are not 3 or 4
                 meter(fileCounter+1) = max(countTimes);
-                %                 if ~ismember(meter(fileCounter+1), [3, 4])
-                %                     continue
-                %                 end
                 % get pattern id of file
                 [annotsPath, fname, ~] = fileparts(fileNames{iFile});
                 fprintf('- %s\n', fname);
@@ -224,12 +220,15 @@ classdef RhythmCluster
             % write rhythm names to file
             fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
                 num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-rhythm_labels.txt']);
+            % label the clusters with integer numbers
+            if ~exist('rhythm_names', 'var')
+                rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.n_clusters)', 'UniformOutput',false);
+            end
             fid = fopen(fln, 'w');
             for i=1:length(rhythm_names)
                 fprintf(fid, '%s\n', rhythm_names{i});
             end
             fclose(fid);
-            save(fln, 'rhythm_names', 'ascii');
         end
     end
 end

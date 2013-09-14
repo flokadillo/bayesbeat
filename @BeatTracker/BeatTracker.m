@@ -24,7 +24,14 @@ classdef BeatTracker
         end
         
         function obj = init_model(obj, Params)
-            obj.model = HMM(Params, obj.train_data.rhythm2meter);
+            switch Params.inferenceMethod(1:2)
+                case 'HM'
+                    obj.model = HMM(Params, obj.train_data.rhythm2meter);
+                case 'PF'
+                    obj.model = PF(Params, obj.train_data.rhythm2meter);
+                otherwise
+                    error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
+            end
         end
         
         function obj = init_train_data(obj, Params)
@@ -93,7 +100,6 @@ classdef BeatTracker
         
         function results = do_inference(obj, test_file_id, smooth_win)
             % load feature
-%             [fPath, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature);
@@ -106,6 +112,12 @@ classdef BeatTracker
             results{2} = tempo;
             results{3} = meter;
             results{4} = rhythm;
+        end
+        
+        function obj = load_model(obj, fln)
+            temp = load(fln);
+            names = fieldnames(temp);
+            obj.model = temp.(names{1});
         end
         
         function [] = save_results(obj, results, save_dir, fname)
@@ -141,11 +153,9 @@ classdef BeatTracker
         end
         
         function [] = save_meter(meter, save_fln)
-            m = unique(meter', 'rows')'
+            m = unique(meter', 'rows')';
             dlmwrite(save_fln, m, 'delimiter', '\t' );
         end
-        
-        
         
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)

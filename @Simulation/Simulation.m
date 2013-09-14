@@ -62,11 +62,18 @@ classdef Simulation
         end
         
         function obj = train_system(obj)
-            % train model
-            obj.system = obj.system.train_model(obj.Params.useTempoPrior);
-            
+            if obj.Params.doTraining
+                % train model
+                obj.system = obj.system.train_model(obj.Params.useTempoPrior);
+            else
+                if exist(obj.Params.model_fln, 'file')
+                    obj.system = obj.system.load_model(obj.Params.model_fln);
+                else
+                    error('No model file was found: please train the model first');
+                end  
+            end
         end
-        
+               
         function do_sim(obj)
             fileCount = 1;
             for k=1:obj.nFolds

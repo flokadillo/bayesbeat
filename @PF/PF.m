@@ -2,29 +2,35 @@ classdef PF
     % Hidden Markov Model Class
     properties (SetAccess=private)
         M                   % number of positions in a 4/4 bar
+        Meff                % number of positions per meter
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
         pt                  % probability of a switch in meter
         rhythm2meter        % assigns each rhythmic pattern to a meter state (1, 2, ...)
+        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
         barGrid             % number of different observation model params per bar (e.g., 64)
         minN                % min tempo (n_min) for each rhythmic pattern
         maxN                % max tempo (n_max) for each rhythmic pattern
         frame_length        % audio frame length in [sec]
         dist_type           % type of parametric distribution
-        trans_model         % transition model
+        sample_trans_fun    % transition model
+        disc_trans_mat      % transition matrices for discrete states
         obs_model           % observation model
-        initial_prob        % initial state distribution
-        nParticles  
+        initial_m           % initial value of m for each particle
+        initial_n           % initial value of n for each particle
+        nParticles
+        particles
         sigma_N
-      
+        bin2decVector       % vector to compute indices for disc_trans_mat quickly
+        
     end
     
     methods
         function obj = PF(Params, rhythm2meter)
-            
             obj.M = Params.M;
+            obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.nParticles = Params.nParticles;
@@ -34,46 +40,57 @@ classdef PF
             obj.barGrid = Params.barGrid;
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.rhythm2meter = rhythm2meter;          
-            
+            obj.rhythm2meter = rhythm2meter;
+            obj.meter_state2meter = Params.meters;
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
-            %             % convert from BPM into barpositions / audio frame
-            %             obj.minN = round(obj.M * obj.frame_length * minTempo / (4 * 60));
-            %             obj.maxN = round(obj.M * obj.frame_length * maxTempo / (4 * 60));
-            %
-            %             % Create transition model
-            %             obj.trans_model = TransitionModel(obj.M, obj.N, obj.R, obj.pn, obj.pr, ...
-            %                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
-            %
-            %             % Check transition model
-            %             if transition_model_is_corrupt(obj.trans_model, 0)
-            %                 error('Corrupt transition model');
-            %             end
+            % convert from BPM into barpositions / audio frame
+            meter_denom = obj.meter_state2meter(2, :);
+            meter_denom = meter_denom(obj.rhythm2meter);
             
+            %TODO for each cluster use different minN and maxN
+            obj.minN = min(round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60)));
+            obj.maxN = max(round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60)));
+            
+            obj.sample_trans_fun = @(x, y) (obj.propagate_particles(x, y, obj.nParticles, obj.sigma_N, obj.minN, obj.maxN, obj.M));
+            obj = obj.createTransitionCPD;
+        end
+        
+        function lik = compute_obs_lik(obj, m, iFrame, obslik, m_per_grid)
+            subind = ceil(m ./ m_per_grid);
+            obslik = obslik(:, :, iFrame);
+            r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
+            ind = sub2ind([obj.R, obj.barGrid], r_ind(:), subind(:));
+            lik = reshape(obslik(ind), obj.R, obj.nParticles);
         end
         
         function obj = make_observation_model(obj, data_file_pattern_barpos_dim)
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.R, obj.barGrid);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
             
         end
         
-        function obj = make_initial_distribution(obj, nFrames)
-            %             n_states = obj.M * obj.N * obj.R;
-            %
-            %             if nargin == 2
-            %                 obj.initialProb = loadTempoPrior(tempo_prior_file);
-            %             else
-            %                 obj.initial_prob = ones(n_states, 1) / n_states;
-            %             end
-            
+        function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
+            % n
+            obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
+            obj.initial_n = obj.initial_n * max(obj.maxN) + min(obj.minN);
+            % m
+            obj.initial_m = zeros(obj.R, obj.nParticles);
+            obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
+            for iR=1:obj.R
+                % check if m is outside Meff and if yes, correct
+                ind = (obj.initial_m(iR, :) > obj.Meff(iR) + 1);
+                temp = mod(obj.initial_m(iR, ind) - 1, obj.Meff(iR)) + 1;
+                % shift by random amount of beats
+                obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*obj.Meff(iR) / obj.meter_state2meter(2, iR);
+                obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, obj.Meff(iR)) + 1;
+            end
         end
         
         function obj = retrain_observation_model(obj, data_file_pattern_barpos_dim, pattern_id)
@@ -96,7 +113,7 @@ classdef PF
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             % decode MAP state sequence using Viterbi
-            bestpath = obj.rbpf_apf(y);
+            bestpath = obj.rbpf_apf(obs_lik);
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence);
             % meter path
@@ -108,101 +125,165 @@ classdef PF
             meter = t_path + 2;
             
         end
+        
+        function obj = createTransitionCPD(obj)
+            % create 2^T transition matrices for discrete states
+            % each matrix is of size [R x R]
+            % [meter x rhythmic patterns x 2]
+            % e.g. meter 1 barcrossing = 1, meter 2 barcrossing 0 -> 1 0 -> 2 1
+            
+            temp = zeros(obj.R, obj.R, 2); % [i x j x barcrossings]
+            p_meter_constant = 1-(obj.pt /  (obj.T-1));
+            p_rhythm_constant = 1-obj.pr;
+            
+            for barCrossing = 1:2
+                for iCluster1 = 1:obj.R
+                    for iCluster2 = 1:obj.R
+                        % check if meter change
+                        if obj.rhythm2meter(iCluster1) == obj.rhythm2meter(iCluster2)
+                            % check if rhythm pattern change
+                            if iCluster1 == iCluster2 % rhyth pattern the same
+                                if barCrossing == 1 % no crossing, rhythm+meter stays constant
+                                    prob = 1;
+                                else % both stay constant despite crossing
+                                    prob = p_rhythm_constant * p_meter_constant;
+                                end
+                            else
+                                if barCrossing == 1 % no crossing, meter constant, rhythm change
+                                    prob = 0;
+                                else % crossing, meter constant, rhythm change
+                                    prob = p_meter_constant * obj.pr/obj.R;
+                                end
+                            end
+                            
+                        else % meter change
+                            if barCrossing == 1 % no crossing, meter change
+                                prob = 0;
+                            else % crossing, meter change
+                                prob = obj.pt;
+                            end
+                        end
+                        temp(iCluster1, iCluster2, barCrossing) = prob;
+                    end
+                    % renormalize
+                    temp(iCluster1, :, barCrossing) = ...
+                        temp(iCluster1, :, barCrossing) / sum(temp(iCluster1, :, barCrossing));
+                end
+            end
+            
+            obj.disc_trans_mat = cell(2^obj.T, 1);
+            obj.disc_trans_mat(:) = {zeros(obj.R, obj.R)};
+            
+            for iTransMat=1:length(obj.disc_trans_mat)
+                barCrossings = dec2bin(iTransMat - 1, obj.T) - '0';
+                for iCluster=1:obj.R
+                    obj.disc_trans_mat{iTransMat}(obj.rhythm2meter(iCluster), :) = ...
+                        temp(obj.rhythm2meter(iCluster), :, barCrossings(obj.rhythm2meter(iCluster)) + 1);
+                end
+            end
+            obj.bin2decVector = 2.^(obj.R-1:-1:0)';
+        end
     end
     
     methods (Access=protected)
         
-        
-        function bestpath = viterbi_decode(obj, obs_lik)
-            % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
-            % initial_prob)
-            % Implementation of the Viterbi algorithm
-            % ----------------------------------------------------------------------
-            %INPUT parameter:
-            % A             : transition matrix
-            % obslik        : structure containing the observation model
-            % initial_prob   : initial state probabilities
-            %
-            %OUTPUT parameter:
-            % bestpath      : MAP state sequence
-            % delta         : p(x_T | y_1:T)
-            % loglik        : p(y_t | y_1:t-1)
-            %               (likelihood of the sequence p(y_1:T) would be prod(loglik)
-            %
-            % 26.7.2012 by Florian Krebs
-            % ----------------------------------------------------------------------
+        function [bestpath, obj] = rbpf_apf(obj, obs_lik)
             nFrames = size(obs_lik, 3);
-            loglik = zeros(nFrames, 1);
-            [row, col] = find(obj.trans_model.A);
-            maxState = max([row; col]);
-            minState = min([row; col]);
-            nStates = maxState + 1 - minState;
-            delta = obj.initial_prob(minState:maxState);
-            A = obj.trans_model.A(minState:maxState, minState:maxState);
-            if length(delta) > 65535
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
-                psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
-            else
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
-                psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
-            end
+            % bin2dec conversion vector
             
-            alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
-            perc = round(0.1*nFrames);
+            obj.particles = Particles(obj.nParticles, obj.R, nFrames);
+            eval_lik = @(m, iFrame) obj.compute_obs_lik(m, iFrame, obs_lik, obj.M / obj.barGrid);
+            obs = eval_lik(obj.initial_m, 1);
+            obj.particles.weight = sum(obs) / sum(obs(:));
+            % posterior: p(r_t | z_1:t, y_1:t)
+            obj.particles.posterior_r = ones(obj.nParticles, obj.nDiscreteStates) / obj.nDiscreteStates;
+            obj.particles.delta = obs'; % [nDiscStates, nPart]
             
-            i_row = 1:nStates;
-            j_col = 1:nStates;
+            iFrame = 2;
+            obj = obj.propagate_particles(iFrame);
+            obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
-                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
-            ind_stepsize = obj.barGrid * obj.R;
-            
-            fprintf('    Decoding (viterbi) .');
-            
-            for iFrame = 1:nFrames
-                
-                % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
-                % D = matrix of probabilities of best sequences with state i at time
-                % t-1 and state j at time t, when bserving y(1:t)
-                
-                % create a matrix that has the same value of delta for all entries with
-                % the same state i (row)
-                % same as repmat(delta, 1, col)
-                D = sparse(i_row, j_col, delta(:), nStates, nStates);
-                
-                [delta_max, psi_mat(:,iFrame)] = max(D * A);
-                
-                % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
-                validInds = ~isnan(ind);
-                O(validInds) = obs_lik(ind(validInds));
-                
-                % increase index to new time frame
-                ind = ind + ind_stepsize;
-                delta_max = O .* delta_max';
-                
-                % normalize
-                norm_const = sum(delta_max);
-                delta = delta_max / norm_const;
-                [~, alpha(iFrame)] = max(delta);
-                loglik(iFrame) = log(norm_const);
-                if rem(iFrame, perc) == 0
-                    fprintf('.');
+            for iFrame=3:nFrames
+                obs = eval_lik(obj.m(:, :, iFrame-1), 1);
+                % check
+                barCrossing = (obj.particles.m(:, :, iFrame-1) < obj.particles.m(:, :, iFrame-2))' * obj.bin2decVector;
+                obj = obj.update_delta_and_psi(barCrossing, obs, iFrame);
+                % ------------------------------------------------------------
+                % prediction: p(r_t | y_1:t-1, x_1:t) =
+                % sum_r(t-1){ p(r_t | r_t-1, x_t-1, x_t) * p(r_t-1 | y_1:t-1, x_1:t-1) }
+                % p(r_t | r_t-1, x_t-1, x_t);
+                transMatVect = cell2mat(obj.disc_trans_mat(barCrossing+1));
+                % p(r_t-1 | y_1:t-1, x_1:t-1)
+                postReshaped = reshape(repmat(obj.particles.posterior_r', obj.nDiscreteStates, 1), obj.nDiscreteStates, []);
+                % transition to t: sum over t-1
+                prediction = reshape(sum(transMatVect' .* postReshaped), obj.nDiscreteStates, obj.nParticles);
+                % weight prediction by likelihood of the particle
+                % compute p(r_t, y_t | x_1:t, y_1:t-1) =
+                % p(r_t | y_1:t-1, x_1:t) * p(y_t | y_1:t-1, x_1:t, r_t)
+                obj.particles.posterior_r = prediction .* obs;
+                % weight = p(y_t| y_1:t-1, x_1:t) =
+                % sum_r_t { p(r_t, y_t | x_1:t, y_1:t-1) } * p(y_t-1| y_1:t-2, x_1:t-1)
+                obj.particles.old_weight = obj.particles.weight;
+                obj.particles.weight = obj.particles.weight .* (sum(obj.particles.posterior_r))';
+                % Normalise importance weights
+                % ------------------------------------------------------------
+                obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
+                Neff = 1/sum(obj.particles.weight.^2);
+                % Resampling
+                % ------------------------------------------------------------
+                if (Neff < 0.2 * obj.nParticles) && (iFrame < nFrames)
+                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    newIdx = systematicR(1:params.nParticles, particle.weight);
+                    particle = copyParticles(particle, newIdx);
                 end
+                
+                
             end
+        end
+        
+        function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
+            % probability of best state sequence that ends with state x(t) = j
+            %   delta(j) = max_i{ p( X(1:t)=[x(1:t-1), x(t)=j] | y(1:t) ) }
+            % best precursor state of j
+            %   psi(j) = arg max_i { p(X(t)=j | X(t-1)=i) * delta(i)}
+            deltaEnlarged = repmat(obj.particles.delta', obj.nDiscreteStates , 1);
+            deltaEnlarged = reshape(deltaEnlarged, obj.nDiscreteStates, []);
+            transMatVect = cell2mat(obj.disc_trans_mat(barCrossing + 1));
+            %   delta(i, t-1) * p( X(t)=j | X(t-1)=i )
+            prediction2ts = deltaEnlarged .* transMatVect';
+            %   max_i { delta(i, t-1) * p( X(t)=j | X(t-1)=i ) }
+            [obj.particles.delta, psi2] = max(prediction2ts);
+            obj.particles.delta = reshape(obj.particles.delta, obj.nDiscreteStates, obj.nParticles )';
+            obj.particles.psi_mat(:, :, iFrame) = reshape(psi2, obj.nDiscreteStates, obj.nParticles )';
+            %   delta(j, t) = p(y(t) | X(t) = j) * max_i { delta(i, t-1) * p( X(t)=j | X(t-1)=i ) }
+            obj.particles.delta = obj.particles.delta .* obslik';
+            % renormalize over discrete states
+            obj.particles.delta = obj.particles.delta ./ repmat(sum(obj.particles.delta, 2), 1, 2);
             
-            % Backtracing
-            bestpath = zeros(nFrames,1);
-            [ ~, bestpath(nFrames)] = max(delta);
-            for iFrame=nFrames-1:-1:1
-                bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
-            end
-            
-            % add state offset
-            bestpath = bestpath + minState - 1;
-            
-            fprintf(' done\n');
-            
+        end
+        
+        function obj = propagate_particles(obj, new_frame)
+            % propagate particles by sampling from the transition prior
+            % 'm', zeros(params.R, params.nParticles, nFrames)
+            % 'n', zeros(params.nParticles, nFrames)
+            obj.particles.n(:, new_frame) = obj.particles.n(:, new_frame - 1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+            obj.particles.n((obj.particles.n(:, new_frame) > obj.maxN), old_frame + 1) = obj.maxN;
+            obj.particles.n((obj.particles.n(:, new_frame) < obj.minN), old_frame + 1) = obj.minN;
+            obj.particles.m(:, :, new_frame) = mod(bsxfun(@plus, obj.particles.m(:, :, new_frame - 1), obj.particles.n(:, new_frame - 1)') - 1, ...
+                repmat(obj.M, 1, obj.nParticles)) + 1;
+        end
+        
+        function bestpath = pf(obj, obs_lik)
+            nFrames = size(obs_lik, 3);
+            obj.particles = Particles(obj.nParticles, nFrames, obj.R);
+            eval_lik = @(m, iFrame) compute_obs_lik(m, iFrame, obs_lik, M_grid, obj.barGrid);
+            particle.log_obs(:, :, 1) = o1.obsProbFunc(y(1), o1, particle.m(:, :, 1));
+            particle.log_obs(:, :, 1) = log(particle.log_obs(:, :, 1));
+            particle.weight = sum(particle.log_obs(:, :, 1))';
+            particle.weight = particle.weight / sum(particle.weight);
+            % posterior: p(r_t | z_1:t, y_1:t)
+            particle.posteriorTR = ones(obj.nParticles, nDiscreteStates) / nDiscreteStates;
+            particle.delta = ones(obj.nParticles, nDiscreteStates) / nDiscreteStates;
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath)
@@ -266,6 +347,14 @@ classdef PF
         end
         
     end
+    %
+    %         methods (Static)
+    %
+    %
+    %
+    %
+    %
+    %         end
     
     
     

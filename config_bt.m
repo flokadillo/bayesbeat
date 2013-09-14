@@ -22,19 +22,21 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 Params.loadFeaturesFromFile = 0;
+Params.doTraining = 0;
+
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'PF';
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
 % System description
 % Params.M = 2560; % number of discrete position states
 % Params.N = 33;
-Params.M = 1920; % number of discrete position states
-Params.N = 40;
+Params.M = 960; % number of discrete position states
+Params.N = 20;
 Params.R = 2;
 Params.meters = [3, 4; ...
                  4, 4]; % e.g., [9, 3; 8 4]
@@ -42,7 +44,7 @@ Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
-Params.pn = 0.002;  % 7 for n dependent p_n
+Params.pn = 0.02;  % 7 for n dependent p_n
 Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
@@ -50,17 +52,22 @@ Params.frame_length = 0.02;
 Params.barGrid = 64 * max(bar_durations); % number of grid points per 4/4 bar
 Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per 4/4 bar
 Params.init_n_gauss = 2;
+Params.nParticles = 100;
+Params.sigmaN = 0.04;
 
 % train data
-Params.train_set = 'ballroom_boeck_hainsworth';
+Params.train_set = 'hainsworth';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-2d-', ...
     num2str(Params.R), '-songs.txt']);
+if ~Params.doTraining
+    Params.model_fln = fullfile(Params.data_path, ['pf_', Params.train_set, '.mat']);
+end
 
 % % test data
-Params.test_set = 'collins';
+Params.test_set = 'boeck';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
