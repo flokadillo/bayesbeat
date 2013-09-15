@@ -29,6 +29,18 @@ classdef Particles
             obj.nParticles = nParticles;
         end
         
+        function obj = copyParticles(obj, newIdx)
+            % copy particles according to newIdx after resampling
+            obj.m = obj.m(:, newIdx, :);
+            obj.n = obj.n(newIdx, :);
+            obj.posterior_r = obj.posterior_r(newIdx, :);
+            obj.weight = ones(obj.nParticles, 1) / obj.nParticles;
+            obj.delta = obj.delta(newIdx, :);
+            obj.psi_mat = obj.psi_mat(newIdx, :, :);
+            obj.log_obs = obj.log_obs(:, newIdx, :);
+            obj.log_trans = obj.log_trans(newIdx, :);
+        end
+        
 %         function 
 %             
 %         end
