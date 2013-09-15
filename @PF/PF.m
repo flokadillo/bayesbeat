@@ -261,7 +261,7 @@ classdef PF
                 % Resampling
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
-                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    %fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     newIdx = obj.systematicR(1:obj.nParticles, obj.particles.weight);
                     obj.particles = obj.particles.copyParticles(newIdx);
                 end
