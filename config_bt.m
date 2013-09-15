@@ -54,6 +54,7 @@ Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per
 Params.init_n_gauss = 2;
 Params.nParticles = 1000;
 Params.sigmaN = 0.00005;
+Params.ratio_Neff = 0.5;
 
 % train data
 Params.train_set = 'hainsworth';

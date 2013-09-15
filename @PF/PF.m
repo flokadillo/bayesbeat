@@ -25,6 +25,7 @@ classdef PF
         particles
         sigma_N
         bin2decVector       % vector to compute indices for disc_trans_mat quickly
+        ratio_Neff
         
     end
     
@@ -44,6 +45,7 @@ classdef PF
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
+            obj.ratio_Neff = Params.ratio_Neff;
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
@@ -258,7 +260,7 @@ classdef PF
                 Neff = 1/sum(obj.particles.weight.^2);
                 % Resampling
                 % ------------------------------------------------------------
-                if (Neff < 0.5 * obj.nParticles) && (iFrame < nFrames)
+                if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     newIdx = obj.systematicR(1:obj.nParticles, obj.particles.weight);
                     obj.particles = obj.particles.copyParticles(newIdx);
