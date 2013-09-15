@@ -83,15 +83,15 @@ classdef PF
             obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
             obj.initial_n = obj.initial_n * max(obj.maxN) + min(obj.minN);
             % m
-            obj.initial_m = zeros(obj.R, obj.nParticles);
             obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
             for iR=1:obj.R
                 % check if m is outside Meff and if yes, correct
-                ind = (obj.initial_m(iR, :) > obj.Meff(iR) + 1);
-                temp = mod(obj.initial_m(iR, ind) - 1, obj.Meff(iR)) + 1;
+                M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
+                ind = (obj.initial_m(iR, :) > M_eff_iR + 1);
+                temp = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
                 % shift by random amount of beats
-                obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*obj.Meff(iR) / obj.meter_state2meter(2, iR);
-                obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, obj.Meff(iR)) + 1;
+                obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*M_eff_iR / obj.meter_state2meter(2, iR);
+                obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
             end
         end
         
@@ -258,7 +258,7 @@ classdef PF
                 Neff = 1/sum(obj.particles.weight.^2);
                 % Resampling
                 % ------------------------------------------------------------
-                if (Neff < 0.2 * obj.nParticles) && (iFrame < nFrames)
+                if (Neff < 0.5 * obj.nParticles) && (iFrame < nFrames)
                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     newIdx = obj.systematicR(1:obj.nParticles, obj.particles.weight);
                     obj.particles = obj.particles.copyParticles(newIdx);
@@ -296,8 +296,13 @@ classdef PF
             obj.particles.n(:, new_frame) = obj.particles.n(:, new_frame - 1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
             obj.particles.n((obj.particles.n(:, new_frame) > obj.maxN), new_frame) = obj.maxN;
             obj.particles.n((obj.particles.n(:, new_frame) < obj.minN), new_frame) = obj.minN;
-            obj.particles.m(:, :, new_frame) = mod(bsxfun(@plus, obj.particles.m(:, :, new_frame - 1), obj.particles.n(:, new_frame - 1)') - 1, ...
-                repmat(obj.Meff(:), 1, obj.nParticles)) + 1;
+            temp = bsxfun(@plus, obj.particles.m(:, :, new_frame - 1), obj.particles.n(:, new_frame - 1)');
+%             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
+            ind = find(sum(bsxfun(@gt, temp, obj.Meff(obj.rhythm2meter)')));
+            temp(:, ind) = bsxfun(@mod, temp(:, ind) - 1, obj.Meff(obj.rhythm2meter)') + 1;
+            obj.particles = obj.particles.update_m(temp, new_frame);
+            % TODO: why does this step take so long ?
+            obj.particles.m(:, :, new_frame) = temp;
         end
         
         function bestpath = pf(obj, obs_lik)

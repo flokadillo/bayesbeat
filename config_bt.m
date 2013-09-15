@@ -53,7 +53,7 @@ Params.barGrid = 64 * max(bar_durations); % number of grid points per 4/4 bar
 Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per 4/4 bar
 Params.init_n_gauss = 2;
 Params.nParticles = 1000;
-Params.sigmaN = 0.00001;
+Params.sigmaN = 0.00005;
 
 % train data
 Params.train_set = 'hainsworth';
@@ -67,7 +67,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'hainsworth';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

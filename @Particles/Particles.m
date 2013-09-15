@@ -37,10 +37,13 @@ classdef Particles
             obj.weight = ones(obj.nParticles, 1) / obj.nParticles;
             obj.delta = obj.delta(newIdx, :);
             obj.psi_mat = obj.psi_mat(newIdx, :, :);
-            obj.log_obs = obj.log_obs(:, newIdx, :);
-            obj.log_trans = obj.log_trans(newIdx, :);
+%             obj.log_obs = obj.log_obs(:, newIdx, :);
+%             obj.log_trans = obj.log_trans(newIdx, :);
         end
         
+        function obj = update_m(obj, m_new, iFrame)
+            obj.m(:, :, iFrame) = m_new;
+        end
 %         function 
 %             
 %         end
