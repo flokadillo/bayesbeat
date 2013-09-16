@@ -151,6 +151,7 @@ classdef HMM
             nFrames = size(obs_lik, 3);
             loglik = zeros(nFrames, 1);
             [row, col] = find(obj.trans_model.A);
+            logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
@@ -175,11 +176,11 @@ classdef HMM
             ind_stepsize = obj.barGrid * obj.R;
             
             fprintf('    Decoding (viterbi) .');
-%             logP_data = sparse(size(A, 1), nFrames);
+            
             for iFrame = 1:nFrames
                 
-%                 p_ind = find(log(delta) > -10);
-%                 logP_data(p_ind - 1 + minState, iFrame) = delta(p_ind);
+                p_ind = find(log(delta) > -15);
+                logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
