@@ -1,7 +1,8 @@
 classdef ObservationModel
     % Observation Model Class
     properties (SetAccess=private)
-        M                   % number of positions in a 4/4 bar
+        M                   % max number of positions in a bar
+        Meff                % number of positions per bar
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter
@@ -19,12 +20,13 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter, meter_state2meter, M, N, R, barGrid)
+        function obj = ObservationModel(dist_type, rhythm2meter, meter_state2meter, M, N, R, barGrid, Meff)
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
             obj.lik_func_handle = set_lik_func_handle(obj);
             obj.M = M;
+            obj.Meff = Meff;
             obj.N = N;
             obj.R = R;
             obj.barGrid = barGrid;
@@ -90,12 +92,12 @@ classdef ObservationModel
             barPosPerGrid = obj.M / obj.barGrid;
             discreteBarPos = floor(((1:obj.M) - 1)/barPosPerGrid) + 1;
             for iR=1:obj.R
-                Meff = obj.M * (obj.rhythm2meter(iR)+2) / 4;
-                r = ones(Meff, 1) * iR;
+                Meff_iR = obj.Meff(obj.rhythm2meter(iR));
+                r = ones(Meff_iR, 1) * iR;
                 for iN = 1:obj.N
-                    ind = sub2ind([obj.M, obj.N, obj.R], (1:Meff)', repmat(iN, Meff, 1), r);
+                    ind = sub2ind([obj.M, obj.N, obj.R], (1:Meff_iR)', repmat(iN, Meff_iR, 1), r);
                     obj.state2obs_idx(ind, 1) = r;
-                    obj.state2obs_idx(ind, 2) = discreteBarPos(1:Meff);
+                    obj.state2obs_idx(ind, 2) = discreteBarPos(1:Meff_iR);
                 end
             end
         end 

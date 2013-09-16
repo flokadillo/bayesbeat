@@ -27,7 +27,7 @@ Params.doTraining = 1;
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
-Params.doLeaveOneOut = 0;
+Params.doLeaveOneOut = 1;
 Params.inferenceMethod = 'HMM_viterbi';
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
@@ -35,8 +35,8 @@ Params.inferenceMethod = 'HMM_viterbi';
 % System description
 % Params.M = 2560; % number of discrete position states
 % Params.N = 33;
-Params.M = 1440; % number of discrete position states
-Params.N = 19;
+Params.M = 2560; % number of discrete position states
+Params.N = 33;
 Params.R = 2;
 Params.meters = [9, 8; ...
                  8, 8]; % e.g., [9, 3; 8 4]

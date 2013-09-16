@@ -73,7 +73,7 @@ classdef PF
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);

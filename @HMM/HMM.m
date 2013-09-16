@@ -63,7 +63,7 @@ classdef HMM
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
@@ -178,7 +178,9 @@ classdef HMM
             fprintf('    Decoding (viterbi) .');
             
             for iFrame = 1:nFrames
-                
+                if iFrame == 20
+                    lkj=987;
+                end
                 p_ind = find(log(delta) > -15);
                 logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
@@ -206,6 +208,10 @@ classdef HMM
                     fprintf('.');
                 end
             end
+            
+            % save for visualization
+            M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
+            save('./temp/test.mat', 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
             
             % Backtracing
             bestpath = zeros(nFrames,1);

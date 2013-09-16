@@ -18,7 +18,7 @@ aviobj.FrameRate = 1/frame_length;
 set(hf, 'Position', [51 1 1316 689]);
 open(aviobj);
 y_pos = [0.63; 0.18];
-for iFrame = 1:nFrames
+for iFrame = 1:300
     for iR=1:R
         
         plot_id = (iR-1)*R+1;
