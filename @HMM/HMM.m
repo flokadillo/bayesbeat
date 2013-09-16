@@ -156,7 +156,6 @@ classdef HMM
             nStates = maxState + 1 - minState;
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
-            temp = zeros(nFrames, 3);
             if length(delta) > 65535
                 %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
@@ -165,7 +164,7 @@ classdef HMM
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
             
-            alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
+%             alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
             perc = round(0.1*nFrames);
             
             i_row = 1:nStates;
@@ -177,7 +176,6 @@ classdef HMM
             
             fprintf('    Decoding (viterbi) .');
 %             logP_data = sparse(size(A, 1), nFrames);
-            
             for iFrame = 1:nFrames
                 
 %                 p_ind = find(log(delta) > -10);
@@ -190,29 +188,121 @@ classdef HMM
                 % the same state i (row)
                 % same as repmat(delta, 1, col)
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
-                temp(iFrame, 1) = sum(delta(1:20000));
                 [delta_max, psi_mat(:,iFrame)] = max(D * A);
-%                 delta_max = delta';
-%                 temp(iFrame, 2) = sum(delta_max(1:20000)) / sum(delta_max);
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
                 O(validInds) = obs_lik(ind(validInds));
-                
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 delta_max = O .* delta_max';
-%                 temp(iFrame, 2) = sum(O(1:20000)) / sum(O(:));
                 % normalize
                 norm_const = sum(delta_max);
                 delta = delta_max / norm_const;
-%                 d2 = delta(1:20000);
-%                 d2(d2 < eps) = eps;
-%                 delta(1:20000) = d2;
-%                 delta(delta < eps) = eps;
-%                 temp(iFrame, 3) = sum(delta(1:20000));
-                [~, alpha(iFrame)] = max(delta);
+%                 [~, alpha(iFrame)] = max(delta);
                 loglik(iFrame) = log(norm_const);
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
+            end
+            
+            % Backtracing
+            bestpath = zeros(nFrames,1);
+            [ ~, bestpath(nFrames)] = max(delta);
+            for iFrame=nFrames-1:-1:1
+                bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
+            end
+            
+            % add state offset
+            bestpath = bestpath + minState - 1;
+            
+            fprintf(' done\n');
+            
+        end
+        
+        function bestpath = viterbi_decode_log(obj, obs_lik)
+            % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
+            % initial_prob)
+            % Implementation of the Viterbi algorithm
+            % ----------------------------------------------------------------------
+            %INPUT parameter:
+            % A             : transition matrix
+            % obslik        : structure containing the observation model
+            % initial_prob   : initial state probabilities
+            %
+            %OUTPUT parameter:
+            % bestpath      : MAP state sequence
+            % delta         : p(x_T | y_1:T)
+            % loglik        : p(y_t | y_1:t-1)
+            %               (likelihood of the sequence p(y_1:T) would be prod(loglik)
+            %
+            % 26.7.2012 by Florian Krebs
+            % ----------------------------------------------------------------------
+            nFrames = size(obs_lik, 3);
+            loglik = zeros(nFrames, 1);
+            [row, col] = find(obj.trans_model.A);
+            
+            maxState = max([row; col]);
+            minState = min([row; col]);
+            nStates = maxState + 1 - minState;
+            i_row_lin = 1:nStates;
+            j_col_lin = 1:nStates;
+            delta_lin = obj.initial_prob(minState:maxState);
+            delta = log(obj.initial_prob(minState:maxState));
+            A_lin = obj.trans_model.A(minState:maxState, minState:maxState);
+            if length(delta) > 65535
+                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
+                psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
+            else
+                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
+                psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
+            end
+            
+%             alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
+            perc = round(0.1*nFrames);
+            
+            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind_stepsize = obj.barGrid * obj.R;
+            
+            fprintf('    Decoding (viterbi) .');
+%             logP_data = sparse(size(A, 1), nFrames);
+            delta_max = -inf(size(delta));
+            A_log = A_lin;
+            A_log(find(A_log)) = log(A_log(find(A_log)));
+            [i_row, j_col] = find(A_log);
+            for iFrame = 1:nFrames
+                % linear
+                D = sparse(i_row_lin, j_col_lin, delta_lin(:), nStates, nStates);
+                [delta_max_lin, psi_mat(:,iFrame)] = max(D * A_lin);
+                % log
+                D = sparse(i_row, j_col, delta(i_row), nStates, nStates);
+                X = A_log + D;
+                delta_max(1:max(j_col)) = accumarray(j_col, X(sub2ind([size(X)], i_row, j_col)), [], @max, 0);
+                delta_max(delta_max==0) = -inf;
+%                 argmax = @(x) find(x==max(x));
+%                 
+%                 psi = zeros(size(delta));
+%                 for i=1:length(a)
+%                     ind = (j_col == a(i));
+%                     [temp, psi(i)] = max(X(sub2ind([size(X)], i_row(ind), j_col(ind))));
+%                     psi(i) = psi(i) + find(ind, 1) - 1;
+%                 end
+%                 psi_mat(:,iFrame) = i_row(psi);
+%                 delta_max2 = accumarray(j_col, X(sub2ind([size(X)], i_row, j_col)), [], @(x) find(x==max(x)), 0);
+%                 [delta_max, psi_mat(:,iFrame)] = max(A + D);
+                % compute likelihood p(yt|x1:t)
+                O = zeros(nStates, 1);
+                validInds = ~isnan(ind);
+                O(validInds) = obs_lik(ind(validInds));
+                % increase index to new time frame
+                ind = ind + ind_stepsize;
+                delta_lin = O .* delta_max_lin';
+                delta = log(O) + delta_max;
+                
+                % normalize
+                norm_const = sum(delta_lin);
+                delta_lin = delta_lin / norm_const;
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
