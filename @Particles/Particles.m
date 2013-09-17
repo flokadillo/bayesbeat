@@ -17,13 +17,13 @@ classdef Particles
     
     methods
         function obj = Particles(nParticles, nDiscreteStates, nFrames)
-            obj.m = zeros(nDiscreteStates, nParticles, nFrames);
-            obj.n = zeros(nParticles, nFrames);
+            obj.m = zeros(nDiscreteStates, nParticles, nFrames, 'single');
+            obj.n = zeros(nParticles, nFrames, 'single');
             obj.weight = zeros(nParticles, 1);
             obj.posterior_r = zeros(nParticles, nDiscreteStates);
             obj.delta = zeros(nParticles, nDiscreteStates);
-            obj.log_trans = zeros(nParticles, nFrames);
-            obj.log_obs = zeros(nDiscreteStates, nParticles, nFrames);
+%             obj.log_trans = zeros(nParticles, nFrames);
+%             obj.log_obs = zeros(nDiscreteStates, nParticles, nFrames, 'int8');
             obj.old_weight = zeros(nParticles, 1);
             obj.psi_mat = zeros(nParticles, nDiscreteStates, nFrames, 'uint8');
             obj.nParticles = nParticles;

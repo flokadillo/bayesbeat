@@ -22,21 +22,21 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 Params.loadFeaturesFromFile = 0;
-Params.doTraining = 1;
+Params.doTraining = 0;
 
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
-Params.doLeaveOneOut = 1;
-Params.inferenceMethod = 'HMM_viterbi';
+Params.doLeaveOneOut = 0;
+Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
 % System description
-% Params.M = 2560; % number of discrete position states
-% Params.N = 33;
-Params.M = 2560; % number of discrete position states
-Params.N = 33;
+% Params.M = 2560/1440; % number of discrete position states
+% Params.N = 33/19;
+Params.M = 1440; % number of discrete position states
+Params.N = 19;
 Params.R = 2;
 Params.meters = [9, 8; ...
                  8, 8]; % e.g., [9, 3; 8 4]
@@ -64,7 +64,11 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-2d-', ...
     num2str(Params.R), '-songs.txt']);
 if ~Params.doTraining
-    Params.model_fln = fullfile(Params.data_path, ['hmm_', Params.train_set, '.mat']);
+    if strfind(Params.inferenceMethod, 'HMM')
+        Params.model_fln = fullfile(Params.data_path, ['hmm_', Params.train_set, '.mat']);
+    elseif strfind(Params.inferenceMethod, 'PF')
+        Params.model_fln = fullfile(Params.data_path, ['pf_', Params.train_set, '.mat']);
+    end
 end
 
 % % test data

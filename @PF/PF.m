@@ -262,7 +262,7 @@ classdef PF
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     %fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    newIdx = obj.systematicR(1:obj.nParticles, obj.particles.weight);
+                    newIdx = obj.resampleSystematic(obj.particles.weight);
                     obj.particles = obj.particles.copyParticles(newIdx);
                 end
                 % transition from iFrame-1 to iFrame
@@ -302,7 +302,7 @@ classdef PF
 %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
             ind = find(sum(bsxfun(@gt, temp, obj.Meff(obj.rhythm2meter)')));
             temp(:, ind) = bsxfun(@mod, temp(:, ind) - 1, obj.Meff(obj.rhythm2meter)') + 1;
-            obj.particles = obj.particles.update_m(temp, new_frame);
+%             obj.particles = obj.particles.update_m(temp, new_frame);
             % TODO: why does this step take so long ?
             obj.particles.m(:, :, new_frame) = temp;
         end
@@ -393,7 +393,8 @@ classdef PF
     end
     
     methods (Static)
-        outIndex = systematicR(inIndex,wn);
+%         outIndex = systematicR(inIndex,wn);
+        outIndex = resampleSystematic( w );
 
     end
     
