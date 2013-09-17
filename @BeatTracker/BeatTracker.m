@@ -100,10 +100,11 @@ classdef BeatTracker
         
         function results = do_inference(obj, test_file_id, smooth_win)
 %             profile on;
+            [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
-            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature);
+            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname);
             
             % smoothing
             if smooth_win > 0
@@ -114,6 +115,16 @@ classdef BeatTracker
             results{3} = meter;
             results{4} = rhythm;
 %             profile viewer;
+            
+            annots = load(strrep(obj.feature.input_fln, 'wav', 'beats'));
+            r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
+            [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(obj.feature.feature, 1));
+            
+            anns = [m, n, ones(length(m), 1) * r];
+            
+            save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+            %
+
         end
         
         function obj = load_model(obj, fln)

@@ -35,8 +35,8 @@ Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
 % System description
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 33/19;
-Params.M = 1440; % number of discrete position states
-Params.N = 19;
+Params.M = 2560; % number of discrete position states
+Params.N = 33;
 Params.R = 2;
 Params.meters = [9, 8; ...
                  8, 8]; % e.g., [9, 3; 8 4]

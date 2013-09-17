@@ -112,12 +112,12 @@ classdef PF
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y)
+        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             % decode MAP state sequence using Viterbi
-            obj = obj.rbpf_apf(obs_lik);
+            obj = obj.rbpf_apf(obs_lik, fname);
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             % meter path
@@ -188,10 +188,10 @@ classdef PF
         end
         
         function [m_path, n_path, r_path] = path_via_best_weight(obj)
-           % use particle with highest weight
+            % use particle with highest weight
             % ------------------------------------------------------------
             [~, bestParticle] = max(obj.particles.weight);
-
+            
             % Backtracing:
             nFrames = size(obj.particles.n, 2);
             r_path = zeros(nFrames,1);
@@ -199,31 +199,39 @@ classdef PF
             for i=nFrames-1:-1:1
                 r_path(i) = obj.particles.psi_mat(bestParticle, r_path(i+1), i+1);
             end
-
+            
             n_path = obj.particles.n(bestParticle, :)';
             m_path = squeeze(obj.particles.m(:, bestParticle, :));
             ind = sub2ind([obj.R, nFrames], r_path', (1:nFrames));
             m_path = m_path(ind)';
-%             [ posteriorMAP ] = comp_posterior_of_sequence( [bestpath.position, bestpath.tempo, bestpath.meter], y, o1, [], params);
-%             fprintf('log post best weight: %.2f\n', posteriorMAP.sum); 
+            %             [ posteriorMAP ] = comp_posterior_of_sequence( [bestpath.position, bestpath.tempo, bestpath.meter], y, o1, [], params);
+            %             fprintf('log post best weight: %.2f\n', posteriorMAP.sum);
         end
     end
     
     methods (Access=protected)
         
-        function obj = rbpf_apf(obj, obs_lik)
+        function obj = rbpf_apf(obj, obs_lik, fname)
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
-            
+            logP_data_pf = log(zeros(obj.nParticles, obj.R, 3, nFrames, 'single'));
             obj.particles = Particles(obj.nParticles, obj.R, nFrames);
-            obj.particles.m(:, :, 1) = obj.initial_m; 
-            obj.particles.n(:, 1) = obj.initial_n; 
+            iFrame = 1;
+            obj.particles.m(:, :, iFrame) = obj.initial_m;
+            obj.particles.n(:, iFrame) = obj.initial_n;
             eval_lik = @(m, iFrame) obj.compute_obs_lik(m, iFrame, obs_lik, obj.M / obj.barGrid);
-            obs = eval_lik(obj.initial_m, 1);
+            obs = eval_lik(obj.initial_m, iFrame);
             obj.particles.weight = (sum(obs) / sum(obs(:)))';
             % posterior: p(r_t | z_1:t, y_1:t)
             obj.particles.posterior_r = ones(obj.nParticles, obj.R) / obj.R;
             obj.particles.delta = obs'; % [nDiscStates, nPart]
+            % save particle data for visualizing
+            % position
+            logP_data_pf(:, :, 1, iFrame) = obj.particles.m(:, :, iFrame)';
+            % tempo
+            logP_data_pf(:, :, 2, iFrame) = repmat(obj.particles.n(:, iFrame), 1, 2);
+            % weights
+            logP_data_pf(:, :, 3, iFrame) = log(bsxfun(@times, obj.particles.weight, obj.particles.posterior_r));
             
             iFrame = 2;
             obj = obj.propagate_particles(iFrame);
@@ -265,9 +273,19 @@ classdef PF
                     newIdx = obj.resampleSystematic(obj.particles.weight);
                     obj.particles = obj.particles.copyParticles(newIdx);
                 end
+                % save particle data for visualizing
+                % position
+                logP_data_pf(:, :, 1, iFrame-1) = obj.particles.m(:, :, iFrame-1)';
+                % tempo
+                logP_data_pf(:, :, 2, iFrame-1) = repmat(obj.particles.n(:, iFrame-1), 1, 2);
+                % weights
+                logP_data_pf(:, :, 3, iFrame-1) = log(bsxfun(@times, obj.particles.weight, obj.particles.posterior_r));
+                
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles(iFrame);
             end
+            save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
+                'logP_data_pf');
         end
         
         function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
@@ -299,10 +317,10 @@ classdef PF
             obj.particles.n((obj.particles.n(:, new_frame) > obj.maxN), new_frame) = obj.maxN;
             obj.particles.n((obj.particles.n(:, new_frame) < obj.minN), new_frame) = obj.minN;
             temp = bsxfun(@plus, obj.particles.m(:, :, new_frame - 1), obj.particles.n(:, new_frame - 1)');
-%             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
+            %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
             ind = find(sum(bsxfun(@gt, temp, obj.Meff(obj.rhythm2meter)')));
             temp(:, ind) = bsxfun(@mod, temp(:, ind) - 1, obj.Meff(obj.rhythm2meter)') + 1;
-%             obj.particles = obj.particles.update_m(temp, new_frame);
+            %             obj.particles = obj.particles.update_m(temp, new_frame);
             % TODO: why does this step take so long ?
             obj.particles.m(:, :, new_frame) = temp;
         end
@@ -359,7 +377,7 @@ classdef PF
             
             beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
             beatpositions = beatpositions(1:end-1);
-%             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
+            %             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
             
             beats = [];
             beatno = [];
@@ -393,9 +411,9 @@ classdef PF
     end
     
     methods (Static)
-%         outIndex = systematicR(inIndex,wn);
+        %         outIndex = systematicR(inIndex,wn);
         outIndex = resampleSystematic( w );
-
+        
     end
     
     

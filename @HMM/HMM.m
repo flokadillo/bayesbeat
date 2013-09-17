@@ -109,12 +109,12 @@ classdef HMM
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y)
+        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             % decode MAP state sequence using Viterbi
-            hidden_state_sequence = obj.viterbi_decode(obs_lik);
+            hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence);
             % meter path
@@ -125,12 +125,14 @@ classdef HMM
             tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             rhythm = r_path;
         end
+        
+        
     end
     
     methods (Access=protected)
         
         
-        function bestpath = viterbi_decode(obj, obs_lik)
+        function bestpath = viterbi_decode(obj, obs_lik, fname)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
             % initial_prob)
             % Implementation of the Viterbi algorithm
@@ -151,7 +153,7 @@ classdef HMM
             nFrames = size(obs_lik, 3);
             loglik = zeros(nFrames, 1);
             [row, col] = find(obj.trans_model.A);
-           % logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
+           logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
@@ -178,8 +180,8 @@ classdef HMM
             fprintf('    Decoding (viterbi) .');
             
             for iFrame = 1:nFrames
-            %    p_ind = find(log(delta) > -15);
-            %    logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
+               p_ind = find(log(delta) > -15);
+               logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
@@ -207,8 +209,11 @@ classdef HMM
             end
             
             % save for visualization
-           % M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
-           % save('./temp/test.mat', 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
+            M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
+%            save('./temp/test.mat', 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
+%            [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
+            save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
+                'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
             
             % Backtracing
             bestpath = zeros(nFrames,1);
@@ -398,6 +403,11 @@ classdef HMM
         
     end
     
+    methods (Static)
+        
+        [m, n] = getpath(M, annots, frame_length, nFrames);
+        
+    end
     
     
 end
