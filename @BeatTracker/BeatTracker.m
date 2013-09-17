@@ -99,7 +99,7 @@ classdef BeatTracker
         end
         
         function results = do_inference(obj, test_file_id, smooth_win)
-            profile on;
+%             profile on;
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
@@ -113,7 +113,7 @@ classdef BeatTracker
             results{2} = tempo;
             results{3} = meter;
             results{4} = rhythm;
-            profile viewer;
+%             profile viewer;
         end
         
         function obj = load_model(obj, fln)
