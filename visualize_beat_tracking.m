@@ -12,13 +12,13 @@ hf = figure;
 set(gca,'YDir','normal')
 nPlots = R * 2;
 h_sp = zeros(nPlots, 1);
-aviobj = VideoWriter(out_fln, 'Uncompressed AVI');
-aviobj.FrameRate = 1/frame_length;
+aviobj = VideoWriter(out_fln, 'Motion JPEG AVI');
+aviobj.FrameRate = 1/(2*frame_length);
 % ax=get(hf,'Position');
 set(hf, 'Position', [51 1 1316 689]);
 open(aviobj);
 y_pos = [0.63; 0.18];
-for iFrame = 1:300
+for iFrame = 1:2:600
     for iR=1:R
         
         plot_id = (iR-1)*R+1;
