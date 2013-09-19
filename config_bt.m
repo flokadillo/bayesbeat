@@ -22,7 +22,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 Params.loadFeaturesFromFile = 0;
-Params.doTraining = 0;
+Params.doTraining = 1;
 
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
@@ -52,9 +52,10 @@ Params.frame_length = 0.02;
 Params.barGrid = 64 * max(bar_durations); % number of grid points per 4/4 bar
 Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per 4/4 bar
 Params.init_n_gauss = 2;
-Params.nParticles = 1000;
+Params.nParticles = 2000;
 Params.sigmaN = 0.00005;
 Params.ratio_Neff = 0.5;
+Params.rbpf = 0;
 
 % train data
 Params.train_set = 'usul_ah';

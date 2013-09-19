@@ -153,7 +153,7 @@ classdef HMM
             nFrames = size(obs_lik, 3);
             loglik = zeros(nFrames, 1);
             [row, col] = find(obj.trans_model.A);
-           logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
+            logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
