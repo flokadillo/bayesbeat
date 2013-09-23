@@ -55,7 +55,7 @@ Params.init_n_gauss = 2;
 Params.nParticles = 1000;
 Params.sigmaN = 0.00005;
 Params.ratio_Neff = 0.5;
-Params.rbpf = 1;
+Params.rbpf = 0;
 
 % train data
 Params.train_set = 'usul_ah';

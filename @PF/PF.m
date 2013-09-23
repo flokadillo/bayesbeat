@@ -220,7 +220,7 @@ classdef PF
         
         function obj = rbpf_apf(obj, obs_lik, fname)
             
-            save_data = 0;
+            save_data = 1;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -375,7 +375,7 @@ classdef PF
             obj.particles.m(:, iFrame) = obj.initial_m;
             obj.particles.n(:, iFrame) = obj.initial_n;
             obj.particles.r(:, iFrame) = obj.initial_r;
-            eval_lik = @(m, iFrame) obj.compute_obs_lik(m, iFrame, obs_lik, obj.M / obj.barGrid);
+            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
             obj.particles.weight = obs / sum(obs);
             if save_data
@@ -389,20 +389,20 @@ classdef PF
                 % weights
                 logP_data_pf(:, 4, iFrame) = log(obj.particles.weight);
             end
-            iFrame = 2;
-            obj = obj.propagate_particles_pf(iFrame);
+%             iFrame = 2;
+%             obj = obj.propagate_particles_pf(iFrame);
 %             [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
 %                 obj.particles.n(:, iFrame - 1));
 %             obj = obj.propagate_particles(iFrame);
 %             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
-            for iFrame=3:nFrames
+            for iFrame=2:nFrames
                 
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame);
-                
+%                 compute_obs_lik(obj, states_m_r, iFrame, obslik, m_per_grid)
                 % evaluate particle at iFrame-1
-                obs = eval_lik([obj.particles.m(:, iFrame-1), obj.particles.r(:, iFrame-1)], iFrame-1);
+                obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
                 obj.particles.weight = obj.particles.weight .* obs;
                 % Normalise importance weights
                 % ------------------------------------------------------------
@@ -418,11 +418,11 @@ classdef PF
                 if save_data
                     % save particle data for visualizing
                     % position
-                    logP_data_pf(:, 1, iFrame) = obj.particles.m(:, iFrame-1);
+                    logP_data_pf(:, 1, iFrame) = obj.particles.m(:, iFrame);
                     % tempo
-                    logP_data_pf(:, 2, iFrame) = obj.particles.n(:, iFrame-1);
+                    logP_data_pf(:, 2, iFrame) = obj.particles.n(:, iFrame);
                     % rhythm
-                    logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame-1);
+                    logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame);
                     % weights
                     logP_data_pf(:, 4, iFrame) = log(obj.particles.weight);
                 end
