@@ -220,7 +220,7 @@ classdef PF
         
         function obj = rbpf_apf(obj, obs_lik, fname)
             
-            save_data = 1;
+            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -363,7 +363,7 @@ classdef PF
                
         function obj = pf(obj, obs_lik, fname)
             
-            save_data = 1;
+            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector

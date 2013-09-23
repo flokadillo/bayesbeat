@@ -22,7 +22,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 Params.loadFeaturesFromFile = 0;
-Params.doTraining = 1;
+Params.doTraining = 0;
 
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;

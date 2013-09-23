@@ -150,10 +150,12 @@ classdef HMM
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
+            save_data = 0;
+            
             nFrames = size(obs_lik, 3);
             loglik = zeros(nFrames, 1);
             [row, col] = find(obj.trans_model.A);
-            logP_data = sparse(size(obj.trans_model.A, 1), nFrames);
+            if save_data, logP_data = sparse(size(obj.trans_model.A, 1), nFrames); end
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
@@ -180,8 +182,10 @@ classdef HMM
             fprintf('    Decoding (viterbi) .');
             
             for iFrame = 1:nFrames
-               p_ind = find(log(delta) > -15);
-               logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
+                if save_data,
+                   p_ind = find(log(delta) > -15);
+                   logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
+                end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
@@ -208,12 +212,12 @@ classdef HMM
                 end
             end
             
-            % save for visualization
-            M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
-%            save('./temp/test.mat', 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
-%            [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
-            save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
-                'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
+            if save_data,
+                % save for visualization
+                M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
+                save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
+                    'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
+            end
             
             % Backtracing
             bestpath = zeros(nFrames,1);

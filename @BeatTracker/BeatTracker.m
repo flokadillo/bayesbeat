@@ -99,7 +99,7 @@ classdef BeatTracker
         end
         
         function results = do_inference(obj, test_file_id, smooth_win)
-%             profile on;
+            profile on;
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
@@ -114,7 +114,7 @@ classdef BeatTracker
             results{2} = tempo;
             results{3} = meter;
             results{4} = rhythm;
-%             profile viewer;
+            profile viewer;
             
             annots = load(strrep(obj.feature.input_fln, 'wav', 'beats'));
             r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
