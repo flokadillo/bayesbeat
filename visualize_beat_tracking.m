@@ -1,7 +1,7 @@
 function [] = visualize_beat_tracking( fname )
 %[] = visualize_beat_tracking( data, out_fln )
 close all
-thresh =-15;
+thresh =-20;
 % load hmm data
 load(fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', [fname, '_hmm.mat'])); % load 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik'
 
@@ -43,8 +43,8 @@ open(aviobj);
 y_pos = [0.63; 0.18];
 for iFrame = 1:2:500
     important_pix = find(logP_data(:, iFrame));
-    max_h = max(logP_data(important_pix, iFrame));
-    min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
+%     max_h = max(logP_data(important_pix, iFrame));
+%     min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
     for iR=1:R
         plot_id = (iR-1)*R+1;
         h_sp(plot_id) = subplot(nPlots, 1, plot_id);
@@ -53,13 +53,13 @@ for iFrame = 1:2:500
         frame = reshape(logP_data(start_ind:end_ind, iFrame), M, N);
 %         frame(frame==0) = min_h;
         important_pix = find(frame);
-%         max_h = max(frame(important_pix));
-%         min_h = max([thresh, min(frame(important_pix))]);
+        max_h = max(frame(important_pix));
+        min_h = max([thresh, min(frame(important_pix))]);
         frame(frame(important_pix)<min_h) = min_h;
         frame(important_pix) = frame(important_pix) - thresh;
 %         frame(find(frame)) = (frame(find(frame)) + min_h) / max_h;
         imagesc(frame');
-        caxis([0 max([3, max_h - thresh - 9])])
+        caxis([0 max([1, max_h - thresh - 5])])
         colorbar;
         hold on;
         if rbpf

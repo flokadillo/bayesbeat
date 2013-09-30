@@ -150,7 +150,7 @@ classdef HMM
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            save_data = 0;
+            save_data = 1;
             
             nFrames = size(obs_lik, 3);
             loglik = zeros(nFrames, 1);
@@ -183,7 +183,7 @@ classdef HMM
             
             for iFrame = 1:nFrames
                 if save_data,
-                   p_ind = find(log(delta) > -15);
+                   p_ind = find(log(delta) > -20);
                    logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)

@@ -40,7 +40,7 @@ classdef Particles < handle
             obj.nParticles = nParticles;
         end
         
-        function obj = copyParticles(obj, newIdx)
+        function copyParticles(obj, newIdx)
             if obj.nDiscreteStates > 1 % use rao blackwellized pf
             % copy particles according to newIdx after resampling
                 obj.m = obj.m(:, newIdx, :);

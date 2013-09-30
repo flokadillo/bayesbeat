@@ -363,7 +363,7 @@ classdef PF
                
         function obj = pf(obj, obs_lik, fname)
             
-            save_data = 0;
+            save_data = 1;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -411,9 +411,12 @@ classdef PF
                 % Resampling
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
-%                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    newIdx = obj.resampleSystematic(obj.particles.weight);
-                    obj.particles = obj.particles.copyParticles(newIdx);
+                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    groups = divide_into_groups(obj.particles, obj.M, obj.N, obj.R, 40, iFrame);
+                    [outIndex, outWeights] = obj.resample_in_groups(groups, obj.particles.weights);
+
+%                     newIdx = obj.resampleSystematic(obj.particles.weight);
+%                     obj.particles = obj.particles.copyParticles(newIdx);
                 end
                 if save_data
                     % save particle data for visualizing
@@ -522,11 +525,13 @@ classdef PF
             % TODO: why does this step take so long ?
 %             obj.particles.m(:, :, new_frame) = temp;
         end
+        
+        
     end
     
     methods (Static)
         %         outIndex = systematicR(inIndex,wn);
-        outIndex = resampleSystematic( w );
+        outIndex = resampleSystematic( w, n_samples );
         
         function [m, n] = propagate_particles_rbpf(m, n, nParticles, sigma_N, minN, maxN, M, Meff, rhythm2meter)
             % propagate particles by sampling from the transition prior
@@ -544,6 +549,48 @@ classdef PF
 %             obj.particles.m(:, :, new_frame) = temp;
         end
         
+        function [groups] = divide_into_groups(particles, M, N, R, nCells, iFrame)
+            % divide space into cells
+            groups = zeros(length(particles.weight), 1);
+            n_m_bins = floor(nCells/(2*R));
+            n_n_bins = 2;
+            m_edges = linspace(1, M+M/1000, n_m_bins + 1);
+            n_edges = linspace(1, N+N/1000, n_n_bins + 1);
+%             edges = [{m_edges}, {n_edges}];
+%             w = zeros(nCells, 1);
+%             part_glob_weight = zeros(length(particles.weight), 1);
+            part_out_index = zeros(length(particles.weight), 1);
+%             p = 1;
+            for iR=1:R
+                ind = find(particles.r(:, iFrame) == iR);
+%                 [C, ~] = hist3([particles.m(ind, iFrame), particles.n(ind, iFrame)], 'Edges', edges);
+                [~, BIN_m] = histc(particles.m(ind, iFrame), m_edges);
+                [~, BIN_n] = histc(particles.n(ind, iFrame), n_edges);
+                for m = 1:n_m_bins
+                    for n=1:2
+                        ind2 = intersect(ind(BIN_m==m), ind(BIN_n==n));
+                        groups(ind2) = sub2ind([n_m_bins, n_n_bins, R], m, n, iR);
+%                         w(sub2ind([n_m_bins, n_n_bins, R], m, n, iR)) = sum(particles.weight(ind2));
+%                         if isempty(ind2), continue; end
+%                         if sum(particles.weight(ind2)) < eps
+%                             particles.weight(ind2) = eps;
+%                         end
+%                         outIndex = PF.resampleSystematic( particles.weight(ind2) );
+%                         part_glob_weight(ind2) = max([eps, sum(particles.weight(ind2))]);
+% %                         if sum(outIndex == 0) > 0
+% %                             lkj=987;
+% %                         end
+%                         part_out_index(p:p+length(outIndex)-1) = ind2(outIndex);
+%                         p = p + length(outIndex);
+                    end 
+                end
+            end
+%             figure(1); bar(w);
+            particles.copyParticles(part_out_index);
+%             particles.weight = part_glob_weight / sum(part_glob_weight);
+        end
+        
+        [outIndex, outWeights] = resample_in_groups(groups, weights);
         
     end
     
