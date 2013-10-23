@@ -148,11 +148,12 @@ classdef RhythmCluster
             %INPUT parameter:
             % trainLab          : filename of labfile (e.g., 'boeck.lab' or 'ballroom.lab').
             %                       a labfile is a textfile with paths to files that are analyzed
-            % clusterType         : {'meter', 'dancestyle', 'auto'} if clusterType='meter', bars are
+            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'auto'} if clusterType='meter', bars are
             %                       clustered according to the meter (functions reads .meter file);
             %                       if clusterType='dancestyle', according to the genre (functions reads .dancestyle file))
             % clustAssFln       : if clusterType='auto', specify a textfile, with a
             %                       pattern id for each file (in the same order as in trainLab)
+            % rhythm_names      : cell array of strings
             %
             %OUTPUT parameter:
             % bar2pattern       : [nBars x 1] assigns each bar to a pattern
@@ -173,7 +174,7 @@ classdef RhythmCluster
             
             % read list of training files
             fid = fopen(obj.train_lab_fln, 'r');
-            temp = textscan(fid, '%s');
+            temp = textscan(fid, '%s', 'delimiter', '\n');
             fileNames = temp{1};
             fclose(fid);
             if ~isempty(obj.ok_songs_fln)

@@ -28,7 +28,7 @@ classdef Data
             % read lab_fln (a file where all data files are listed)
             if exist(lab_fln, 'file')
                 fid = fopen(lab_fln, 'r');
-                obj.file_list = textscan(fid, '%s'); obj.file_list = obj.file_list{1};
+                obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
                 fclose(fid);
                 [~, dataset, ~] = fileparts(lab_fln);
                 fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
@@ -58,7 +58,7 @@ classdef Data
             fln = strrep(cluster_fln, '.txt', '-rhythm_labels.txt');
             if exist(fln, 'file')
                 fid = fopen(fln, 'r');
-                obj.rhythm_names = textscan(fid, '%s'); obj.rhythm_names = obj.rhythm_names{1};
+                obj.rhythm_names = textscan(fid, '%s', 'delimiter', '\n'); obj.rhythm_names = obj.rhythm_names{1};
                 fclose(fid);
             else
                 % just call the rhythms by their ids
@@ -159,14 +159,14 @@ classdef Data
             
         end
         
-        function obj = extract_feats_per_file_pattern_barPos_dim(obj, barGrid, ...
+        function obj = extract_feats_per_file_pattern_barPos_dim(obj, whole_note_div, barGrid_eff, ...
                 featureDim, featuresFln, featureType, frame_length)
             % Extract audio features and sort them according to bars and position
             if ~exist(featuresFln, 'file')
                 fprintf('    Extract and organise trainings data: \n');
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
-                    TrainData = Data.extract_bars_from_feature(obj.file_list, featureType{iDim}, barGrid, frame_length, 1);
+                    TrainData = Data.extract_bars_from_feature(obj.file_list, featureType{iDim}, whole_note_div, barGrid_eff, frame_length, 1);
                     temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
                         obj.bar2cluster, obj.bar2file);
                 end
@@ -206,7 +206,7 @@ classdef Data
         
         [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose);
         
-        Output = extract_bars_from_feature(source, featExt, barGrid, framelength, dooutput);
+        Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, dooutput);
         
         dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
     end

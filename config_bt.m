@@ -22,7 +22,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 Params.loadFeaturesFromFile = 0;
-Params.doTraining = 0;
+Params.doTraining = 1;
 
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
@@ -33,13 +33,14 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
 % Params.trainTransitionMatrix = 1;
 
 % System description
+% State space size
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 33/19;
-Params.M = 2560; % number of discrete position states
-Params.N = 33;
-Params.R = 2;
-Params.meters = [9, 8; ...
-                 8, 8]; % e.g., [9, 3; 8 4]
+Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
+Params.N = 19;
+Params.R = 1;
+Params.meters = [2; ...
+                 4]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
@@ -49,8 +50,10 @@ Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
 Params.frame_length = 0.02;
-Params.barGrid = 64 * max(bar_durations); % number of grid points per 4/4 bar
-Params.barGrid_eff = Params.barGrid * bar_durations; % number of grid points per 4/4 bar
+% Params.barGrid = 64 * max(bar_durations); % max number of grid points 
+% Params.barGrid = 64; % number of grid points per whole note
+Params.whole_note_div = 64; % number of grid points per whole note
+Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
 Params.init_n_gauss = 2;
 Params.nParticles = 1000;
 Params.sigmaN = 0.00005;
@@ -58,7 +61,7 @@ Params.ratio_Neff = 0.5;
 Params.rbpf = 0;
 
 % train data
-Params.train_set = 'usul_ah';
+Params.train_set = 'jump_crete';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
@@ -73,7 +76,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'usul_ah';
+Params.test_set = 'jump_crete';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

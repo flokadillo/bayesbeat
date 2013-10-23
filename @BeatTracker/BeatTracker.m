@@ -40,8 +40,8 @@ classdef BeatTracker
 %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
             obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters);
 %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
-            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.barGrid, ...
-                Params.featureDim, Params.featuresFln, Params.feat_type, Params.frame_length);
+            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
+                Params.barGrid_eff, Params.featureDim, Params.featuresFln, Params.feat_type, Params.frame_length);
         end
         
         function obj = init_test_data(obj, Params)

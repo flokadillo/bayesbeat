@@ -1,4 +1,4 @@
-function [Output] = extract_bars_from_feature(source, featExt, barGrid, frame_length, dooutput)
+function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, frame_length, dooutput)
 % [out3, out4] = Analyze_Onset_Strength_Inside_A_Bar(source, featExt, mode2 [,
 % numbins, saveflag, bin_thresh] )
 %   Maps the time t to a bar position
@@ -35,7 +35,7 @@ end
 % bar grid for triple and duple meter
 Output.dataPerBar = []; idLastBar = 0;
 Output.fileNames = cell(nFiles, 1);
-barGrid_max = barGrid;
+barGrid_max = max(barGrid_eff);
 fprintf('    Organize feature values (%s) into bars ...\n', featExt);
 %main loop over all files
 for iFile=1:nFiles
@@ -126,7 +126,7 @@ btype = round(rem(beats(:,2),1)*10);
 meter = max(btype);
 
 
-if ismember(meter, [3, 4])
+if ismember(meter, [2, 3, 4])
     beatsBarPos = ((0:meter) * barGrid / 4) + 1;
 elseif ismember(meter, [8, 9])
     beatsBarPos = ((0:meter) * barGrid / 8) + 1;

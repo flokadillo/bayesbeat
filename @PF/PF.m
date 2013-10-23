@@ -42,7 +42,7 @@ classdef PF
             obj.sigma_N = Params.sigmaN;
             obj.pr = Params.pr;
             obj.pt = Params.pt;
-            obj.barGrid = Params.barGrid;
+            obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter = rhythm2meter;
@@ -549,45 +549,96 @@ classdef PF
 %             obj.particles.m(:, :, new_frame) = temp;
         end
         
-        function [groups] = divide_into_groups(particles, M, N, R, nCells, iFrame)
-            % divide space into cells
-            groups = zeros(length(particles.weight), 1);
-            n_m_bins = floor(nCells/(2*R));
-            n_n_bins = 2;
-            m_edges = linspace(1, M+M/1000, n_m_bins + 1);
-            n_edges = linspace(1, N+N/1000, n_n_bins + 1);
-%             edges = [{m_edges}, {n_edges}];
-%             w = zeros(nCells, 1);
-%             part_glob_weight = zeros(length(particles.weight), 1);
-            part_out_index = zeros(length(particles.weight), 1);
-%             p = 1;
-            for iR=1:R
-                ind = find(particles.r(:, iFrame) == iR);
-%                 [C, ~] = hist3([particles.m(ind, iFrame), particles.n(ind, iFrame)], 'Edges', edges);
-                [~, BIN_m] = histc(particles.m(ind, iFrame), m_edges);
-                [~, BIN_n] = histc(particles.n(ind, iFrame), n_edges);
+        function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
+            % divide space into fixed cells
+            % states: [nParticles x nStates]
+            % state_dim: [nStates x 1]
+            groups = zeros(size(states, 1), 1);
+            n_n_bins = floor(sqrt(nCells));
+            n_m_bins = nCells / (n_n_bins * state_dims(3));
+            m_edges = linspace(1, state_dims(1) + 1, n_m_bins + 1);
+            n_edges = linspace(0, state_dims(2) + 1, n_n_bins + 1);
+            for iR=1:state_dims(3)
+                ind = find(states(:, 3) == iR);
+                [~, BIN_m] = histc(states(ind, 1), m_edges);
+                [~, BIN_n] = histc(states(ind, 2), n_edges);
                 for m = 1:n_m_bins
-                    for n=1:2
+                    for n=1:n_n_bins
                         ind2 = intersect(ind(BIN_m==m), ind(BIN_n==n));
-                        groups(ind2) = sub2ind([n_m_bins, n_n_bins, R], m, n, iR);
-%                         w(sub2ind([n_m_bins, n_n_bins, R], m, n, iR)) = sum(particles.weight(ind2));
-%                         if isempty(ind2), continue; end
-%                         if sum(particles.weight(ind2)) < eps
-%                             particles.weight(ind2) = eps;
-%                         end
-%                         outIndex = PF.resampleSystematic( particles.weight(ind2) );
-%                         part_glob_weight(ind2) = max([eps, sum(particles.weight(ind2))]);
-% %                         if sum(outIndex == 0) > 0
-% %                             lkj=987;
-% %                         end
-%                         part_out_index(p:p+length(outIndex)-1) = ind2(outIndex);
-%                         p = p + length(outIndex);
+                        groups(ind2) = sub2ind([n_m_bins, n_n_bins, state_dims(3)], m, n, iR);
                     end 
                 end
             end
-%             figure(1); bar(w);
-            particles.copyParticles(part_out_index);
-%             particles.weight = part_glob_weight / sum(part_glob_weight);
+            if sum(groups==0) > 0
+                error('group assignment failed\n')
+            end
+        end
+        
+        function [groups] = divide_into_clusters(states, state_dims, groups_old)
+            % states: [nParticles x nStates]
+            % state_dim: [nStates x 1]
+            % groups_old: [nParticles x 1] group labels of the particles
+            %               after last resampling step (used for initialisation)
+            group_ids = unique(groups_old);
+            k = length(group_ids); % number of clusters
+            
+            % adjust the range of each state variable to make equally
+            % important for the clustering
+            states(:, 2) = states(:, 2) * state_dims(1) / state_dims(2);
+            
+            % compute centroid of clusters
+            centroids = zeros(k, length(state_dims));
+            for iCluster = 1:k
+                centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
+            end
+            
+            % do k-means clustering
+            [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+            
+            % check if centroids are too close
+            merging = 1;
+            merged = 0;
+            while merging
+                D = squareform(pdist(centroids,'euclidean'), 'tomatrix');
+                ind = (tril(D, 0) > 0);
+                D(ind) = nan;
+                D(logical(eye(size(centroids, 1)))) = nan;
+                thr = 120;
+                [c1, c2] = find(D < thr);
+                if ~isempty(c1)
+                   groups(groups==c2(1)) = c1(1);
+                   fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
+                   centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
+                   if length(c1) == 1,  merging = 0;  end
+                   merged = 1;
+                else
+                    merging = 0;
+                end
+            end
+            
+            if merged
+                [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+            end
+            
+            % check if cluster spread is too high
+            split = 0;
+            n_parts_per_cluster = hist(groups, 1:max(groups));
+            thr_spread = 28000;
+%             max(total_dist_per_cluster ./ n_parts_per_cluster')
+            separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread); 
+            for iCluster = 1:length(separate_cl_idx)
+                fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
+                parts_idx = (groups == separate_cl_idx(iCluster));
+                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 1);
+                centroids(separate_cl_idx(iCluster), :) = C(1, :);
+                centroids = [centroids; C(2, :)];
+                split = 1;
+            end
+            
+            if split
+                [groups, centroids, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+            end
+            
         end
         
         [outIndex, outWeights] = resample_in_groups(groups, weights);

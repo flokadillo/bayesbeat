@@ -36,7 +36,9 @@ if verbose,
 end
 % 2) check for missing or additional beats
 array = diff(btype);
-if meter == 3
+if meter == 2
+    pattern = [1 -1 1];
+elseif meter == 3
     pattern = [1 1 -2 1];
 elseif meter == 4
     pattern = [1 1 1 -3 1];

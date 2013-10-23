@@ -32,7 +32,7 @@ classdef HMM
             obj.pn = Params.pn;
             obj.pr = Params.pr;
             obj.pt = Params.pt;
-            obj.barGrid = Params.barGrid;
+            obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.init_n_gauss = Params.init_n_gauss;
