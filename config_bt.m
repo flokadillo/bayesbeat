@@ -28,7 +28,7 @@ Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
+Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -38,9 +38,9 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
 % Params.N = 33/19;
 Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 19;
-Params.R = 1;
-Params.meters = [2; ...
-                 4]; % e.g., [9, 3; 8 4]
+Params.R = 2;
+Params.meters = [9, 8; ...
+                 8, 8]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
@@ -57,11 +57,11 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 Params.nParticles = 1000;
 Params.sigmaN = 0.00005;
-Params.ratio_Neff = 0.5;
+Params.ratio_Neff = 0.1;
 Params.rbpf = 0;
 
 % train data
-Params.train_set = 'jump_crete';
+Params.train_set = 'usul_ah';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
@@ -76,7 +76,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'jump_crete';
+Params.test_set = 'usul_ah';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

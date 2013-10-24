@@ -183,7 +183,8 @@ classdef HMM
             
             for iFrame = 1:nFrames
                 if save_data,
-                   p_ind = find(log(delta) > -20);
+                   thresh = -20;
+                   p_ind = find(log(delta) > thresh);
                    logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
@@ -216,7 +217,7 @@ classdef HMM
                 % save for visualization
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
-                    'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik');
+                    'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'thresh');
             end
             
             % Backtracing

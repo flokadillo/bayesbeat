@@ -13,6 +13,7 @@ function [outIndex, outWeights] = resample_in_groups(groups, weights)
 % 25.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 valid_groups = unique(groups);
+weights = weights(:);
 fprintf('%i', valid_groups'); fprintf('\n');
 n_groups = length(valid_groups);
 parts_per_group = linspace(0, length(weights), n_groups+1);

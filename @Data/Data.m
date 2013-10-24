@@ -15,7 +15,6 @@ classdef Data
         meter_state2meter               % specifies meter for each meter state
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
-        allowed_meter                   % [3; 4]
     end
     
     methods(Static)
@@ -76,9 +75,6 @@ classdef Data
                 else
                     error('Beats file %s not found\n', beats_fln);
                 end
-%                 if ~ismember(max(round(rem(beats(:, 2), 1) * 10)), obj.allowed_meter);
-%                     continue;
-%                 end
                 % determine number of bars
                 [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(beats);
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;

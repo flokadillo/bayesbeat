@@ -52,7 +52,7 @@ classdef Particles < handle
                 obj.r = obj.r(newIdx, :);
             end
             obj.n = obj.n(newIdx, :);
-            obj.weight = ones(obj.nParticles, 1) / obj.nParticles;
+            obj.weight = log(ones(obj.nParticles, 1) / obj.nParticles);
             
 %             obj.log_obs = obj.log_obs(:, newIdx, :);
 %             obj.log_trans = obj.log_trans(newIdx, :);

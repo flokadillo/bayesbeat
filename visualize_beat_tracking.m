@@ -15,7 +15,7 @@ function [] = visualize_beat_tracking( data_fln, movie_fln )
 % OUTPUT
 % video
 % -----------------------------------------------------------------------
-
+addpath('/home/florian/diss/src/matlab/libs/matlab_utils/export_fig')
 close all
 % thresh =-20;
 % -----------------------------------------------------------------------
@@ -44,7 +44,9 @@ fln = fullfile(path, [fname, '_hmm.mat']);
 if exist(fln, 'file')
     load(fln);
     hmm_data_ok = 1;
-    
+    nFrames = size(logP_data, 2);
+    [~, nPos, ~] = size(obs_lik);
+    max_lik = max(obs_lik(:));
 end
 fln = fullfile(path, [fname, '_pf.mat']);
 if exist(fln, 'file')
@@ -64,8 +66,8 @@ end
 % % load hmm data
 % % -----------------------------------------------------------------------
 % load(fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', [fname, '_hmm.mat'])); % load 'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik'
-% [~, nPos, ~] = size(obs_lik);
-% max_lik = max(obs_lik(:));
+% 
+% 
 % [~, nFrames] = size(logP_data);
 % % load pf data
 % load(fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', [fname, '_pf.mat'])); % 'logP_data_pf' : [nParticles, R, 3, nFrames]
@@ -107,15 +109,18 @@ aviobj = avifile(movie_fln, 'fps', 1/(2*frame_length));
 % aviobj.FrameRate = 1/(2*frame_length);
 % open(aviobj);
 % % ax=get(hf,'Position');
-set(hf, 'Position', [51 1 1316 689]);
 
+set(hf, 'Position', [51 1 1316 689]);
 y_pos = [0.63; 0.18];
+% set(hf, 'Position', [51 1 650 345]);
+% y_pos = [0.63; 0.18];
 
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
 
-for iFrame = 1:1:nFrames
+% for iFrame = 1:2:500
+for iFrame = [1, 10, 100, 1000]
     
     %     max_h = max(logP_data(important_pix, iFrame));
     %     min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
@@ -180,6 +185,8 @@ for iFrame = 1:1:nFrames
         aviobj = addframe(aviobj,F);
 %         writeVideo(aviobj, F);
     end 
+    fln = ['./temp/02_kmeans_', num2str(iFrame), '.pdf'];
+    export_fig(fln);
 end
 close(hf);
 aviobj = close(aviobj);

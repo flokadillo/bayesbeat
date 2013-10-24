@@ -54,7 +54,7 @@ classdef PF
         function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
             % n
             obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
-            obj.initial_n = obj.initial_n * max(obj.maxN) + min(obj.minN);
+            obj.initial_n = obj.initial_n * (max(obj.maxN)-min(obj.minN)) + min(obj.minN);
             % m
             if obj.rbpf
                 obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
@@ -368,7 +368,7 @@ classdef PF
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
             if save_data
-                logP_data_pf = log(zeros(obj.nParticles, 4, nFrames, 'single'));
+                logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
             end
             obj.particles = Particles(obj.nParticles, nFrames);
             iFrame = 1;
@@ -377,7 +377,11 @@ classdef PF
             obj.particles.r(:, iFrame) = obj.initial_r;
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
-            obj.particles.weight = obs / sum(obs);
+            obj.particles.weight = log(obs / sum(obs));
+            states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+            state_dims = [obj.M; obj.N; obj.R];
+            groups = obj.divide_into_fixed_cells(states, state_dims, 16);
+%             groups = ones(obj.nParticles, 1);
             if save_data
                 % save particle data for visualizing
                 % position
@@ -387,7 +391,8 @@ classdef PF
                 % rhythm
                 logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame);
                 % weights
-                logP_data_pf(:, 4, iFrame) = log(obj.particles.weight);
+                logP_data_pf(:, 4, iFrame) = obj.particles.weight;
+                logP_data_pf(:, 5, iFrame) = repmat(groups(:), 1, iFrame);
             end
 %             iFrame = 2;
 %             obj = obj.propagate_particles_pf(iFrame);
@@ -396,27 +401,36 @@ classdef PF
 %             obj = obj.propagate_particles(iFrame);
 %             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
+            
             for iFrame=2:nFrames
                 
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame);
-%                 compute_obs_lik(obj, states_m_r, iFrame, obslik, m_per_grid)
+                
                 % evaluate particle at iFrame-1
                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
-                obj.particles.weight = obj.particles.weight .* obs;
+                obj.particles.weight = obj.particles.weight(:) + log(obs);
+                
                 % Normalise importance weights
                 % ------------------------------------------------------------
-                obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
-                Neff = 1/sum(obj.particles.weight.^2);
+                [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
+%                 obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
+                Neff = 1/sum(exp(obj.particles.weight).^2);
                 % Resampling
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    groups = divide_into_groups(obj.particles, obj.M, obj.N, obj.R, 40, iFrame);
-                    [outIndex, outWeights] = obj.resample_in_groups(groups, obj.particles.weights);
-
-%                     newIdx = obj.resampleSystematic(obj.particles.weight);
-%                     obj.particles = obj.particles.copyParticles(newIdx);
+                    % method 1
+                    states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+                    state_dims = [obj.M; obj.N; obj.R];
+                    groups = obj.divide_into_clusters(states, state_dims, groups);
+                    [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
+                    obj.particles.copyParticles(newIdx);
+                    obj.particles.weight = outWeights';
+%                     % method 2
+%                     newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+%                     obj.particles.copyParticles(newIdx);
+                    
                 end
                 if save_data
                     % save particle data for visualizing
@@ -427,7 +441,9 @@ classdef PF
                     % rhythm
                     logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame);
                     % weights
-                    logP_data_pf(:, 4, iFrame) = log(obj.particles.weight);
+                    logP_data_pf(:, 4, iFrame) = obj.particles.weight;
+                    % groups
+                    logP_data_pf(:, 5, iFrame) = groups;
                 end
                 
 %                 figure(1); plot(obj.particles.weight)
@@ -554,8 +570,10 @@ classdef PF
             % states: [nParticles x nStates]
             % state_dim: [nStates x 1]
             groups = zeros(size(states, 1), 1);
-            n_n_bins = floor(sqrt(nCells));
-            n_m_bins = nCells / (n_n_bins * state_dims(3));
+            n_r_bins = state_dims(3);
+            n_n_bins = floor(sqrt(nCells/n_r_bins));
+            n_m_bins = floor(nCells / (n_n_bins * n_r_bins));
+            
             m_edges = linspace(1, state_dims(1) + 1, n_m_bins + 1);
             n_edges = linspace(0, state_dims(2) + 1, n_n_bins + 1);
             for iR=1:state_dims(3)
@@ -584,8 +602,11 @@ classdef PF
             
             % adjust the range of each state variable to make equally
             % important for the clustering
-            states(:, 2) = states(:, 2) * state_dims(1) / state_dims(2);
-            
+            [~, max_ind] = max(state_dims);
+            for iDim = 1:length(state_dims)
+                if iDim == max_ind, continue; end
+                states(:, iDim) = states(:, iDim) * state_dims(max_ind) / state_dims(iDim);
+            end
             % compute centroid of clusters
             centroids = zeros(k, length(state_dims));
             for iCluster = 1:k
@@ -603,7 +624,7 @@ classdef PF
                 ind = (tril(D, 0) > 0);
                 D(ind) = nan;
                 D(logical(eye(size(centroids, 1)))) = nan;
-                thr = 120;
+                thr = 50;
                 [c1, c2] = find(D < thr);
                 if ~isempty(c1)
                    groups(groups==c2(1)) = c1(1);
@@ -622,21 +643,20 @@ classdef PF
             
             % check if cluster spread is too high
             split = 0;
-            n_parts_per_cluster = hist(groups, 1:max(groups));
-            thr_spread = 28000;
-%             max(total_dist_per_cluster ./ n_parts_per_cluster')
+            n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
+            thr_spread = 40000;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread); 
             for iCluster = 1:length(separate_cl_idx)
                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
-                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 1);
+                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 2);
                 centroids(separate_cl_idx(iCluster), :) = C(1, :);
                 centroids = [centroids; C(2, :)];
                 split = 1;
             end
             
             if split
-                [groups, centroids, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+                [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
             end
             
         end

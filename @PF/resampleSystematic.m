@@ -1,5 +1,6 @@
 function [ indx ] = resampleSystematic( w, n_samples )
 % n_samples ... number of samples after resampling 
+w = w(:);
 if sum(w) > eps
     w = w / sum(w);
 else
