@@ -36,19 +36,9 @@ if verbose,
 end
 % 2) check for missing or additional beats
 array = diff(btype);
-if meter == 2
-    pattern = [1 -1 1];
-elseif meter == 3
-    pattern = [1 1 -2 1];
-elseif meter == 4
-    pattern = [1 1 1 -3 1];
-elseif meter == 8
-    pattern = [ones(1, 7), -7, 1];
-elseif meter == 9
-    pattern = [ones(1, 8), -8, 1];
-else
-    error('meter %i not known', meter);
-end
+
+pattern = [ones(1, meter-1), -(meter-1), 1];
+
 barStartIdx = strfind(array', pattern);
 nBars = length(barStartIdx);
 beatIdx = zeros(nBeats, 1);

@@ -33,6 +33,7 @@ classdef PF
     
     methods
         function obj = PF(Params, rhythm2meter)
+            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats'
             obj.M = Params.M;
             obj.Meff = Params.Meff;
             obj.N = Params.N;
@@ -420,16 +421,16 @@ classdef PF
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    % method 1
-                    states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
-                    state_dims = [obj.M; obj.N; obj.R];
-                    groups = obj.divide_into_clusters(states, state_dims, groups);
-                    [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
-                    obj.particles.copyParticles(newIdx);
-                    obj.particles.weight = outWeights';
-%                     % method 2
-%                     newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+%                     % method 1
+%                     states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+%                     state_dims = [obj.M; obj.N; obj.R];
+%                     groups = obj.divide_into_clusters(states, state_dims, groups);
+%                     [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
 %                     obj.particles.copyParticles(newIdx);
+%                     obj.particles.weight = outWeights';
+%                     % method 2
+                    newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+                    obj.particles.copyParticles(newIdx);
                     
                 end
                 if save_data

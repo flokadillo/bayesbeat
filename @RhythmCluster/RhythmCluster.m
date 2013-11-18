@@ -168,7 +168,6 @@ classdef RhythmCluster
                 songClusterIds = load(obj.clusters_fln, '-ascii');
             end
             
-
             bar2pattern = [];
             dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz'};
             
@@ -185,17 +184,16 @@ classdef RhythmCluster
             meter = zeros(length(ok_songs), 1);
             fileCounter = 0;
             nBars = zeros(length(ok_songs), 1);
-            % for each file in the cluster
             for iFile = 1:length(ok_songs)
                 beats = load(regexprep(fileNames{ok_songs(iFile)}, '.wav.*', '.beats'));
                 countTimes = round(rem(beats(:, 2), 1) * 10);
                 meter(fileCounter+1) = max(countTimes);
                 % get pattern id of file
                 [annotsPath, fname, ~] = fileparts(fileNames{iFile});
-                fprintf('- %s\n', fname);
+%                 fprintf('- %s\n', fname);
                 switch lower(clusterType)
                     case 'meter'
-                        patternId = meter(fileCounter+1) - 2;
+                        patternId = meter(fileCounter+1);
                     case 'dancestyle'
                         [ data, ~ ] = loadAnnotations( annotsPath, [fname,'.wav'], 's', 1 );
                         patternId = find(strcmp(dancestyles, data.style));
@@ -215,9 +213,21 @@ classdef RhythmCluster
                 [nBars(iFile), ~] = Data.get_full_bars(beats);
                 bar2pattern = [bar2pattern; ones(nBars(iFile), 1) * patternId];
             end
+            
+            if strcmp(clusterType, 'meter')
+               % conflate patternIds
+               meters = unique(bar2pattern);
+               temp = 1:length(meters);
+               temp2(meters) = temp;
+               bar2pattern = temp2(bar2pattern);
+            end
             obj.n_clusters = max(bar2pattern);
-            dlmwrite(fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'.txt']), bar2pattern);
+            
+            ca_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'.txt']);
+            dlmwrite(ca_fln, bar2pattern);
+            fprintf('writing %s\n', ca_fln);
+            
             % write rhythm names to file
             fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
                 num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-rhythm_labels.txt']);
@@ -230,6 +240,7 @@ classdef RhythmCluster
                 fprintf(fid, '%s\n', rhythm_names{i});
             end
             fclose(fid);
+            fprintf('writing %s\n', fln);
         end
     end
 end

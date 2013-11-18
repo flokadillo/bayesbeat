@@ -119,8 +119,8 @@ y_pos = [0.63; 0.18];
 % visualize
 % -----------------------------------------------------------------------
 
-% for iFrame = 1:2:500
-for iFrame = [1, 10, 100, 1000]
+for iFrame = 1:2:nFrames
+% for iFrame = [1, 10, 100, 1000]
     
     %     max_h = max(logP_data(important_pix, iFrame));
     %     min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
