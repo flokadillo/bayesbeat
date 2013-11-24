@@ -1,9 +1,9 @@
-function [m, n] = getpath(M, annots, frame_length, nFrames)
-% [states, m, n] = getpath(M, frame_length, annots, duration)
+function [m, n] = getpath(Meff, annots, frame_length, nFrames)
+% [states, m, n] = getpath(Meff, frame_length, annots, duration)
 %   Maps the beats to a bar position and tempo for each time instance t
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% M                 : number of bar positions of model
+% Meff                 : number of bar positions of model
 % Meff
 % annots            : beat annotations (first column = beat times, second column = beat number)
 % duration          : length of signal [sec]
@@ -17,10 +17,10 @@ function [m, n] = getpath(M, annots, frame_length, nFrames)
 % 3.1.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 if nargin == 7
-    Meff = M;
+    Meff = Meff;
 end
 % effective number of position states of meter
-%     Meff = round(M*meter/4);
+%     Meff = round(Meff*meter/4);
 
 btype = round(rem(annots(:,2),1)*10); % position of beat in a bar: 1, 2, 3, 4
 if length(btype) == 1 % more than one beat
@@ -28,25 +28,25 @@ if length(btype) == 1 % more than one beat
     n = []; m= []; r = []; states = [];
     return
 end
-if ismember(max(btype), [3, 4])
-    met_denom = 4;
-elseif ismember(max(btype), [8, 9])
-    met_denom = 8;
-else
-    error('Meter %i invalid !', max(btype));
-end
+% if ismember(max(btype), [3, 4])
+%     met_denom = 4;
+% elseif ismember(max(btype), [8, 9])
+%     met_denom = 8;
+% else
+%     error('Meter %i invalid !', max(btype));
+% end
 
 % barPointerPosBeats = (Meff * (btype-1)/4)+1; % bar-pointer position of beat in a bar: 1, 2, 3, 4
-barPointerPosBeats = (M * (btype-1)/met_denom)+1;
+barPointerPosBeats = (Meff * (btype-1)/max(btype))+1;
 firstbeats = find(btype==1);
 
 % make the cyclic barPointerPosBeats monotonically increasing by adding
-% M to each bar
+% Meff to each bar
 if btype(1)>1
-    barPointerPosBeats(firstbeats(1):end) = barPointerPosBeats(firstbeats(1):end) + M;
+    barPointerPosBeats(firstbeats(1):end) = barPointerPosBeats(firstbeats(1):end) + Meff;
 end
 for i = 2:length(firstbeats)
-    barPointerPosBeats(firstbeats(i):end) = barPointerPosBeats(firstbeats(i):end) + M;
+    barPointerPosBeats(firstbeats(i):end) = barPointerPosBeats(firstbeats(i):end) + Meff;
 end
 
 % skip eventual intros 
@@ -76,7 +76,7 @@ end
 
 
 barPosPerFrame_linear = interp1(beatTimes, barPointerPosBeats, t, 'cubic', 'extrap');
-m = (mod(barPosPerFrame_linear - 1, M) + 1)';
+m = (mod(barPosPerFrame_linear - 1, Meff) + 1)';
 n = diff(barPosPerFrame_linear); n = [n, n(end)]';
 
 % if strcmp(params.inferenceMethod, 'HMM_viterbi')
@@ -161,7 +161,7 @@ n = diff(barPosPerFrame_linear); n = [n, n(end)]';
 % n = n';
 % n = [n; n(end)]; n(n>N) = N;
 % m(m>Meff) = Meff; n(n>N) = N;
-% states = sub2ind([M N params.R], round(m), round(n), ones(length(m),1)*tm);
+% states = sub2ind([Meff N params.R], round(m), round(n), ones(length(m),1)*tm);
 % r = ones(size(m)) * tm;
 
 end
