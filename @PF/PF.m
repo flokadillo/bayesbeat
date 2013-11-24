@@ -381,8 +381,8 @@ classdef PF
             obj.particles.weight = log(obs / sum(obs));
             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
-            groups = obj.divide_into_fixed_cells(states, state_dims, 16);
-%             groups = ones(obj.nParticles, 1);
+           % groups = obj.divide_into_fixed_cells(states, state_dims, 16);
+            groups = ones(obj.nParticles, 1);
             if save_data
                 % save particle data for visualizing
                 % position

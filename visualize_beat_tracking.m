@@ -119,7 +119,7 @@ y_pos = [0.63; 0.18];
 % visualize
 % -----------------------------------------------------------------------
 
-for iFrame = 1:2:nFrames
+for iFrame = 1:1:50
 % for iFrame = [1, 10, 100, 1000]
     
     %     max_h = max(logP_data(important_pix, iFrame));
@@ -153,6 +153,7 @@ for iFrame = 1:2:nFrames
         if pf_data_ok
             ind = (logP_data_pf(:, 3, iFrame) == iR);
             if sum(ind) > 0
+%                 logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
                 for iCluster=unique(logP_data_pf(:, 5, iFrame))'
                     is_in_cluster = (logP_data_pf(:, 5, iFrame) == iCluster);
 %                     col_bins = linspace(min(logP_data_pf(ind & is_in_cluster, 4, iFrame)), max(logP_data_pf(ind & is_in_cluster, 4, iFrame)), 10);
@@ -176,7 +177,7 @@ for iFrame = 1:2:nFrames
             h_sp(plot_id+1) = subplot(nPlots, 1, plot_id+1);
             stairs(obs_lik(iR, :, iFrame));
             xlim([1 nPos])
-            ylim([0 max_lik])
+%             ylim([0 max_lik])
             %         ax=get(h_sp(plot_id+1),'Position');
             set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.8 0.3]); % [xmin ymin xlenght ylength]);
             set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.11 0.8 0.08]); % [xmin ymin xlenght ylength]);
@@ -185,8 +186,8 @@ for iFrame = 1:2:nFrames
         aviobj = addframe(aviobj,F);
 %         writeVideo(aviobj, F);
     end 
-    fln = ['./temp/02_kmeans_', num2str(iFrame), '.pdf'];
-    export_fig(fln);
+%     fln = ['./temp/02_kmeans_', num2str(iFrame), '.pdf'];
+%     export_fig(fln);
 end
 close(hf);
 aviobj = close(aviobj);
