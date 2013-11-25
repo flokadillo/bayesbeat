@@ -150,12 +150,15 @@ classdef HMM
             save_data = 1;
             
             nFrames = size(obs_lik, 3);
-            loglik = zeros(nFrames, 1);
+            
+            % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
-            if save_data, logP_data = sparse(size(obj.trans_model.A, 1), nFrames); end
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
+            
+            if save_data, logP_data = sparse(size(obj.trans_model.A, 1), nFrames); end
+            
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
@@ -165,34 +168,37 @@ classdef HMM
                 %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
-            
-%             alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
             perc = round(0.1*nFrames);
-            
             i_row = 1:nStates;
             j_col = 1:nStates;
-            
             ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
             
+            % incorporate first observation
+            O = zeros(nStates, 1);
+            validInds = ~isnan(ind);
+            O(validInds) = obs_lik(ind(validInds));
+            delta = O .* delta;
+            delta = delta / sum(delta);
+            % move pointer to next observation
+            ind = ind + ind_stepsize;
             fprintf('    Decoding (viterbi) .');
             
-            for iFrame = 1:nFrames
+            for iFrame = 2:nFrames
                 if save_data,
                    thresh = -20;
                    p_ind = find(log(delta) > thresh);
-                   logP_data(p_ind - 1 + minState, iFrame) = log(delta(p_ind));
+                   logP_data(p_ind - 1 + minState, iFrame-1) = log(delta(p_ind));
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
-                
                 % create a matrix that has the same value of delta for all entries with
                 % the same state i (row)
                 % same as repmat(delta, 1, col)
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
-                [delta_max, psi_mat(:,iFrame)] = max(D * A);
+                [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
@@ -204,13 +210,10 @@ classdef HMM
                 % normalize
                 norm_const = sum(delta_max);
                 delta = delta_max / norm_const;
-%                 [~, alpha(iFrame)] = max(delta);
-                loglik(iFrame) = log(norm_const);
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
             end
-            
             if save_data,
                 % save for visualization
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
@@ -227,9 +230,7 @@ classdef HMM
             
             % add state offset
             bestpath = bestpath + minState - 1;
-            
             fprintf(' done\n');
-            
         end
         
         function bestpath = viterbi_decode_log(obj, obs_lik)
