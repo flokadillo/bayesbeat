@@ -119,7 +119,7 @@ y_pos = [0.63; 0.18];
 % visualize
 % -----------------------------------------------------------------------
 
-for iFrame = 1:1:50
+for iFrame = 1:1:60
 % for iFrame = [1, 10, 100, 1000]
     
     %     max_h = max(logP_data(important_pix, iFrame));
@@ -175,17 +175,23 @@ for iFrame = 1:1:50
         set(gca,'YDir','normal')
         if ~synth_data_ok
             h_sp(plot_id+1) = subplot(nPlots, 1, plot_id+1);
-            stairs(obs_lik(iR, :, iFrame));
-            xlim([1 nPos])
+            obs_normed = obs_lik(iR, :, iFrame)/sum(sum(obs_lik(:, :, iFrame)));
+%             stairs(obs_lik(iR, :, iFrame) / min(obs_lik(iR, :, iFrame)));
+%   TODO: divide by minimum. with 3/4 meter one has to figure out the
+%   number of bar positions first !
+            stairs(obs_normed);
+%             min(obs_lik(iR, :, iFrame))
+            xlim([1 nPos+1])
 %             ylim([0 max_lik])
             %         ax=get(h_sp(plot_id+1),'Position');
             set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.8 0.3]); % [xmin ymin xlenght ylength]);
             set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.11 0.8 0.08]); % [xmin ymin xlenght ylength]);
         end
-        F = getframe(hf);
-        aviobj = addframe(aviobj,F);
-%         writeVideo(aviobj, F);
+        
     end 
+    F = getframe(hf);
+    aviobj = addframe(aviobj,F);
+%     writeVideo(aviobj, F);
 %     fln = ['./temp/02_kmeans_', num2str(iFrame), '.pdf'];
 %     export_fig(fln);
 end

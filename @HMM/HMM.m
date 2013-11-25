@@ -138,15 +138,12 @@ classdef HMM
             % Implementation of the Viterbi algorithm
             % ----------------------------------------------------------------------
             %INPUT parameter:
-            % A             : transition matrix
-            % obslik        : structure containing the observation model
-            % initial_prob   : initial state probabilities
+            % obj.trans_model.A     : transition matrix
+            % obslik                : observation likelihood [R x nBarGridSize x nFrames]
+            % obj.initial_prob      : initial state probabilities
             %
             %OUTPUT parameter:
             % bestpath      : MAP state sequence
-            % delta         : p(x_T | y_1:T)
-            % loglik        : p(y_t | y_1:t-1)
-            %               (likelihood of the sequence p(y_1:T) would be prod(loglik)
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
@@ -199,6 +196,7 @@ classdef HMM
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
+                % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
