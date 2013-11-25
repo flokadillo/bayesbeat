@@ -187,9 +187,14 @@ classdef HMM
             
             for iFrame = 2:nFrames
                 if save_data,
-                   thresh = -20;
+                   thresh = -15;
                    p_ind = find(log(delta) > thresh);
-                   logP_data(p_ind - 1 + minState, iFrame-1) = log(delta(p_ind));
+		   try
+                   	logP_data(p_ind - 1 + minState, iFrame-1) = log(delta(p_ind));
+		   catch
+			fprintf('logP_data too big - skip saving\n');
+			save_data = 0;
+		   end
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time

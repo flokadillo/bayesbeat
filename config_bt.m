@@ -61,7 +61,7 @@ Params.ratio_Neff = 0.3;
 Params.rbpf = 0;
 
 % train data
-Params.train_set = 'ballroom_boeck_hainsworth';
+Params.train_set = 'boeck';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
@@ -76,7 +76,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'train';
+Params.test_set = 'boeck';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
