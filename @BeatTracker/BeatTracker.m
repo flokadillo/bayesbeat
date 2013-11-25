@@ -158,7 +158,6 @@ classdef BeatTracker
             fid = fopen(save_fln, 'w');
             for i=1:length(r)
                 fprintf(fid, '%s\n', rhythm_names{r(i)});
-                fprintf('%s\n', rhythm_names{r(i)});
             end
             fclose(fid);
         end
