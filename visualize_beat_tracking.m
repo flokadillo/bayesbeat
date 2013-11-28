@@ -104,13 +104,13 @@ if exist('movie_fln', 'var')
 else
     movie_fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', [fname, '.avi']);
 end
-aviobj = avifile(movie_fln, 'fps', 1/(2*frame_length));
+aviobj = avifile(movie_fln, 'fps', 1/frame_length);
 % aviobj = VideoWriter(movie_fln, 'Motion JPEG AVI');
 % aviobj.FrameRate = 1/(2*frame_length);
 % open(aviobj);
 % % ax=get(hf,'Position');
 
-set(hf, 'Position', [51 1 1316 689]);
+set(hf, 'Position', [51 1 500 400]);
 y_pos = [0.63; 0.18];
 % set(hf, 'Position', [51 1 650 345]);
 % y_pos = [0.63; 0.18];
@@ -118,8 +118,8 @@ y_pos = [0.63; 0.18];
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
-
-for iFrame = 1:1:60
+% nFrames = 1000;
+for iFrame = 1:1:nFrames
 % for iFrame = [1, 10, 100, 1000]
     
     %     max_h = max(logP_data(important_pix, iFrame));
@@ -153,7 +153,7 @@ for iFrame = 1:1:60
         if pf_data_ok
             ind = (logP_data_pf(:, 3, iFrame) == iR);
             if sum(ind) > 0
-%                 logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
+                logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
                 for iCluster=unique(logP_data_pf(:, 5, iFrame))'
                     is_in_cluster = (logP_data_pf(:, 5, iFrame) == iCluster);
 %                     col_bins = linspace(min(logP_data_pf(ind & is_in_cluster, 4, iFrame)), max(logP_data_pf(ind & is_in_cluster, 4, iFrame)), 10);
@@ -197,4 +197,14 @@ for iFrame = 1:1:60
 end
 close(hf);
 aviobj = close(aviobj);
+
+% prepare audio file
+fln = fullfile('~/diss/data/beats/boeck', [fname, '.wav']);
+if exist(fln)
+    [y, fs] = wavread(fln );
+    y = y(1:nFrames*frame_length*fs);
+    wavwrite(y, fs, 'test.wav');
+    system(['lame test.wav ', fullfile(path, [fname, '.mp3'])]);
+    fprintf('Saved cut mp3 to %s\n', fullfile(path, [fname, '.mp3']));
+end
 end

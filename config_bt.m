@@ -28,7 +28,7 @@ Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
+Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -57,6 +57,7 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001;
+if strcmp(Params.inferenceMethod, 'PF'), Params.pn = Params.sigmaN; end
 Params.ratio_Neff = 0.3;
 Params.rbpf = 0;
 

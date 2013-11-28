@@ -70,7 +70,7 @@ classdef PF
                 end
             else
                 % assume unit distribution for r-state
-                r_parts = floor(linspace(1, obj.nParticles, obj.R + 1)); 
+                r_parts = floor(linspace(1, obj.nParticles, obj.R + 1));
                 obj.initial_m = zeros(obj.nParticles, 1);
                 obj.initial_r = zeros(obj.nParticles, 1);
                 for iR=1:obj.R
@@ -94,7 +94,7 @@ classdef PF
             if obj.rbpf
                 obj.sample_trans_fun = @(x, y) (obj.propagate_particles_rbpf(x, y, obj.nParticles, obj.sigma_N, ...
                     obj.minN, obj.maxN, obj.M, obj.Meff, obj.rhythm2meter));
-    %             obj.sample_trans_fun = @(x, y) (x+y+obj.nParticles);
+                %             obj.sample_trans_fun = @(x, y) (x+y+obj.nParticles);
                 obj = obj.createTransitionCPD;
             else
                 obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
@@ -130,7 +130,7 @@ classdef PF
         function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
-            obs_lik = obj.obs_model.compute_obs_lik(y);         
+            obs_lik = obj.obs_model.compute_obs_lik(y);
             if obj.rbpf
                 obj = obj.rbpf_apf(obs_lik, fname);
             else
@@ -213,9 +213,9 @@ classdef PF
             % obslik:       likelihood values [R, barGrid, nFrames]
             subind = floor((states_m_r(:, 1)-1) / m_per_grid) + 1;
             obslik = obslik(:, :, iFrame);
-%             r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
+            %             r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
             ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
-%             lik = reshape(obslik(ind), obj.R, obj.nParticles);
+            %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
             lik = obslik(ind);
         end
         
@@ -253,7 +253,7 @@ classdef PF
             iFrame = 2;
             [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
                 obj.particles.n(:, iFrame - 1));
-%             obj = obj.propagate_particles(iFrame);
+            %             obj = obj.propagate_particles(iFrame);
             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
             for iFrame=3:nFrames
@@ -305,8 +305,8 @@ classdef PF
                 end
                 % transition from iFrame-1 to iFrame
                 [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
-                obj.particles.n(:, iFrame - 1));
-%                 obj = obj.propagate_particles(iFrame);
+                    obj.particles.n(:, iFrame - 1));
+                %                 obj = obj.propagate_particles(iFrame);
             end
             if save_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
@@ -361,7 +361,7 @@ classdef PF
             %             [ posteriorMAP ] = comp_posterior_of_sequence( [bestpath.position, bestpath.tempo, bestpath.meter], y, o1, [], params);
             %             fprintf('log post best weight: %.2f\n', posteriorMAP.sum);
         end
-               
+        
         function obj = pf(obj, obs_lik, fname)
             
             save_data = 1;
@@ -381,7 +381,7 @@ classdef PF
             obj.particles.weight = log(obs / sum(obs));
             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
-           % groups = obj.divide_into_fixed_cells(states, state_dims, 16);
+            % groups = obj.divide_into_fixed_cells(states, state_dims, 16);
             groups = ones(obj.nParticles, 1);
             if save_data
                 % save particle data for visualizing
@@ -395,14 +395,14 @@ classdef PF
                 logP_data_pf(:, 4, iFrame) = obj.particles.weight;
                 logP_data_pf(:, 5, iFrame) = repmat(groups(:), 1, iFrame);
             end
-%             iFrame = 2;
-%             obj = obj.propagate_particles_pf(iFrame);
-%             [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
-%                 obj.particles.n(:, iFrame - 1));
-%             obj = obj.propagate_particles(iFrame);
-%             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
+            %             iFrame = 2;
+            %             obj = obj.propagate_particles_pf(iFrame);
+            %             [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
+            %                 obj.particles.n(:, iFrame - 1));
+            %             obj = obj.propagate_particles(iFrame);
+            %             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
-            
+            resampling_frames = [];
             for iFrame=2:nFrames
                 
                 % transition from iFrame-1 to iFrame
@@ -415,22 +415,32 @@ classdef PF
                 % Normalise importance weights
                 % ------------------------------------------------------------
                 [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
-%                 obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
+                %                 obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
                 Neff = 1/sum(exp(obj.particles.weight).^2);
                 % Resampling
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
-                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-%                     % method 1
-%                     states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
-%                     state_dims = [obj.M; obj.N; obj.R];
-%                     groups = obj.divide_into_clusters(states, state_dims, groups);
-%                     [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
-%                     obj.particles.copyParticles(newIdx);
-%                     obj.particles.weight = outWeights';
+                    resampling_frames = [resampling_frames; iFrame];
+%                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    % method 1
+                    %                     states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+                    %                     state_dims = [obj.M; obj.N; obj.R];
+                    %                     groups = obj.divide_into_clusters(states, state_dims, groups);
+                    %                     [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
+                    %                     obj.particles.copyParticles(newIdx);
+                    %                     obj.particles.weight = outWeights';
+                    
 %                     % method 2
-                    newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+%                     newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+%                     obj.particles.copyParticles(newIdx);
+                    
+                    % method 3
+                    % warping: 
+                    w = log(10000 * exp(obj.particles.weight) + 1);
+                    newIdx = obj.resampleSystematic(w);
                     obj.particles.copyParticles(newIdx);
+                    w_fac = exp(obj.particles.weight) ./ w';
+                    obj.particles.weight = log(w_fac(newIdx) / sum(w_fac(newIdx)));
                     
                 end
                 if save_data
@@ -447,8 +457,9 @@ classdef PF
                     logP_data_pf(:, 5, iFrame) = groups;
                 end
                 
-%                 figure(1); plot(obj.particles.weight)
+                %                 figure(1); plot(obj.particles.weight)
             end
+            fprintf('      Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if save_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
                     'logP_data_pf');
@@ -529,9 +540,9 @@ classdef PF
             % propagate particles by sampling from the transition prior
             % update m
             obj.particles.m(:, new_frame) = obj.particles.m(:, new_frame-1) + obj.particles.n(:, new_frame-1);
-%             ind = find(obj.particles.m(:, new_frame) > obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))');
-%             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
-%             ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter(r))')));
+            %             ind = find(obj.particles.m(:, new_frame) > obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))');
+            %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
+            %             ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter(r))')));
             obj.particles.m(:, new_frame) = mod(obj.particles.m(:, new_frame) - 1, obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))') + 1;
             % update n
             obj.particles.n(:, new_frame) = obj.particles.n(:, new_frame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
@@ -540,7 +551,7 @@ classdef PF
             obj.particles.r(:, new_frame) = obj.particles.r(:, new_frame-1);
             %             obj.particles = obj.particles.update_m(temp, new_frame);
             % TODO: why does this step take so long ?
-%             obj.particles.m(:, :, new_frame) = temp;
+            %             obj.particles.m(:, :, new_frame) = temp;
         end
         
         
@@ -554,7 +565,7 @@ classdef PF
             % propagate particles by sampling from the transition prior
             % update m
             m = bsxfun(@plus, m, n');
-%             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
+            %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
             ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter)')));
             m(:, ind) = bsxfun(@mod, m(:, ind) - 1, Meff(rhythm2meter)') + 1;
             % update n
@@ -563,7 +574,7 @@ classdef PF
             n(n < minN) = minN;
             %             obj.particles = obj.particles.update_m(temp, new_frame);
             % TODO: why does this step take so long ?
-%             obj.particles.m(:, :, new_frame) = temp;
+            %             obj.particles.m(:, :, new_frame) = temp;
         end
         
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
@@ -585,7 +596,7 @@ classdef PF
                     for n=1:n_n_bins
                         ind2 = intersect(ind(BIN_m==m), ind(BIN_n==n));
                         groups(ind2) = sub2ind([n_m_bins, n_n_bins, state_dims(3)], m, n, iR);
-                    end 
+                    end
                 end
             end
             if sum(groups==0) > 0
@@ -628,11 +639,11 @@ classdef PF
                 thr = 50;
                 [c1, c2] = find(D < thr);
                 if ~isempty(c1)
-                   groups(groups==c2(1)) = c1(1);
-                   fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
-                   centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
-                   if length(c1) == 1,  merging = 0;  end
-                   merged = 1;
+                    groups(groups==c2(1)) = c1(1);
+                    fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
+                    centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
+                    if length(c1) == 1,  merging = 0;  end
+                    merged = 1;
                 else
                     merging = 0;
                 end
@@ -646,7 +657,7 @@ classdef PF
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
             thr_spread = 40000;
-            separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread); 
+            separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
