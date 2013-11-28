@@ -364,7 +364,7 @@ classdef PF
         
         function obj = pf(obj, obs_lik, fname)
             
-            save_data = 1;
+            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -439,7 +439,7 @@ classdef PF
                     w = log(10000 * exp(obj.particles.weight) + 1);
                     newIdx = obj.resampleSystematic(w);
                     obj.particles.copyParticles(newIdx);
-                    w_fac = exp(obj.particles.weight) ./ w';
+                    w_fac = (exp(obj.particles.weight) * sum(w)) ./ w';
                     obj.particles.weight = log(w_fac(newIdx) / sum(w_fac(newIdx)));
                     
                 end
