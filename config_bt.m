@@ -57,9 +57,16 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001;
-if strcmp(Params.inferenceMethod, 'PF'), Params.pn = Params.sigmaN; end
-Params.ratio_Neff = 0.3;
+Params.ratio_Neff = 0.5;
+Params.resampling_scheme = 0; 
 Params.rbpf = 0;
+Params.warp_fun = 'w.^2';
+% Params.warp_fun = 'log(10000 * w + 1)';
+if strcmp(Params.inferenceMethod, 'PF'), 
+    Params.pn = Params.sigmaN; 
+    Params.comment = sprintf('sigma=%.5f, ratioNeff=%.3f', Params.sigmaN, Params.ratio_Neff);
+end
+
 
 % train data
 Params.train_set = 'boeck';

@@ -27,13 +27,16 @@ classdef PF
         sigma_N
         bin2decVector       % vector to compute indices for disc_trans_mat quickly
         ratio_Neff
+        resampling_scheme   % type of resampling employed
         rbpf                % rbpf == 1, do rao-blackwellization on the discrete states
+        warp_fun            % function that warps the weights w to a compressed space
         
     end
     
     methods
         function obj = PF(Params, rhythm2meter)
-            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats'
+            addpath '~/diss/src/matlab/libs/bnt/KPMtools/stats' % logsumexp
+            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
             obj.Meff = Params.Meff;
             obj.N = Params.N;
@@ -50,6 +53,8 @@ classdef PF
             obj.meter_state2meter = Params.meters;
             obj.ratio_Neff = Params.ratio_Neff;
             obj.rbpf = Params.rbpf;
+            obj.resampling_scheme = Params.resampling_scheme;
+            obj.warp_fun = Params.warp_fun;
         end
         
         function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
@@ -421,26 +426,32 @@ classdef PF
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
-%                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    % method 1
-                    %                     states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
-                    %                     state_dims = [obj.M; obj.N; obj.R];
-                    %                     groups = obj.divide_into_clusters(states, state_dims, groups);
-                    %                     [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
-                    %                     obj.particles.copyParticles(newIdx);
-                    %                     obj.particles.weight = outWeights';
+                    %                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    if obj.resampling_scheme == 0
+                        newIdx = obj.resampleSystematic(exp(obj.particles.weight));
+                        obj.particles.copyParticles(newIdx);
                     
-%                     % method 2
-%                     newIdx = obj.resampleSystematic(exp(obj.particles.weight));
-%                     obj.particles.copyParticles(newIdx);
+                    elseif obj.resampling_scheme == 1
+                        % warping:
+                        w = exp(obj.particles.weight);
+%                         w_warped = w.^(1/2);
+                        w_warped = str2func(obj.warp_fun);                
+                        newIdx = obj.resampleSystematic(w_warped);
+                        obj.particles.copyParticles(newIdx);
+                        w_fac = w ./ w_warped;
+                        obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                     
-                    % method 3
-                    % warping: 
-                    w = log(10000 * exp(obj.particles.weight) + 1);
-                    newIdx = obj.resampleSystematic(w);
-                    obj.particles.copyParticles(newIdx);
-                    w_fac = (exp(obj.particles.weight) * sum(w)) ./ w';
-                    obj.particles.weight = log(w_fac(newIdx) / sum(w_fac(newIdx)));
+                    elseif obj.resampling_scheme == 2
+                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+                        state_dims = [obj.M; obj.N; obj.R];
+                        groups = obj.divide_into_clusters(states, state_dims, groups);
+                        [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
+                        obj.particles.copyParticles(newIdx);
+                        obj.particles.weight = outWeights';
+                    else
+                        fprintf('WARNING: Unknown resampling scheme!\n');
+                    end
+                    
                     
                 end
                 if save_data
