@@ -35,7 +35,7 @@ classdef PF
     
     methods
         function obj = PF(Params, rhythm2meter)
-            addpath '~/diss/src/matlab/libs/bnt/KPMtools/stats' % logsumexp
+            addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
             addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
             obj.Meff = Params.Meff;
@@ -55,6 +55,7 @@ classdef PF
             obj.rbpf = Params.rbpf;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
+            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
@@ -426,7 +427,7 @@ classdef PF
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
-                    %                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+%                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
                         obj.particles.copyParticles(newIdx);
@@ -435,7 +436,8 @@ classdef PF
                         % warping:
                         w = exp(obj.particles.weight);
 %                         w_warped = w.^(1/2);
-                        w_warped = str2func(obj.warp_fun);                
+                        f = str2func(obj.warp_fun);
+                        w_warped = f(w);                
                         newIdx = obj.resampleSystematic(w_warped);
                         obj.particles.copyParticles(newIdx);
                         w_fac = w ./ w_warped;
