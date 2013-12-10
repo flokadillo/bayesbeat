@@ -10,7 +10,8 @@ function [] = visualize_beat_tracking( data_fln, movie_fln )
 %                   logP_data is a sparse matrix of size [n_states x n_frames]
 %               '_func.mat' contains the variables 'data' and 'evaluate_p'
 %           PG has the ending '_pf.mat' and contains 'logP_data_pf' which
-%               is of size [n_particles, 5, n_frames]
+%               is of size [n_particles, 5, n_frames]:
+%               where dim 2 is : m x n x r x w x group
 %
 % OUTPUT
 % video
@@ -94,7 +95,7 @@ end
 hf = figure;
 % get rid of an annoying warning: "RGB color data not yet supported in Painter's mode."
 set(gcf, 'renderer','zbuffer'); 
-col = lines;
+col = autumn;
 colormap(gray);
 set(gca,'YDir','normal')
 nPlots = R * 2;
@@ -118,23 +119,23 @@ y_pos = [0.63; 0.18];
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
-% nFrames = 1000;
+nFrames = min([500, nFrames]);
 for iFrame = 1:1:nFrames
 % for iFrame = [1, 10, 100, 1000]
-    
-    %     max_h = max(logP_data(important_pix, iFrame));
-    %     min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
+    important_pix = find(logP_data(:, iFrame));
+    max_h = max(logP_data(important_pix, iFrame));
+    min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
     for iR=1:R
         if hmm_data_ok
-            important_pix = find(logP_data(:, iFrame));
+            
             plot_id = (iR-1)*R+1;
             h_sp(plot_id) = subplot(nPlots, 1, plot_id);
             start_ind = sub2ind([M, N, R], 1, 1, iR);
             end_ind = sub2ind([M, N, R], M, N, iR);
             frame = reshape(logP_data(start_ind:end_ind, iFrame), M, N);
             important_pix = find(frame);
-            max_h = max(frame(important_pix));
-            min_h = max([thresh, min(frame(important_pix))]);
+%             max_h = max(frame(important_pix));
+%             min_h = max([thresh, min(frame(important_pix))]);
             frame(frame(important_pix)<min_h) = min_h;
             frame(important_pix) = frame(important_pix) - thresh;
             imagesc(frame');
@@ -156,11 +157,13 @@ for iFrame = 1:1:nFrames
                 logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
                 for iCluster=unique(logP_data_pf(:, 5, iFrame))'
                     is_in_cluster = (logP_data_pf(:, 5, iFrame) == iCluster);
-%                     col_bins = linspace(min(logP_data_pf(ind & is_in_cluster, 4, iFrame)), max(logP_data_pf(ind & is_in_cluster, 4, iFrame)), 10);
-%                     [~, bins] = histc(logP_data_pf(ind & is_in_cluster, 4, iFrame), col_bins);
-%                     bins(bins < 1) = 1; bins(bins > 10) = 10;
+                    col_bins = linspace(min(logP_data_pf(ind & is_in_cluster, 4, iFrame)), max(logP_data_pf(ind & is_in_cluster, 4, iFrame)), 64);
+                    [~, bins] = histc(logP_data_pf(ind & is_in_cluster, 4, iFrame), col_bins);
+                    bins(bins < 1) = 1; bins(bins > 64) = 64;
+%                     scatter(logP_data_pf(ind & is_in_cluster, 1, iFrame), logP_data_pf(ind & is_in_cluster, 2, iFrame), ...
+%                         10, col(iCluster, :), 'filled');
                     scatter(logP_data_pf(ind & is_in_cluster, 1, iFrame), logP_data_pf(ind & is_in_cluster, 2, iFrame), ...
-                        10, col(iCluster, :), 'filled');
+                        10, col(bins, :), 'filled');
                 end
             end
         end
@@ -206,5 +209,10 @@ if exist(fln)
     wavwrite(y, fs, 'test.wav');
     system(['lame test.wav ', fullfile(path, [fname, '.mp3'])]);
     fprintf('Saved cut mp3 to %s\n', fullfile(path, [fname, '.mp3']));
+    [path, fname, ~] = fileparts(movie_fln);
+%     cmd = ['ffmpeg -i ', movie_fln, ' -b 9600 -qscale 5 -acodec copy -i ', fullfile(path, [fname, '.mp3']), ...
+%         ' ', fullfile(path, [fname, '_av.avi'])];
+%     fprintf('Executing %s\n', cmd);
+%     system(cmd);
 end
 end
