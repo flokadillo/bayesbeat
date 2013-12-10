@@ -224,102 +224,7 @@ classdef PF
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
             lik = obslik(ind);
         end
-        
-        function obj = rbpf_apf(obj, obs_lik, fname)
-            
-            save_data = 0;
-            
-            nFrames = size(obs_lik, 3);
-            % bin2dec conversion vector
-            if save_data
-                logP_data_pf = log(zeros(obj.nParticles, obj.R, 3, nFrames, 'single'));
-            end
-            obj.particles = Particles(obj.nParticles, nFrames, obj.R);
-            iFrame = 1;
-            obj.particles.m(:, :, iFrame) = obj.initial_m;
-            obj.particles.n(:, iFrame) = obj.initial_n;
-            eval_lik = @(m, iFrame) obj.compute_obs_lik(m, iFrame, obs_lik, obj.M / obj.barGrid);
-            r_states = (ones(obj.nParticles, 1) * (1:obj.R))';
-            m = [obj.initial_m(:), r_states(:)];
-            obs = eval_lik(m, iFrame);
-            obs = reshape(obs, obj.R, obj.nParticles);
-            obj.particles.weight = (sum(obs) / sum(obs(:)))';
-            % posterior: p(r_t | z_1:t, y_1:t)
-            obj.particles.posterior_r = ones(obj.nParticles, obj.R) / obj.R;
-            obj.particles.delta = obs'; % [nDiscStates, nPart]
-            if save_data
-                % save particle data for visualizing
-                % position
-                logP_data_pf(:, :, 1, iFrame) = obj.particles.m(:, :, iFrame)';
-                % tempo
-                logP_data_pf(:, :, 2, iFrame) = repmat(obj.particles.n(:, iFrame), 1, 2);
-                % weights
-                logP_data_pf(:, :, 3, iFrame) = log(bsxfun(@times, obj.particles.weight, obj.particles.posterior_r));
-            end
-            iFrame = 2;
-            [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
-                obj.particles.n(:, iFrame - 1));
-            %             obj = obj.propagate_particles(iFrame);
-            obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
-            
-            for iFrame=3:nFrames
-                m = obj.particles.m(:, :, iFrame-1);
-                obs = eval_lik([m(:), r_states(:)], iFrame-1);
-                obs = reshape(obs, obj.R, obj.nParticles);
-                % check if barcrossing occured
-                barCrossing = (obj.particles.m(:, :, iFrame-1) < obj.particles.m(:, :, iFrame-2))' * obj.bin2decVector;
-                obj = obj.update_delta_and_psi(barCrossing, obs, iFrame);
-                % ------------------------------------------------------------
-                % prediction: p(r_t | y_1:t-1, x_1:t) =
-                % sum_r(t-1){ p(r_t | r_t-1, x_t-1, x_t) * p(r_t-1 | y_1:t-1, x_1:t-1) }
-                % p(r_t | r_t-1, x_t-1, x_t);
-                transMatVect = cell2mat(obj.disc_trans_mat(barCrossing+1));
-                % p(r_t-1 | y_1:t-1, x_1:t-1)
-                postReshaped = reshape(repmat(obj.particles.posterior_r', obj.R, 1), obj.R, []);
-                % transition to t: sum over t-1
-                prediction = reshape(sum(transMatVect' .* postReshaped), obj.R, obj.nParticles);
-                % weight prediction by likelihood of the particle
-                % compute p(r_t, y_t | x_1:t, y_1:t-1) =
-                % p(r_t | y_1:t-1, x_1:t) * p(y_t | y_1:t-1, x_1:t, r_t)
-                obj.particles.posterior_r = (prediction .* obs)';
-                % weight = p(y_t| y_1:t-1, x_1:t) =
-                % sum_r_t { p(r_t, y_t | x_1:t, y_1:t-1) } * p(y_t-1| y_1:t-2, x_1:t-1)
-                obj.particles.old_weight = obj.particles.weight;
-                obj.particles.weight = obj.particles.weight .* (sum(obj.particles.posterior_r, 2));
-                % normalize to get valid pdf
-                obj.particles.posterior_r = obj.particles.posterior_r ./ ...
-                    repmat(sum(obj.particles.posterior_r, 2), 1, obj.R);
-                % Normalise importance weights
-                % ------------------------------------------------------------
-                obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
-                Neff = 1/sum(obj.particles.weight.^2);
-                % Resampling
-                % ------------------------------------------------------------
-                if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
-                    %fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    newIdx = obj.resampleSystematic(obj.particles.weight);
-                    obj.particles = obj.particles.copyParticles(newIdx);
-                end
-                if save_data
-                    % save particle data for visualizing
-                    % position
-                    logP_data_pf(:, :, 1, iFrame-1) = obj.particles.m(:, :, iFrame-1)';
-                    % tempo
-                    logP_data_pf(:, :, 2, iFrame-1) = repmat(obj.particles.n(:, iFrame-1), 1, 2);
-                    % weights
-                    logP_data_pf(:, :, 3, iFrame-1) = log(bsxfun(@times, obj.particles.weight, obj.particles.posterior_r));
-                end
-                % transition from iFrame-1 to iFrame
-                [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
-                    obj.particles.n(:, iFrame - 1));
-                %                 obj = obj.propagate_particles(iFrame);
-            end
-            if save_data
-                save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
-                    'logP_data_pf');
-            end
-        end
-        
+                
         function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
             % probability of best state sequence that ends with state x(t) = j
             %   delta(j) = max_i{ p( X(1:t)=[x(1:t-1), x(t)=j] | y(1:t) ) }
@@ -410,9 +315,8 @@ classdef PF
             
             resampling_frames = [];
             for iFrame=2:nFrames
-                
                 % transition from iFrame-1 to iFrame
-                obj = obj.propagate_particles_pf(iFrame);
+                obj = obj.propagate_particles_pf(iFrame, 'm');
                 
                 % evaluate particle at iFrame-1
                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
@@ -453,8 +357,6 @@ classdef PF
                     else
                         fprintf('WARNING: Unknown resampling scheme!\n');
                     end
-                    
-                    
                 end
                 if save_data
                     % save particle data for visualizing
@@ -469,6 +371,9 @@ classdef PF
                     % groups
                     logP_data_pf(:, 5, iFrame) = groups;
                 end
+                
+                % transition from iFrame-1 to iFrame
+                obj = obj.propagate_particles_pf(iFrame, 'n');
                 
                 %                 figure(1); plot(obj.particles.weight)
             end
@@ -549,22 +454,31 @@ classdef PF
             beats = [beats beatno];
         end
         
-        function obj = propagate_particles_pf(obj, new_frame)
+        function obj = propagate_particles_pf(obj, new_frame, variable)
             % propagate particles by sampling from the transition prior
+            % from new_frame-1 to new_frame
+            % variable: is a string that says what to propagate ('m', 'n', 'r', 'mn')
+            
             % update m
-            obj.particles.m(:, new_frame) = obj.particles.m(:, new_frame-1) + obj.particles.n(:, new_frame-1);
-            %             ind = find(obj.particles.m(:, new_frame) > obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))');
-            %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
-            %             ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter(r))')));
-            obj.particles.m(:, new_frame) = mod(obj.particles.m(:, new_frame) - 1, obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))') + 1;
+            if ~isempty(strfind(variable, 'm'))
+                obj.particles.m(:, new_frame) = obj.particles.m(:, new_frame-1) + obj.particles.n(:, new_frame-1);
+                %             ind = find(obj.particles.m(:, new_frame) > obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))');
+                %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
+                %             ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter(r))')));
+                obj.particles.m(:, new_frame) = mod(obj.particles.m(:, new_frame) - 1, obj.Meff(obj.rhythm2meter(obj.particles.r(:, new_frame-1)))') + 1;
+                
+                % update r
+                obj.particles.r(:, new_frame) = obj.particles.r(:, new_frame-1);
+            end
+            
             % update n
-            obj.particles.n(:, new_frame) = obj.particles.n(:, new_frame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-            obj.particles.n((obj.particles.n(:, new_frame) > obj.maxN), new_frame) = obj.maxN;
-            obj.particles.n((obj.particles.n(:, new_frame) < obj.minN), new_frame) = obj.minN;
-            obj.particles.r(:, new_frame) = obj.particles.r(:, new_frame-1);
-            %             obj.particles = obj.particles.update_m(temp, new_frame);
-            % TODO: why does this step take so long ?
-            %             obj.particles.m(:, :, new_frame) = temp;
+            if ~isempty(strfind(variable, 'n'))
+                obj.particles.n(:, new_frame) = obj.particles.n(:, new_frame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+                obj.particles.n((obj.particles.n(:, new_frame) > obj.maxN), new_frame) = obj.maxN;
+                obj.particles.n((obj.particles.n(:, new_frame) < obj.minN), new_frame) = obj.minN;
+            end
+            
+            
         end
         
         
@@ -573,23 +487,7 @@ classdef PF
     methods (Static)
         %         outIndex = systematicR(inIndex,wn);
         outIndex = resampleSystematic( w, n_samples );
-        
-        function [m, n] = propagate_particles_rbpf(m, n, nParticles, sigma_N, minN, maxN, M, Meff, rhythm2meter)
-            % propagate particles by sampling from the transition prior
-            % update m
-            m = bsxfun(@plus, m, n');
-            %             obj.particles.m(:, :, new_frame) = bsxfun(@mod, temp - 1, obj.Meff(obj.rhythm2meter)') + 1;
-            ind = find(sum(bsxfun(@gt, m, Meff(rhythm2meter)')));
-            m(:, ind) = bsxfun(@mod, m(:, ind) - 1, Meff(rhythm2meter)') + 1;
-            % update n
-            n = n + randn(nParticles, 1) * sigma_N * M;
-            n(n > maxN) = maxN;
-            n(n < minN) = minN;
-            %             obj.particles = obj.particles.update_m(temp, new_frame);
-            % TODO: why does this step take so long ?
-            %             obj.particles.m(:, :, new_frame) = temp;
-        end
-        
+                
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
             % divide space into fixed cells
             % states: [nParticles x nStates]
