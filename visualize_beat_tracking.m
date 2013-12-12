@@ -111,10 +111,11 @@ aviobj = avifile(movie_fln, 'fps', 1/frame_length);
 % open(aviobj);
 % % ax=get(hf,'Position');
 
+% size/resolution of the figure
 set(hf, 'Position', [51 1 500 400]);
-y_pos = [0.63; 0.18];
-% set(hf, 'Position', [51 1 650 345]);
-% y_pos = [0.63; 0.18];
+
+% position for each rhythmic pattern:
+y_pos = [0.61; 0.17];
 
 % -----------------------------------------------------------------------
 % visualize
@@ -149,7 +150,7 @@ for iFrame = 1:1:nFrames
             caxis([0 0.025])
             %             set(gca,'YDir','normal')
         end
-        colorbar;
+%         colorbar;
         hold on;
         if pf_data_ok
             ind = (logP_data_pf(:, 3, iFrame) == iR);
@@ -172,8 +173,8 @@ for iFrame = 1:1:nFrames
                 scatter(anns(iFrame, 1), anns(iFrame, 2), 30, 'c', 'filled');
             end
         end
-%         set(gcf, 'renderer','zbuffer'); 
-        title(sprintf('Frame: %i', iFrame));
+%         set(gcf, 'renderer','zbuffer');
+        if iR == 1, title(sprintf('Frame: %i', iFrame)); end
         %         ax=get(h_sp(iR),'Position');
         set(gca,'YDir','normal')
         if ~synth_data_ok
@@ -188,7 +189,7 @@ for iFrame = 1:1:nFrames
 %             ylim([0 max_lik])
             %         ax=get(h_sp(plot_id+1),'Position');
             set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.8 0.3]); % [xmin ymin xlenght ylength]);
-            set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.11 0.8 0.08]); % [xmin ymin xlenght ylength]);
+            set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.09 0.8 0.08]); % [xmin ymin xlenght ylength]);
         end
         
     end 

@@ -34,6 +34,7 @@ Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
 
 % System description
 % State space size
+
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 47/26;
 Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
@@ -56,15 +57,15 @@ Params.whole_note_div = 64; % number of grid points per whole note
 Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
 Params.init_n_gauss = 2;
 Params.nParticles = 2000;
-Params.sigmaN = 0.01; % standard deviation
-Params.ratio_Neff = 0.2;
-Params.resampling_scheme = 0; 
+Params.sigmaN = 0.0001; % standard deviation
+Params.ratio_Neff = 0.05;
+Params.resampling_scheme = 1; 
 Params.rbpf = 0;
-Params.warp_fun = '@(x)x.^(1/2)';
+Params.warp_fun = '@(x)x.^(1/5)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
 if strcmp(Params.inferenceMethod, 'PF'), 
     Params.pn = Params.sigmaN; 
-    Params.comment = sprintf('sigma=%.5f, ratioNeff=%.3f', Params.sigmaN, Params.ratio_Neff);
+    Params.comment = sprintf('plots for apf');
     if ~Params.resampling_scheme, Params.warp_fun = ''; end
 end
 
@@ -85,7 +86,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'boeck-sisr-problems';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 

@@ -275,7 +275,7 @@ classdef PF
         
         function obj = pf(obj, obs_lik, fname)
             
-            save_data = 0;
+            save_data = 1;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -358,6 +358,10 @@ classdef PF
                         fprintf('WARNING: Unknown resampling scheme!\n');
                     end
                 end
+                
+                % transition from iFrame-1 to iFrame
+                obj = obj.propagate_particles_pf(iFrame, 'n');
+                
                 if save_data
                     % save particle data for visualizing
                     % position
@@ -372,10 +376,6 @@ classdef PF
                     logP_data_pf(:, 5, iFrame) = groups;
                 end
                 
-                % transition from iFrame-1 to iFrame
-                obj = obj.propagate_particles_pf(iFrame, 'n');
-                
-                %                 figure(1); plot(obj.particles.weight)
             end
             fprintf('      Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if save_data
