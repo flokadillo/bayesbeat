@@ -140,7 +140,7 @@ for iFrame = 1:1:nFrames
             frame(frame(important_pix)<min_h) = min_h;
             frame(important_pix) = frame(important_pix) - thresh;
             imagesc(frame');
-            caxis([0 max([1, max_h - thresh - 5])])
+            caxis([0 max([1, max_h - thresh - 6])])
         end
         if synth_data_ok
             p = evaluate_p(grid, iFrame);

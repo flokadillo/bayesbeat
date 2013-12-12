@@ -292,8 +292,11 @@ classdef PF
             obj.particles.weight = log(obs / sum(obs));
             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
-            % groups = obj.divide_into_fixed_cells(states, state_dims, 16);
-            groups = ones(obj.nParticles, 1);
+            if obj.resampling_scheme == 2
+                groups = obj.divide_into_fixed_cells(states, state_dims, 16);
+            else
+                groups = ones(obj.nParticles, 1);
+            end
             if save_data
                 % save particle data for visualizing
                 % position
@@ -348,7 +351,7 @@ classdef PF
                         obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                     
                     elseif obj.resampling_scheme == 2
-                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
@@ -537,17 +540,19 @@ classdef PF
             end
             
             % do k-means clustering
-            [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+            [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
+                'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock');
             
             % check if centroids are too close
             merging = 1;
             merged = 0;
             while merging
-                D = squareform(pdist(centroids,'euclidean'), 'tomatrix');
+                D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
                 ind = (tril(D, 0) > 0);
                 D(ind) = nan;
                 D(logical(eye(size(centroids, 1)))) = nan;
                 thr = 50;
+                % TODO: first find minima
                 [c1, c2] = find(D < thr);
                 if ~isempty(c1)
                     groups(groups==c2(1)) = c1(1);
@@ -561,25 +566,28 @@ classdef PF
             end
             
             if merged
-                [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+                [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
+                    'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock');
             end
             
             % check if cluster spread is too high
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-            thr_spread = 40000;
+            thr_spread = 400;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
-                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 2);
+                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
+                    'Distance', 'cityblock');
                 centroids(separate_cl_idx(iCluster), :) = C(1, :);
                 centroids = [centroids; C(2, :)];
                 split = 1;
             end
             
             if split
-                [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop');
+                [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
+                    'Distance', 'cityblock');
             end
             
         end
