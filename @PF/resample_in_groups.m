@@ -1,4 +1,4 @@
-function [outIndex, outWeights] = resample_in_groups(groups, weights)
+function [outIndex, outWeights, groups] = resample_in_groups(groups, weights)
 %  [outIndex] = resample_in_groups(groups, weights)
 %  resample particles in groups separately
 % ----------------------------------------------------------------------
@@ -14,7 +14,6 @@ function [outIndex, outWeights] = resample_in_groups(groups, weights)
 % ----------------------------------------------------------------------
 valid_groups = unique(groups);
 weights = weights(:);
-fprintf('%i', valid_groups'); fprintf('\n');
 n_groups = length(valid_groups);
 parts_per_group = linspace(0, length(weights), n_groups+1);
 parts_per_group = diff(round(parts_per_group));
@@ -22,8 +21,10 @@ parts_per_group(end) = length(weights) - sum(parts_per_group(1:end-1));
 p = 1;
 outWeights = zeros(size(weights));
 outIndex = zeros(size(weights));
+groups_old = groups;
+groups = zeros(size(weights));
 for iG=valid_groups'
-    group_i = (groups==iG);
+    group_i = (groups_old==iG);
     n_parts_in_group = sum(group_i);
     if n_parts_in_group < 1
         continue;
@@ -38,6 +39,7 @@ for iG=valid_groups'
     tot_w_i = logsumexp(weights(group_i), 1);
     % divide total weight among new particles
     outWeights(p:p+parts_per_out_group-1) = tot_w_i - log(parts_per_out_group);
+    groups(p:p+parts_per_out_group-1) = iG;
     p = p + parts_per_out_group;
 end
 % outWeights = outWeights / sum(outWeights);

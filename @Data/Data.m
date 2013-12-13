@@ -26,16 +26,20 @@ classdef Data
         function obj = Data(lab_fln)
             % read lab_fln (a file where all data files are listed)
             if exist(lab_fln, 'file')
-                fid = fopen(lab_fln, 'r');
-                obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
-                fclose(fid);
-                [~, dataset, ~] = fileparts(lab_fln);
-                fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
-                    [dataset, '-train_ids.txt']);
-                if exist(fln, 'file')
-                    ok_songs = load(fln);
-                    fprintf('    Excluding %i songs\n', length(obj.file_list) - length(ok_songs));
-                    obj.file_list = obj.file_list(ok_songs);
+                [~, dataset, ext] = fileparts(lab_fln);
+                if strcmpi(ext, '.lab')
+                    fid = fopen(lab_fln, 'r');
+                    obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
+                    fclose(fid);
+                    fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
+                        [dataset, '-train_ids.txt']);
+                    if exist(fln, 'file')
+                        ok_songs = load(fln);
+                        fprintf('    Excluding %i songs\n', length(obj.file_list) - length(ok_songs));
+                        obj.file_list = obj.file_list(ok_songs);
+                    end
+                elseif strcmpi(ext, '.wav')
+                    obj.file_list{1} = lab_fln;
                 end
             else
                 error('Lab file %s not found\n', lab_fln);

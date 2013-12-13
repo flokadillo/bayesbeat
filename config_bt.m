@@ -59,7 +59,7 @@ Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.05;
-Params.resampling_scheme = 1; 
+Params.resampling_scheme = 2; 
 Params.rbpf = 0;
 Params.warp_fun = '@(x)x.^(1/5)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
@@ -87,7 +87,8 @@ end
 
 % % test data
 Params.test_set = 'boeck-sisr-problems';
-Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.testLab = '~/diss/data/beats/boeck/ah_test_mixtures_rock1.wav';
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
 % Observation feature

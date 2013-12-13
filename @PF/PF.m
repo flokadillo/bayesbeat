@@ -334,7 +334,7 @@ classdef PF
                 % ------------------------------------------------------------
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
-%                     fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
                         obj.particles.copyParticles(newIdx);
@@ -354,7 +354,7 @@ classdef PF
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
-                        [newIdx, outWeights] = obj.resample_in_groups(groups, obj.particles.weight);
+                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
                         obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                     else
@@ -523,6 +523,8 @@ classdef PF
             % state_dim: [nStates x 1]
             % groups_old: [nParticles x 1] group labels of the particles
             %               after last resampling step (used for initialisation)
+            
+%             warning('off');
             group_ids = unique(groups_old);
             k = length(group_ids); % number of clusters
             
@@ -531,37 +533,40 @@ classdef PF
             [~, max_ind] = max(state_dims);
             for iDim = 1:length(state_dims)
                 if iDim == max_ind, continue; end
-                states(:, iDim) = states(:, iDim) * state_dims(max_ind) / state_dims(iDim);
+                states(:, iDim) = (states(:, iDim)-1) * (state_dims(max_ind)-1) / (state_dims(iDim)-1) + 1;
             end
             % compute centroid of clusters
             centroids = zeros(k, length(state_dims));
             for iCluster = 1:k
                 centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
             end
-            
+                       
             % do k-means clustering
+            options = statset('MaxIter', 1);
             [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
-                'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock');
+                'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
             
             % check if centroids are too close
             merging = 1;
             merged = 0;
+            thr = 250;
             while merging
                 D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
                 ind = (tril(D, 0) > 0);
                 D(ind) = nan;
                 D(logical(eye(size(centroids, 1)))) = nan;
-                thr = 50;
-                % TODO: first find minima
-                [c1, c2] = find(D < thr);
-                if ~isempty(c1)
+                
+                % find minimum distance
+                [min_D, arg_min] = min(D(:));
+                if min_D > thr,
+                    merging = 0;
+                else
+                    [c1, c2] = ind2sub([size(D)], arg_min);
                     groups(groups==c2(1)) = c1(1);
                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
                     if length(c1) == 1,  merging = 0;  end
                     merged = 1;
-                else
-                    merging = 0;
                 end
             end
             
@@ -573,13 +578,16 @@ classdef PF
             % check if cluster spread is too high
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-            thr_spread = 400;
+            thr_spread = 110;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
-                [groups(parts_idx), C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
+                [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
                     'Distance', 'cityblock');
+                gps(gps==1) = separate_cl_idx(iCluster);
+                gps(gps==2) = max(groups) + 1;
+                groups(parts_idx) = gps;
                 centroids(separate_cl_idx(iCluster), :) = C(1, :);
                 centroids = [centroids; C(2, :)];
                 split = 1;
@@ -589,10 +597,17 @@ classdef PF
                 [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
                     'Distance', 'cityblock');
             end
+%             warning('on');
+            valid_groups = unique(groups);
+            fprintf('%i: ', length(valid_groups));
+            for i=1:length(valid_groups)
+                fprintf('%i.', valid_groups(i)); 
+            end
+            fprintf('\n');
             
         end
         
-        [outIndex, outWeights] = resample_in_groups(groups, weights);
+        [outIndex, outWeights, groups] = resample_in_groups(groups, weights);
         
     end
     

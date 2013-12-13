@@ -95,7 +95,15 @@ end
 hf = figure;
 % get rid of an annoying warning: "RGB color data not yet supported in Painter's mode."
 set(gcf, 'renderer','zbuffer'); 
-col = autumn;
+col_weights = autumn;
+col_part_sets = [0,  0,  1;
+                 0,  1,  0;
+                 0,  1,  1;
+                 1,  0,  0;
+                 1,  0,  1;
+                 1,  1,  0];
+col_part_sets = [col_part_sets; col_part_sets*0.5; col_part_sets*0.25; col_part_sets*0.75];
+col_part_sets = [col_part_sets; col_part_sets*0.3; col_part_sets*0.6];
 colormap(gray);
 set(gca,'YDir','normal')
 nPlots = R * 2;
@@ -120,7 +128,7 @@ y_pos = [0.61; 0.17];
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
-nFrames = min([500, nFrames]);
+nFrames = min([200, nFrames]);
 for iFrame = 1:1:nFrames
 % for iFrame = [1, 10, 100, 1000]
     important_pix = find(logP_data(:, iFrame));
@@ -155,16 +163,25 @@ for iFrame = 1:1:nFrames
         if pf_data_ok
             ind = (logP_data_pf(:, 3, iFrame) == iR);
             if sum(ind) > 0
-                logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
-                for iCluster=unique(logP_data_pf(:, 5, iFrame))'
+%                 logP_data_pf(:, 5, iFrame) = 3*ones(size(logP_data_pf(:, 5, iFrame)));
+                particle_sets = unique(logP_data_pf(:, 5, iFrame))';
+                for iCluster=particle_sets
                     is_in_cluster = (logP_data_pf(:, 5, iFrame) == iCluster);
-                    col_bins = linspace(min(logP_data_pf(ind & is_in_cluster, 4, iFrame)), max(logP_data_pf(ind & is_in_cluster, 4, iFrame)), 64);
-                    [~, bins] = histc(logP_data_pf(ind & is_in_cluster, 4, iFrame), col_bins);
-                    bins(bins < 1) = 1; bins(bins > 64) = 64;
-%                     scatter(logP_data_pf(ind & is_in_cluster, 1, iFrame), logP_data_pf(ind & is_in_cluster, 2, iFrame), ...
-%                         10, col(iCluster, :), 'filled');
-                    scatter(logP_data_pf(ind & is_in_cluster, 1, iFrame), logP_data_pf(ind & is_in_cluster, 2, iFrame), ...
-                        10, col(bins, :), 'filled');
+                    valid_idx = ind & is_in_cluster;
+                    if sum(valid_idx) > 0
+                        col_bins = linspace(min(logP_data_pf(valid_idx, 4, iFrame)), max(logP_data_pf(valid_idx, 4, iFrame)), 64);
+                        [~, bins] = histc(logP_data_pf(valid_idx, 4, iFrame), col_bins);
+                        bins(bins < 1) = 1; bins(bins > 64) = 64;
+                        if length(particle_sets) == 1
+                            scatter(logP_data_pf(valid_idx, 1, iFrame), logP_data_pf(valid_idx, 2, iFrame), ...
+                                10, col_weights(bins, :), 'filled');
+                        else
+                            scatter(logP_data_pf(valid_idx, 1, iFrame), logP_data_pf(valid_idx, 2, iFrame), ...
+                                10, col_part_sets(iCluster, :), 'filled');
+                        end
+                    end
+%                     
+                    
                 end
             end
         end
