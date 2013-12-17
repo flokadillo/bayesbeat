@@ -79,7 +79,7 @@ classdef HMM
                     tempi = tempo_per_cluster(:, iCluster) * obj.M * obj.frame_length ...
                         / (60 * meter(2));
                     gmm = gmdistribution.fit(tempi(~isnan(tempi)), obj.init_n_gauss);
-%                     gmm_wide = gmdistribution(gmm.mu, gmm.Sigma, gmm.PComponents);
+                    %                     gmm_wide = gmdistribution(gmm.mu, gmm.Sigma, gmm.PComponents);
                     lik = pdf(gmm, (1:obj.N)');
                     % start/stop index of the states that belong to the correct rhythmic pattern
                     startInd = sub2ind([obj.M, obj.N, obj.R], 1, 1, iCluster);
@@ -157,7 +157,10 @@ classdef HMM
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             
-            if save_data, logP_data = sparse(size(obj.trans_model.A, 1), nFrames); end
+            if save_data,
+                x_fac = 10; % decimation factor for x-axis (bar position)
+                logP_data = zeros(round(size(obj.trans_model.A, 1) / x_fac), nFrames, 'single'); 
+            end
             
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
@@ -187,14 +190,44 @@ classdef HMM
             
             for iFrame = 2:nFrames
                 if save_data,
-                   thresh = -15;
-                   p_ind = find(log(delta) > thresh);
-		   try
-                   	logP_data(p_ind - 1 + minState, iFrame-1) = log(delta(p_ind));
-		   catch
-			fprintf('logP_data too big - skip saving\n');
-			save_data = 0;
-		   end
+%                     image_low = imresize(log(delta),1/5);
+%                     decimate(signal,n);
+%                     thresh = -15;
+%                     p_ind = find(log(delta) > thresh);
+                    for iR=1:obj.R
+                        start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
+                        end_ind = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iR);
+                        M_c = round(obj.M / x_fac);
+                        start_ind_c = sub2ind([M_c, obj.N, obj.R], 1, 1, iR);
+                        end_ind_c = sub2ind([M_c, obj.N, obj.R], M_c, obj.N, iR);
+                        % expand delta
+                        if start_ind < minState
+                            delta_ex = [zeros(minState-1, 1); delta(1:end_ind-minState+1)];
+                        else
+                            delta_ex = delta(start_ind-minState+1:end_ind-minState+1);
+                        end
+%                         frame = imresize(reshape(full(delta_ex), obj.M, obj.N), [M_c, obj.N]);
+                        frame = reshape(full(delta_ex), obj.M, obj.N);
+                        % average x_fac blocks
+                        frame = conv2(frame, ones(x_fac, 1) ./ x_fac, 'full');
+                        % take every x_fac-th block
+                        frame = frame(x_fac:x_fac:end, :);
+                        logP_data(start_ind_c:end_ind_c, iFrame-1) = log(frame(:));
+                        if sum(isnan(frame(:))) > 0
+                            lkj=987;
+                        end
+                    end
+%                     n_best = 4000;
+%                     temp = log(delta);
+%                     idx_non_zeros = find(temp);
+%                     
+%                     [Y,I] = sort(temp(idx_non_zeros), 'descend');
+%                     try
+%                         logP_data(idx_non_zeros(I(1:n_best)) - 1 + minState, iFrame-1) = temp(idx_non_zeros(I(1:n_best)));
+%                     catch
+%                         fprintf('logP_data too big - skip saving\n');
+%                         save_data = 0;
+%                     end
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
@@ -223,7 +256,7 @@ classdef HMM
                 % save for visualization
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
-                    'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'thresh');
+                    'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
             end
             
             % Backtracing
@@ -276,7 +309,7 @@ classdef HMM
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
             
-%             alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
+            %             alpha = zeros(nFrames, 1); % most probable state for each frame given by forward path
             perc = round(0.1*nFrames);
             
             ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
@@ -284,7 +317,7 @@ classdef HMM
             ind_stepsize = obj.barGrid * obj.R;
             
             fprintf('    Decoding (viterbi) .');
-%             logP_data = sparse(size(A, 1), nFrames);
+            %             logP_data = sparse(size(A, 1), nFrames);
             delta_max = -inf(size(delta));
             A_log = A_lin;
             A_log(find(A_log)) = log(A_log(find(A_log)));
@@ -298,17 +331,17 @@ classdef HMM
                 X = A_log + D;
                 delta_max(1:max(j_col)) = accumarray(j_col, X(sub2ind([size(X)], i_row, j_col)), [], @max, 0);
                 delta_max(delta_max==0) = -inf;
-%                 argmax = @(x) find(x==max(x));
-%                 
-%                 psi = zeros(size(delta));
-%                 for i=1:length(a)
-%                     ind = (j_col == a(i));
-%                     [temp, psi(i)] = max(X(sub2ind([size(X)], i_row(ind), j_col(ind))));
-%                     psi(i) = psi(i) + find(ind, 1) - 1;
-%                 end
-%                 psi_mat(:,iFrame) = i_row(psi);
-%                 delta_max2 = accumarray(j_col, X(sub2ind([size(X)], i_row, j_col)), [], @(x) find(x==max(x)), 0);
-%                 [delta_max, psi_mat(:,iFrame)] = max(A + D);
+                %                 argmax = @(x) find(x==max(x));
+                %
+                %                 psi = zeros(size(delta));
+                %                 for i=1:length(a)
+                %                     ind = (j_col == a(i));
+                %                     [temp, psi(i)] = max(X(sub2ind([size(X)], i_row(ind), j_col(ind))));
+                %                     psi(i) = psi(i) + find(ind, 1) - 1;
+                %                 end
+                %                 psi_mat(:,iFrame) = i_row(psi);
+                %                 delta_max2 = accumarray(j_col, X(sub2ind([size(X)], i_row, j_col)), [], @(x) find(x==max(x)), 0);
+                %                 [delta_max, psi_mat(:,iFrame)] = max(A + D);
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
@@ -379,7 +412,7 @@ classdef HMM
             
             beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
             beatpositions = beatpositions(1:end-1);
-%             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
+            %             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
             
             beats = [];
             beatno = [];

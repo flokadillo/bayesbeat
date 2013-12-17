@@ -128,27 +128,28 @@ y_pos = [0.61; 0.17];
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
-nFrames = min([200, nFrames]);
+nFrames = min([500, nFrames]);
 for iFrame = 1:1:nFrames
+
 % for iFrame = [1, 10, 100, 1000]
-    important_pix = find(logP_data(:, iFrame));
-    max_h = max(logP_data(important_pix, iFrame));
-    min_h = max([thresh, min(logP_data(important_pix, iFrame))]);
+%     important_pix = find(logP_data(:, iFrame));
+%     max_h = max(logP_data(important_pix, iFrame));
+%     min_h = min(logP_data(important_pix, iFrame));
     for iR=1:R
         if hmm_data_ok
-            
             plot_id = (iR-1)*R+1;
             h_sp(plot_id) = subplot(nPlots, 1, plot_id);
-            start_ind = sub2ind([M, N, R], 1, 1, iR);
-            end_ind = sub2ind([M, N, R], M, N, iR);
-            frame = reshape(logP_data(start_ind:end_ind, iFrame), M, N);
-            important_pix = find(frame);
-%             max_h = max(frame(important_pix));
-%             min_h = max([thresh, min(frame(important_pix))]);
-            frame(frame(important_pix)<min_h) = min_h;
-            frame(important_pix) = frame(important_pix) - thresh;
+            start_ind = sub2ind([M/x_fac, N, R], 1, 1, iR);
+            end_ind = sub2ind([M/x_fac, N, R], M/x_fac, N, iR);
+            frame = reshape(logP_data(start_ind:end_ind, iFrame), M/x_fac, N);
+            if nnz(frame) > 0
+                max_h = max(frame(:));
+                min_h = max([min(frame(~isinf(frame(:)))), max_h - 50]);
+            else
+                frame(:) = min_h;
+            end
             imagesc(frame');
-            caxis([0 max([1, max_h - thresh - 6])])
+            caxis([min_h max_h])
         end
         if synth_data_ok
             p = evaluate_p(grid, iFrame);
@@ -158,7 +159,7 @@ for iFrame = 1:1:nFrames
             caxis([0 0.025])
             %             set(gca,'YDir','normal')
         end
-%         colorbar;
+        colorbar;
         hold on;
         if pf_data_ok
             ind = (logP_data_pf(:, 3, iFrame) == iR);
@@ -173,10 +174,10 @@ for iFrame = 1:1:nFrames
                         [~, bins] = histc(logP_data_pf(valid_idx, 4, iFrame), col_bins);
                         bins(bins < 1) = 1; bins(bins > 64) = 64;
                         if length(particle_sets) == 1
-                            scatter(logP_data_pf(valid_idx, 1, iFrame), logP_data_pf(valid_idx, 2, iFrame), ...
+                            scatter(logP_data_pf(valid_idx, 1, iFrame)./x_fac, logP_data_pf(valid_idx, 2, iFrame), ...
                                 10, col_weights(bins, :), 'filled');
                         else
-                            scatter(logP_data_pf(valid_idx, 1, iFrame), logP_data_pf(valid_idx, 2, iFrame), ...
+                            scatter(logP_data_pf(valid_idx, 1, iFrame)./x_fac, logP_data_pf(valid_idx, 2, iFrame), ...
                                 10, col_part_sets(iCluster, :), 'filled');
                         end
                     end
@@ -187,7 +188,7 @@ for iFrame = 1:1:nFrames
         end
         if anns_data_ok
             if anns(1,3) == iR
-                scatter(anns(iFrame, 1), anns(iFrame, 2), 30, 'c', 'filled');
+                scatter(anns(iFrame, 1)./x_fac, anns(iFrame, 2), 30, 'c', 'filled');
             end
         end
 %         set(gcf, 'renderer','zbuffer');
@@ -205,8 +206,10 @@ for iFrame = 1:1:nFrames
             xlim([1 nPos+1])
 %             ylim([0 max_lik])
             %         ax=get(h_sp(plot_id+1),'Position');
-            set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.8 0.3]); % [xmin ymin xlenght ylength]);
-            set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.09 0.8 0.08]); % [xmin ymin xlenght ylength]);
+            
+            % Position and length of the plots !
+            set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.75 0.3]); % [xmin ymin xlenght ylength]);
+            set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.09 0.75 0.08]); % [xmin ymin xlenght ylength]);
         end
         
     end 
