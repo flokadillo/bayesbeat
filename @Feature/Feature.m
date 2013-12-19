@@ -32,7 +32,7 @@ classdef Feature
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
-                fln = fullfile(fpath, 'beat_activations', strrep(fname, '.wav', obj.feat_type{iDim}));
+                fln = fullfile(fpath, 'beat_activations', strrep(fname, 'wav', obj.feat_type{iDim}));
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
@@ -143,6 +143,7 @@ classdef Feature
         [S, t, f] = STFT(x, winsize, hopsize, fftsize, fs, type, online, plots, norm);
         
         [ out ] = mvavg( signal, winsize, type );
+
     end
     
 end

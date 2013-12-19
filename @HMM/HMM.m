@@ -67,7 +67,7 @@ classdef HMM
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
-            
+              
         end
         
         function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
@@ -117,13 +117,20 @@ classdef HMM
             hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence);
+%             dets=[m_path(:), n_path(:), r_path(:)];
+%             mean_params = obj.obs_model.comp_mean_params;
+%             ind = sub2ind([obj.R, obj.barGrid], r_path, obj.obs_model.state2obs_idx(hidden_state_sequence, 2));
+%             mean_params = mean_params(ind);
+%             save(['./temp/', fname, '_map.mat'], 'dets', 'y', 'mean_params');
             % meter path
             t_path = obj.rhythm2meter(r_path);
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
-            beats = obj.find_beat_times(m_path, t_path);
+            beats = obj.find_beat_times(m_path, t_path, n_path);
             tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             rhythm = r_path;
+            
+            
         end
         
         
@@ -160,6 +167,7 @@ classdef HMM
             if save_data,
                 x_fac = 10; % decimation factor for x-axis (bar position)
                 logP_data = zeros(round(size(obj.trans_model.A, 1) / x_fac), nFrames, 'single'); 
+                best_state = zeros(nFrames, 1);
             end
             
             delta = obj.initial_prob(minState:maxState);
@@ -190,10 +198,6 @@ classdef HMM
             
             for iFrame = 2:nFrames
                 if save_data,
-%                     image_low = imresize(log(delta),1/5);
-%                     decimate(signal,n);
-%                     thresh = -15;
-%                     p_ind = find(log(delta) > thresh);
                     for iR=1:obj.R
                         start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
                         end_ind = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iR);
@@ -213,21 +217,10 @@ classdef HMM
                         % take every x_fac-th block
                         frame = frame(x_fac:x_fac:end, :);
                         logP_data(start_ind_c:end_ind_c, iFrame-1) = log(frame(:));
-                        if sum(isnan(frame(:))) > 0
-                            lkj=987;
-                        end
+                        [~, best_state(iFrame-1)] = max(delta);
+%                         best_state(iFrame-1) = best_state(iFrame-1) + minState - 1; 
                     end
-%                     n_best = 4000;
-%                     temp = log(delta);
-%                     idx_non_zeros = find(temp);
-%                     
-%                     [Y,I] = sort(temp(idx_non_zeros), 'descend');
-%                     try
-%                         logP_data(idx_non_zeros(I(1:n_best)) - 1 + minState, iFrame-1) = temp(idx_non_zeros(I(1:n_best)));
-%                     catch
-%                         fprintf('logP_data too big - skip saving\n');
-%                         save_data = 0;
-%                     end
+                    
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
@@ -257,6 +250,9 @@ classdef HMM
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
+                
+%                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
+%                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac', 'psi_mat', 'best_state', 'minState');
             end
             
             % Backtracing
@@ -373,7 +369,7 @@ classdef HMM
             
         end
         
-        function beats = find_beat_times(obj, positionPath, meterPath)
+        function beats = find_beat_times(obj, positionPath, meterPath, tempoPath)
             % [beats] = findBeatTimes(positionPath, meterPath, param_g)
             %   Find beat times from sequence of bar positions of the HMM beat tracker
             % ----------------------------------------------------------------------
@@ -394,46 +390,67 @@ classdef HMM
             numframes = length(positionPath);
             meter = obj.meter_state2meter(:, meterPath);
             % TODO: implement for changes in meter
-            if round(median(meter(1, :))) == 3 % 3/4
-                numbeats = 3;
-                denom = 4;
-            elseif round(median(meter(1, :))) == 4 % 4/4
-                numbeats = 4;
-                denom = 4;
-            elseif round(median(meter(1, :))) == 8 % 8/8
-                numbeats = 8;
-                denom = 8;
-            elseif round(median(meter(1, :))) == 9 % 9/8
-                numbeats = 9;
-                denom = 8;
-            else
-                error('Meter %i not supported yet!\n', median(meterPath));
-            end
             
-            beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
-            beatpositions = beatpositions(1:end-1);
-            %             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
+%             [meter_states, idx, ~] = unique(meterPath);
+            for iR=1:obj.R
+                beatpositions{iR} = round(linspace(1, obj.Meff(iR), obj.meter_state2meter(1, iR) + 1));
+                beatpositions{iR} = beatpositions{iR}(1:end-1);
+            end
+                
+%             if round(median(meter(1, :))) == 3 % 3/4
+%                 numbeats = 3;
+%                 denom = 4;
+%             elseif round(median(meter(1, :))) == 4 % 4/4
+%                 numbeats = 4;
+%                 denom = 4;
+%             elseif round(median(meter(1, :))) == 8 % 8/8
+%                 numbeats = 8;
+%                 denom = 8;
+%             elseif round(median(meter(1, :))) == 9 % 9/8
+%                 numbeats = 9;
+%                 denom = 8;
+%             else
+%                 error('Meter %i not supported yet!\n', median(meterPath));
+%             end
+            
+%             beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
+%             beatpositions = beatpositions(1:end-1);
             
             beats = [];
             beatno = [];
             beatco = 0;
             for i = 1:numframes-1
-                for b = 1:numbeats
-                    if positionPath(i) == beatpositions(b)
+                for b = 1:length(beatpositions{meterPath(i)})
+                    if positionPath(i) == beatpositions{meterPath(i)}(b)
                         beats = [beats; i];
                         beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
-                    elseif ((positionPath(i) > beatpositions(b)) && (positionPath(i+1) > beatpositions(b)) && (positionPath(i) > positionPath(i+1)))
+                        if b == meter(1, i), beatco = beatco + 1; end
+                        break;
+                    elseif ((positionPath(i) > beatpositions{meterPath(i)}(b)) && (positionPath(i+1) > beatpositions{meterPath(i)}(b)) && (positionPath(i) > positionPath(i+1)))
                         % transition of two bars
-                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
-                    elseif ((positionPath(i) < beatpositions(b)) && (positionPath(i+1) > beatpositions(b)))
-                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
+                        if positionPath(i+1) == mod(positionPath(i) + tempoPath(i) - 1, obj.Meff(meterPath(i))) + 1;
+                            bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{meterPath(i)}(b));
+                            beats = [beats; round(bt)];
+                            beatno = [beatno; beatco + b/10];
+                            if b == meter(1, i), beatco = beatco + 1; end
+                            break;
+                        else
+                            positionPath(i)
+                            tempoPath(i)
+                            positionPath(i+1)
+                        end
+                    elseif ((positionPath(i) < beatpositions{meterPath(i)}(b)) && (positionPath(i+1) > beatpositions{meterPath(i)}(b)))
+                        if positionPath(i+1) == mod(positionPath(i) + tempoPath(i) - 1, obj.Meff(meterPath(i))) + 1;
+                            bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{meterPath(i)}(b));
+                            beats = [beats; round(bt)];
+                            beatno = [beatno; beatco + b/10];
+                            if b == meter(1, i), beatco = beatco + 1; end
+                            break;
+                        else
+                            positionPath(i)
+                            tempoPath(i)
+                            positionPath(i+1)
+                        end
                     end
                 end
             end

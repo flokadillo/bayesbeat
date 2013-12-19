@@ -188,7 +188,7 @@ for iFrame = 1:1:nFrames
         end
         if anns_data_ok
             if anns(1,3) == iR
-                scatter(anns(iFrame, 1)./x_fac, anns(iFrame, 2), 30, 'c', 'filled');
+                scatter(anns(iFrame, 1)./x_fac, anns(iFrame, 2), 30, 'c', 'filled', 'MarkerEdgeColor','k');
             end
         end
 %         set(gcf, 'renderer','zbuffer');

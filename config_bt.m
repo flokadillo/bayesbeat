@@ -28,7 +28,7 @@ Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
-Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'PF'
+Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -59,13 +59,13 @@ Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.05;
-Params.resampling_scheme = 2; 
+Params.resampling_scheme = 0; 
 Params.rbpf = 0;
 Params.warp_fun = '@(x)x.^(1/5)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
 if strcmp(Params.inferenceMethod, 'PF'), 
     Params.pn = Params.sigmaN; 
-    Params.comment = sprintf('plots for apf');
+    Params.comment = sprintf('');
     if ~Params.resampling_scheme, Params.warp_fun = ''; end
 end
 
@@ -86,20 +86,21 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck-sisr-problems';
+% Params.test_set = 'boeck';
 % Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/boeck/ah_test_mixtures_rock1.wav';
+Params.test_set = ' ';
+Params.testLab = '~/diss/data/beats/boeck/train13.wav';
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
 % Observation feature
 Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, ... mixOfGauss, MOG, MOG3}
-Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
-Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
+% Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
+% Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
-% Params.feat_type{1} = 'superflux.mvavg.normZ';
+Params.feat_type{1} = 'superflux.mvavg.normZ';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored

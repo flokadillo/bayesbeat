@@ -17,6 +17,9 @@ classdef ObservationModel
                             % parameters for all except one files)
         lik_func_handle     % function handle to likelihood function
         state2obs_idx       % specifies which states are tied (share the same parameters)
+                            % [nStates, 2]. first columns is the rhythmic
+                            % pattern indicator, second one the bar
+                            % position (e.g., 1, 2 .. 64 )
     end
     
     methods
@@ -78,6 +81,18 @@ classdef ObservationModel
         end
         
         lik_func_handle = set_lik_func_handle(obj)
+        
+        function mean_params = comp_mean_params(obj)
+            [R, barpos] = size(obj.learned_params);
+            mean_params = zeros(R, barpos);
+            for iR=1:R
+               for b=1:barpos
+                   if ~isempty(obj.learned_params{iR, b})
+                        mean_params(iR, b)=obj.learned_params{iR, b}.PComponents * obj.learned_params{iR, b}.mu;
+                   end
+               end
+            end           
+        end
     end
     
     methods (Access=protected)
