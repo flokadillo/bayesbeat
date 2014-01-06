@@ -15,6 +15,7 @@ classdef Data
         meter_state2meter               % specifies meter for each meter state
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
+        pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
     end
     
     methods(Static)
@@ -47,8 +48,9 @@ classdef Data
             obj.lab_fln = lab_fln;
         end
                
-        function obj = read_pattern_bars(obj, cluster_fln, meters)
+        function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
+            % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
             if exist(cluster_fln, 'file')
                 obj.bar2cluster = load(cluster_fln, '-ascii');
             else
@@ -57,6 +59,14 @@ classdef Data
             obj.cluster_fln = cluster_fln;
             if ismember(0, obj.bar2cluster), obj.bar2cluster = obj.bar2cluster + 1; end
             obj.n_clusters = max(obj.bar2cluster);
+            
+            % read pattern_size
+            if exist('pattern_size', 'var')
+                obj.pattern_size = pattern_size;
+            else
+                obj.pattern_size = 'bar';
+            end
+            
             % read pattern_labels
             fln = strrep(cluster_fln, '.txt', '-rhythm_labels.txt');
             if exist(fln, 'file')
@@ -80,7 +90,11 @@ classdef Data
                     error('Beats file %s not found\n', beats_fln);
                 end
                 % determine number of bars
-                [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(beats);
+                if strcmp(obj.pattern_size, 'bar')
+                    [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(beats);
+                else
+                    obj.n_bars(iFile) = size(beats, 1) - 1;
+                end
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
                 barCounter = barCounter + obj.n_bars(iFile);
             end
@@ -94,7 +108,11 @@ classdef Data
             end
             obj.meter_state2meter = meters;
             for iR=1:obj.n_clusters
+                % find the first bar in data that belongs to cluster iR and
+                % look up its meter
                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
+                % TODO: what to do if meter of training data does not match
+                % meter of system ?
                 obj.rhythm2meter(iR) = find(obj.meter_state2meter(1, :) == m(1));
             end
         end

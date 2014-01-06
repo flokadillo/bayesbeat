@@ -14,15 +14,21 @@ classdef RhythmCluster
         data_save_path      % path where cluster ids per bar are stored
         ok_songs_fln        % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
+        pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
     end
     
     methods
-        function obj = RhythmCluster(feat_type, frame_length, dataset, data_save_path)
+        function obj = RhythmCluster(feat_type, frame_length, dataset, data_save_path, pattern_size)
             obj.feature = Feature(feat_type, frame_length);
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
             obj.dataset = dataset;
             obj.train_lab_fln = fullfile('~/diss/data/beats/', [dataset, '.lab']);
             obj.data_save_path = data_save_path;
+            if exist('pattern_size', 'var')
+                obj.pattern_size = pattern_size;
+            else
+                obj.pattern_size = 'bar';
+            end
         end
         
         function obj = make_feats_per_song(obj, dataset, data_save_path)
@@ -148,9 +154,11 @@ classdef RhythmCluster
             %INPUT parameter:
             % trainLab          : filename of labfile (e.g., 'boeck.lab' or 'ballroom.lab').
             %                       a labfile is a textfile with paths to files that are analyzed
-            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'auto'} if clusterType='meter', bars are
-            %                       clustered according to the meter (functions reads .meter file);
-            %                       if clusterType='dancestyle', according to the genre (functions reads .dancestyle file))
+            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'auto', 'none'} 
+            %                   'meter': bars are clustered according to the meter (functions reads .meter file);
+            %                   'dancestyle', according to the genre (functions reads .dancestyle file))
+            %                   'none' : put all bars into one single
+            %                   cluster
             % clustAssFln       : if clusterType='auto', specify a textfile, with a
             %                       pattern id for each file (in the same order as in trainLab)
             % rhythm_names      : cell array of strings
@@ -207,10 +215,16 @@ classdef RhythmCluster
                             fclose(fid);
                         end
                         patternId = find(strcmp(rhythm_names, style{1}{1}));
+                    case 'none'
+                        patternId = 1;
                 end
                 fileCounter = fileCounter + 1;
                 % determine number of bars
-                [nBars(iFile), ~] = Data.get_full_bars(beats);
+                if strcmp(obj.pattern_size, 'beat')
+                    nBars(iFile) = size(beats, 1) - 1;
+                else
+                    [nBars(iFile), ~] = Data.get_full_bars(beats);
+                end
                 bar2pattern = [bar2pattern; ones(nBars(iFile), 1) * patternId];
             end
             
