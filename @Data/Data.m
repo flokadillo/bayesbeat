@@ -113,7 +113,14 @@ classdef Data
                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
                 % TODO: what to do if meter of training data does not match
                 % meter of system ?
-                obj.rhythm2meter(iR) = find(obj.meter_state2meter(1, :) == m(1));
+                if strcmp(obj.pattern_size, 'bar')
+                    obj.rhythm2meter(iR) = find(obj.meter_state2meter(1, :) == m(1));
+                elseif strcmp(obj.pattern_size, 'beat')
+                    obj.rhythm2meter(iR) = 1;
+                else
+                    error('Meter of training data is not supported by the system')
+                end
+                    
             end
         end
         
@@ -186,12 +193,12 @@ classdef Data
             if exist(featuresFln, 'file')
                 load(featuresFln, 'dataPerFile');
                 obj.feats_file_pattern_barPos_dim = dataPerFile;
-            end
-            if ~exist(featuresFln, 'file') || (size(dataPerFile, 3) ~= whole_note_div)
+            else
                 fprintf('    Extract and organise trainings data: \n');
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
-                    TrainData = Data.extract_bars_from_feature(obj.file_list, featureType{iDim}, whole_note_div, barGrid_eff, frame_length, 1);
+                    TrainData = Data.extract_bars_from_feature(obj.file_list, ...
+                        featureType{iDim}, whole_note_div, barGrid_eff, frame_length, obj.pattern_size, 1);
                     temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
                         obj.bar2cluster, obj.bar2file);
                 end
@@ -228,7 +235,7 @@ classdef Data
         
         [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose);
         
-        Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, dooutput);
+        Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
         
         dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
     end

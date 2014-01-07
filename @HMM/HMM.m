@@ -19,7 +19,7 @@ classdef HMM
         obs_model           % observation model
         initial_prob        % initial state distribution
         init_n_gauss        % number of components of the GMD modelling the initial distribution for each rhythm
-        
+        pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
     end
     
     methods
@@ -38,6 +38,7 @@ classdef HMM
             obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
+            obj.pattern_size = Params.pattern_size;
             
         end
         
@@ -45,8 +46,14 @@ classdef HMM
             % convert from BPM into barpositions / audio frame
             meter_denom = obj.meter_state2meter(2, :);
             meter_denom = meter_denom(obj.rhythm2meter);
-            obj.minN = round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
-            obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
+            
+            if strcmp(obj.pattern_size, 'bar')
+                obj.minN = round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
+                obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
+            else
+                obj.minN = round(obj.M * obj.frame_length * minTempo ./ 60);
+                obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ 60);
+            end
             
             % Create transition model
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
@@ -154,7 +161,7 @@ classdef HMM
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            save_data = 1;
+            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             

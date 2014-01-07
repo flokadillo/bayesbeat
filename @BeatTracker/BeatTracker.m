@@ -54,7 +54,7 @@ classdef BeatTracker
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
             if strcmp(Params.train_set, Params.test_set)
-                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters);
+                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
             end
         end
         

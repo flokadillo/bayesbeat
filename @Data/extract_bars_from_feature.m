@@ -1,4 +1,4 @@
-function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, frame_length, dooutput)
+function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, frame_length, pattern_size, dooutput)
 % [out3, out4] = Analyze_Onset_Strength_Inside_A_Bar(source, featExt, mode2 [,
 % numbins, saveflag, bin_thresh] )
 %   Maps the time t to a bar position
@@ -15,8 +15,9 @@ function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_
 %
 %OUTPUT parameter:
 % Output.dataPerBar : [nBars x barGrid] matrix of double 
-%                       from this, cellfun(@mean, Output.dataPerBar) computed
-%                       the mean of each bar and position
+%                       from this, cellfun(@mean, Output.dataPerBar)
+%                       computes the mean of each bar and position and can
+%                       be plotted by plot(mean(cellfun(@mean, Output.dataPerBar)))
 % Output.bar2file   : [1 x nBars] vector
 % Output.fileNames  : [nFiles x 1] vector
 %
@@ -31,6 +32,10 @@ if nargin == 2,
     frame_length = 0.02;
     dooutput = 0; 
 end
+if ~exist('pattern_size', 'var')
+    pattern_size = 'bar';
+end
+
 [listing, nFiles] = parseSource(source, featExt);
 % bar grid for triple and duple meter
 Output.dataPerBar = []; idLastBar = 0;
@@ -55,16 +60,25 @@ for iFile=1:nFiles
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
     b1 = annots.beats(round(rem(annots.beats(:,2),1)*10) == 1,1);
-    if length(b1) > 1
+    
+    if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
+        if dooutput, fprintf('    %s contains only one bar -> skip it\n', fname); end
+    else
         % effective number of bar positions (depending on meter)
-        if length(annots.meter) == 1
-            barGridEff = barGrid*annots.meter/4;
+        if strcmp(pattern_size, 'bar')
+            if length(annots.meter) == 1
+                barGridEff = barGrid*annots.meter/4;
+            else
+                barGridEff = ceil(barGrid*annots.meter(1)/annots.meter(2));
+            end
         else
-            barGridEff = ceil(barGrid*annots.meter(1)/annots.meter(2));
+            % beat-length patterns: suppose quarter beats 
+            barGridEff = barGrid / 4;
         end
+        
         % collect feature values and determine the corresponding position
         % in a bar
-        barData = get_feature_at_bar_grid(featureFln, annots.beats, barGrid, barGridEff, frame_length);
+        barData = get_feature_at_bar_grid(featureFln, annots.beats, barGrid, barGridEff, frame_length, pattern_size);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
@@ -77,8 +91,7 @@ for iFile=1:nFiles
             Output.bar2file((idLastBar + 1):(idLastBar + nNewBars)) = iFile;
             idLastBar = idLastBar + nNewBars;
         end
-    else
-        if dooutput, fprintf('    %s contains only one bar -> skip it\n', fname); end
+        
     end
 end
 
@@ -107,7 +120,7 @@ end
 end
 
 
-function [barData] = get_feature_at_bar_grid(featureFln, beats, barGrid, barGridEff, frame_length)
+function [barData] = get_feature_at_bar_grid(featureFln, beats, barGrid, barGridEff, frame_length, pattern_size)
 % barData   [nBars x barGrid] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
@@ -121,12 +134,18 @@ if beats(end, 1) > length(E) * frame_length;
     beats = beats(beats(:, 1) <= length(E) * frame_length, :);
 end
 
-[nBars, ~, barStartIdx] = Data.get_full_bars(beats);
-btype = round(rem(beats(:,2),1)*10);
-meter = max(btype);
+if strcmp(pattern_size, 'bar')
+    [nBars, ~, barStartIdx] = Data.get_full_bars(beats);
+    btype = round(rem(beats(:,2),1)*10);
+    meter = max(btype);
+else
+    nBars = size(beats, 1) - 1;
+    barStartIdx = 1:nBars;
+%     btype = ones(size(beats, 1), 1);
+    meter = 1;
+end
 
-
-if ismember(meter, [2, 3, 4])
+if ismember(meter, [1, 2, 3, 4])
     beatsBarPos = ((0:meter) * barGrid / 4) + 1;
 elseif ismember(meter, [8, 9])
     beatsBarPos = ((0:meter) * barGrid / 8) + 1;

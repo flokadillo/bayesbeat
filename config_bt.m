@@ -37,7 +37,7 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
 
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 47/26;
-Params.M = 300; % total number of discrete position states (used for the meter with the longest duration)
+Params.M = 320; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 26;
 Params.R = 1;
 Params.meters = [1; 4]; % e.g., [9, 3; 8 4]
@@ -46,7 +46,7 @@ bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
 Params.pattern_size = 'beat';
-Params.pn = 0.02;  % 7 for n dependent p_n
+Params.pn = 0.001;  % 7 for n dependent p_n
 Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
@@ -78,7 +78,8 @@ Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogr
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
-Params.feat_type{1} = 'superflux.mvavg.normZ';
+% Params.feat_type{1} = 'superflux.mvavg.normZ';
+Params.feat_type{1} = 'sprflx-online';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored
@@ -106,10 +107,10 @@ if ~Params.doTraining
 end
 
 % % test data
-% Params.test_set = 'boeck';
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.test_set = ' ';
-Params.testLab = '~/diss/data/beats/boeck/train13.wav';
+Params.test_set = 'hainsworth';
+Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.test_set = ' ';
+% Params.testLab = '~/diss/data/beats/boeck/train13.wav';
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
