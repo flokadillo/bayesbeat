@@ -123,10 +123,11 @@ classdef Feature
             end
             fid = fopen(fln,'r');
             c = textscan(fid, '%s %f', 1);
-            if strcmp(c{1},'framerate:')
+            if strcmpi(c{1},'framerate:')
                 fr = c{2};
             else
-                fr = 100;
+                fprintf('Warning Feature.read_activations: No FRAMERATE field found\n');
+                fr = [];
             end
             c = textscan(fid, '%s %d', 1);
             act = textscan(fid, '%f', c{2});
