@@ -192,7 +192,6 @@ classdef Data
             % Extract audio features and sort them according to bars and position
             if exist(featuresFln, 'file')
                 load(featuresFln, 'dataPerFile');
-                obj.feats_file_pattern_barPos_dim = dataPerFile;
             else
                 fprintf('    Extract and organise trainings data: \n');
                 for iDim = 1:featureDim
@@ -209,6 +208,7 @@ classdef Data
                 end
                 save(featuresFln, 'dataPerFile');
             end
+            obj.feats_file_pattern_barPos_dim = dataPerFile;
         end
         
         
