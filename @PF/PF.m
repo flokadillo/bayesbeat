@@ -70,13 +70,14 @@ classdef PF
             n_m_cells = floor(obj.nParticles / length(n_grid));
             
             
-            n_m_cells = floor(n_m_cells / (sum(obj.Meff)/obj.M));
+%             n_m_cells = floor(n_m_cells / (sum(obj.Meff)/obj.M));
             m_grid_size = sum(obj.Meff) / n_m_cells;
-            r_m = rand(obj.nParticles, 1) - 0.5;
+            r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
             r_n = rand(obj.nParticles, 1) - 0.5;
             c=1;
             for iR = 1:obj.R
-                m_grid = m_grid_size/2:m_grid_size:obj.Meff(obj.rhythm2meter(iR));
+                % create positions between 1 and obj.Meff(obj.rhythm2meter(iR))
+                m_grid = 1+m_grid_size/2:m_grid_size:(obj.Meff(obj.rhythm2meter(iR))-m_grid_size/2);
                 nParts(iR) = length(m_grid) * length(n_grid);
                 temp = repmat(m_grid, length(n_grid), 1);
                 obj.initial_m(c:c+nParts(iR)-1) = temp(:)+ r_m(c:c+nParts(iR)-1) * m_grid_size;
@@ -164,7 +165,7 @@ classdef PF
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
+        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname, inferenceMethod)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
@@ -562,10 +563,18 @@ classdef PF
             % adjust the range of each state variable to make equally
             % important for the clustering
             [~, max_ind] = max(state_dims);
-            for iDim = 1:length(state_dims)
-                if iDim == max_ind, continue; end
-                states(:, iDim) = (states(:, iDim)-1) * (state_dims(max_ind)-1) / (state_dims(iDim)-1) + 1;
-            end
+            % multiplication factor for each state variable to compute
+            % distance
+            lambda1 = 1;
+            states(:, 1) = (states(:, 1)-1) * lambda1;
+            lambda2 = state_dims(1) / state_dims(2);
+            states(:, 2) = states(:, 2) * lambda2;
+            lambda3 = state_dims(1);
+            states(:, 3) = (states(:, 3)-1) * lambda3 + 1;
+%             for iDim = 1:length(state_dims)
+%                 if iDim == max_ind, continue; end
+%                 states(:, iDim) = (states(:, iDim)-1) * (state_dims(max_ind)-1) / (state_dims(iDim)-1) + 1;
+%             end
             % compute centroid of clusters
             centroids = zeros(k, length(state_dims));
             for iCluster = 1:k
