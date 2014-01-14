@@ -3,6 +3,7 @@ classdef BeatTracker
     properties (SetAccess=private)
         input_fln               % input filename (.wav or feature file)
         model                   % probabilistic model
+        inferenceMethod         % forward, viterbi, ...
         feature
         train_data
         test_data
@@ -20,6 +21,7 @@ classdef BeatTracker
                 end
             end
             obj.feature = Feature(Params.feat_type, Params.frame_length);
+            obj.inferenceMethod = Params.inferenceMethod;
             
         end
         
@@ -104,7 +106,7 @@ classdef BeatTracker
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
-            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname);
+            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname, obj.inferenceMethod);
             
             % smoothing
             if smooth_win > 0
@@ -116,14 +118,17 @@ classdef BeatTracker
             results{4} = rhythm;
 %             profile viewer;
             
-            annots = load(strrep(obj.feature.input_fln, 'wav', 'beats'));
-            r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
-            if isempty(r)
-                fprintf('    Cannot compute true path, file not in test_data included ...\n');
-            else
-                [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(obj.feature.feature, 1));
-                anns = [m, n, ones(length(m), 1) * r];
-                save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+            annot_fln = strrep(obj.feature.input_fln, 'wav', 'beats');
+            if exist(annot_fln, 'file')
+                annots = load(annot_fln);
+                r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
+                if isempty(r)
+                    fprintf('    Cannot compute true path, file not in test_data included ...\n');
+                else
+                    [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(obj.feature.feature, 1));
+                    anns = [m, n, ones(length(m), 1) * r];
+                    save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+                end
             end
             %
 

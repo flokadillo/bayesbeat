@@ -28,7 +28,7 @@ Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
+Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -37,8 +37,8 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'PF'
 
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 47/26;
-Params.M = 320; % total number of discrete position states (used for the meter with the longest duration)
-Params.N = 26;
+Params.M = 640; % total number of discrete position states (used for the meter with the longest duration)
+Params.N = 47;
 Params.R = 1;
 Params.meters = [1; 4]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
@@ -107,7 +107,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'hainsworth';
+Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_set = ' ';
 % Params.testLab = '~/diss/data/beats/boeck/train13.wav';
