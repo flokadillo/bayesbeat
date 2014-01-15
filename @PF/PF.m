@@ -567,9 +567,11 @@ classdef PF
             % distance
             lambda1 = 1;
             states(:, 1) = (states(:, 1)-1) * lambda1;
-            lambda2 = state_dims(1) / state_dims(2);
+%             lambda2 = state_dims(1) / state_dims(2);
+            lambda2 = 14;
             states(:, 2) = states(:, 2) * lambda2;
-            lambda3 = state_dims(1);
+%             lambda3 = state_dims(1);
+            lambda3 = 1440;
             states(:, 3) = (states(:, 3)-1) * lambda3 + 1;
 %             for iDim = 1:length(state_dims)
 %                 if iDim == max_ind, continue; end
@@ -589,7 +591,7 @@ classdef PF
             % check if centroids are too close
             merging = 1;
             merged = 0;
-            thr = 250;
+            thr = 40; % if distance < thr: merge 
             while merging
                 D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
                 ind = (tril(D, 0) > 0);
@@ -618,7 +620,7 @@ classdef PF
             % check if cluster spread is too high
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-            thr_spread = 110;
+            thr_spread = 50;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));

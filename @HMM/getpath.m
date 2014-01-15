@@ -3,11 +3,10 @@ function [m, n] = getpath(Meff, annots, frame_length, nFrames)
 %   Maps the beats to a bar position and tempo for each time instance t
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% Meff                 : number of bar positions of model
-% Meff
+% Meff              : number of bar positions of model
 % annots            : beat annotations (first column = beat times, second column = beat number)
-% duration          : length of signal [sec]
-% Meff              : effective number of bar positions of song
+% frame_length      : 
+% nFrames           : number of audio frames of song
 %
 %OUTPUT parameter:
 % states            : statenumber at each t: [T x 1]
