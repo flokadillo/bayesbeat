@@ -28,6 +28,7 @@ Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
+Params.save_inference_data = 0;
 Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
@@ -60,14 +61,17 @@ Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.02;
 Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
+Params.state_distance_coefficients = [1, 14, 100];
+Params.cluster_merging_thr = 50; % if distance < thr: merge 
+Params.cluster_splitting_thr = 60; % if spread > thr: split 
 Params.rbpf = 0;
 Params.do_viterbi_filtering = 1;
 Params.warp_fun = '@(x)x.^(1/2)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
 if strcmp(Params.inferenceMethod, 'PF'), 
     Params.pn = Params.sigmaN; 
-    Params.comment = sprintf('1-14-100-50-60');
-    if ~Params.resampling_scheme, Params.warp_fun = ''; end
+    if Params.resampling_scheme > 1, Params.comment = sprintf('%i-%i-%i-%i-%i', Params.state_distance_coefficients(1), Params.state_distance_coefficients(2), Params.state_distance_coefficients(3), Params.cluster_merging_thr, Params.cluster_splitting_thr); end
+    if ismember(Params.resampling_scheme, [0, 2]), Params.warp_fun = ''; end
 end
 
 

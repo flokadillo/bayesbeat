@@ -20,6 +20,7 @@ classdef HMM
         initial_prob        % initial state distribution
         init_n_gauss        % number of components of the GMD modelling the initial distribution for each rhythm
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
+        save_inference_data % save intermediate output of particle filter for visualisation
     end
     
     methods
@@ -39,6 +40,7 @@ classdef HMM
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
             obj.pattern_size = Params.pattern_size;
+            obj.save_inference_data = Params.save_inference_data;
             
         end
         
@@ -177,7 +179,6 @@ classdef HMM
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             
@@ -187,7 +188,7 @@ classdef HMM
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             
-            if save_data,
+            if obj.save_inference_data,
                 x_fac = 10; % decimation factor for x-axis (bar position)
                 logP_data = zeros(round(size(obj.trans_model.A, 1) / x_fac), nFrames, 'single');
                 best_state = zeros(nFrames, 1);
@@ -220,7 +221,7 @@ classdef HMM
             fprintf('    Decoding (viterbi) .');
             
             for iFrame = 2:nFrames
-                if save_data,
+                if obj.save_inference_data,
                     for iR=1:obj.R
                         start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
                         end_ind = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iR);
@@ -268,7 +269,7 @@ classdef HMM
                     fprintf('.');
                 end
             end
-            if save_data,
+            if obj.save_inference_data,
                 % save for visualization
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
