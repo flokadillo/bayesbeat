@@ -58,14 +58,15 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
-Params.ratio_Neff = 0.01;
-Params.resampling_scheme = 3; % 2 = kmeans, 1 = apf, 0 = sisr
+Params.ratio_Neff = 0.02;
+Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
 Params.rbpf = 0;
-Params.warp_fun = '@(x)x.^(1/5)';
+Params.do_viterbi_filtering = 1;
+Params.warp_fun = '@(x)x.^(1/2)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
 if strcmp(Params.inferenceMethod, 'PF'), 
     Params.pn = Params.sigmaN; 
-    Params.comment = sprintf('1-14-1440-50-80');
+    Params.comment = sprintf('1-14-100-50-60');
     if ~Params.resampling_scheme, Params.warp_fun = ''; end
 end
 

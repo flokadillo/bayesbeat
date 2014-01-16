@@ -30,6 +30,7 @@ classdef PF
         resampling_scheme   % type of resampling employed
         rbpf                % rbpf == 1, do rao-blackwellization on the discrete states
         warp_fun            % function that warps the weights w to a compressed space
+        do_viterbi_filtering
         
     end
     
@@ -55,6 +56,7 @@ classdef PF
             obj.rbpf = Params.rbpf;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
+            obj.do_viterbi_filtering = Params.do_viterbi_filtering;
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
@@ -307,7 +309,7 @@ classdef PF
         
         function obj = pf(obj, obs_lik, fname)
             
-            save_data = 1;
+            save_data = 0;
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -353,8 +355,34 @@ classdef PF
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'm');
                 
+                if obj.do_viterbi_filtering
+                    % compute tempo matrix: rows are particles at iFrame-1,
+                    % cols are particles at iFrame
+                    tempo_current = bsxfun(@minus, obj.particles.m(:, iFrame), obj.particles.m(:, iFrame-1)')';
+                    rhythm_constant = bsxfun(@eq, obj.particles.r(:, iFrame), obj.particles.r(:, iFrame-1)')';
+                    % add Meff to negative tempi
+                    for iR=1:obj.R
+                        rhythm_iR = bsxfun(@eq, obj.particles.r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
+                        idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
+                        tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
+                    end
+                    tempo_prev = obj.particles.n(:, iFrame-1);
+                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev); 
+                    logTransProbCont = log(zeros(size(tempoChange)));
+                    transition_ok = tempoChange < (10 * obj.sigma_N);
+                    logTransProbCont(rhythm_constant & transition_ok) = ...
+                        log(normpdf(tempoChange(rhythm_constant & transition_ok), 0, obj.sigma_N));
+                    
+                    % find best precursor particle
+                    [obj.particles.weight, i_part] = max(bsxfun(@plus, logTransProbCont, obj.particles.weight(:)));
+                    obj.particles.m(:, 1:iFrame-1) = obj.particles.m(i_part, 1:iFrame-1);
+                    obj.particles.n(:, 1:iFrame-1) = obj.particles.n(i_part, 1:iFrame-1);
+%                     obj.particles.n(:, iFrame-1) = obj.particles.n(:, iFrame-2) + tempoChange(i_part, :);
+                end
+                
                 % evaluate particle at iFrame-1
                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
+                               
                 obj.particles.weight = obj.particles.weight(:) + log(obs);
                 
                 % Normalise importance weights
@@ -364,9 +392,11 @@ classdef PF
                 Neff = 1/sum(exp(obj.particles.weight).^2);
                 % Resampling
                 % ------------------------------------------------------------
+                
+%                 fprintf('frame %i, Neff=%.2f\n', iFrame, Neff);
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
-                    fprintf('Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
                         obj.particles.copyParticles(newIdx);
@@ -399,6 +429,7 @@ classdef PF
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
                         obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
+                        
                     else
                         fprintf('WARNING: Unknown resampling scheme!\n');
                     end
@@ -422,6 +453,7 @@ classdef PF
                 end
                 
             end
+%             profile viewer
             fprintf('      Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if save_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
@@ -581,7 +613,7 @@ classdef PF
             lambda2 = 14;
             states(:, 2) = states(:, 2) * lambda2;
 %             lambda3 = state_dims(1);
-            lambda3 = 1440;
+            lambda3 = 100;
             states(:, 3) = (states(:, 3)-1) * lambda3 + 1;
 %             for iDim = 1:length(state_dims)
 %                 if iDim == max_ind, continue; end
@@ -630,7 +662,7 @@ classdef PF
             % check if cluster spread is too high
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-            thr_spread = 80;
+            thr_spread = 60;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
 %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
