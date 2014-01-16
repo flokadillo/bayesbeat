@@ -324,7 +324,7 @@ classdef PF
             obj.particles.weight = log(obs / sum(obs));
             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
-            if obj.resampling_scheme == 2
+            if obj.resampling_scheme > 1
                 groups = obj.divide_into_fixed_cells(states, state_dims, 16);
             else
                 groups = ones(obj.nParticles, 1);
@@ -374,7 +374,6 @@ classdef PF
                     elseif obj.resampling_scheme == 1
                         % warping:
                         w = exp(obj.particles.weight);
-%                         w_warped = w.^(1/2);
                         f = str2func(obj.warp_fun);
                         w_warped = f(w);                
                         newIdx = obj.resampleSystematic(w_warped);
@@ -383,10 +382,21 @@ classdef PF
                         obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                     
                     elseif obj.resampling_scheme == 2
+                        % k-means clustering
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
+                        obj.particles.copyParticles(newIdx);
+                        obj.particles.weight = outWeights';
+                        
+                    elseif obj.resampling_scheme == 3
+                        % apf and k-means
+                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
+                        state_dims = [obj.M; obj.N; obj.R];
+                        groups = obj.divide_into_clusters(states, state_dims, groups);
+                        f = str2func(obj.warp_fun);
+                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
                         obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                     else
@@ -556,7 +566,7 @@ classdef PF
             % groups_old: [nParticles x 1] group labels of the particles
             %               after last resampling step (used for initialisation)
             
-%             warning('off');
+            warning('off');
             group_ids = unique(groups_old);
             k = length(group_ids); % number of clusters
             
@@ -591,7 +601,7 @@ classdef PF
             % check if centroids are too close
             merging = 1;
             merged = 0;
-            thr = 40; % if distance < thr: merge 
+            thr = 50; % if distance < thr: merge 
             while merging
                 D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
                 ind = (tril(D, 0) > 0);
@@ -605,7 +615,7 @@ classdef PF
                 else
                     [c1, c2] = ind2sub([size(D)], arg_min);
                     groups(groups==c2(1)) = c1(1);
-                    fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
+%                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
                     if length(c1) == 1,  merging = 0;  end
                     merged = 1;
@@ -620,10 +630,10 @@ classdef PF
             % check if cluster spread is too high
             split = 0;
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-            thr_spread = 50;
+            thr_spread = 80;
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > thr_spread);
             for iCluster = 1:length(separate_cl_idx)
-                fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
+%                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
                     'Distance', 'cityblock');
@@ -641,15 +651,15 @@ classdef PF
             end
 %             warning('on');
             valid_groups = unique(groups);
-            fprintf('%i: ', length(valid_groups));
-            for i=1:length(valid_groups)
-                fprintf('%i.', valid_groups(i)); 
-            end
+            fprintf('    %i clusters; ', length(valid_groups));
+%             for i=1:length(valid_groups)
+%                 fprintf('%i.', valid_groups(i)); 
+%             end
             fprintf('\n');
             
         end
         
-        [outIndex, outWeights, groups] = resample_in_groups(groups, weights);
+        [outIndex, outWeights, groups] = resample_in_groups(groups, weights, warp_fun);
         
     end
     
