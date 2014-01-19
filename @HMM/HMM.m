@@ -21,6 +21,7 @@ classdef HMM
         init_n_gauss        % number of components of the GMD modelling the initial distribution for each rhythm
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
         save_inference_data % save intermediate output of particle filter for visualisation
+        inferenceMethod
     end
     
     methods
@@ -41,6 +42,7 @@ classdef HMM
             obj.meter_state2meter = Params.meters;
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
+            obj.inferenceMethod = Params.inferenceMethod;
             
         end
         
@@ -118,17 +120,17 @@ classdef HMM
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname, inferenceMethod)
+        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             
             
-            if strcmp(inferenceMethod, 'HMM_forward')
+            if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
                 [hidden_state_sequence, ~, psi, min_state] = obj.forward_path(obs_lik, fname);
                 
-            elseif strcmp(inferenceMethod, 'HMM_viterbi')
+            elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
             else

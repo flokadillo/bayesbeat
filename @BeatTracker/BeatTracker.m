@@ -106,7 +106,7 @@ classdef BeatTracker
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
-            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname, obj.inferenceMethod);
+            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname);
             
             % smoothing
             if smooth_win > 0

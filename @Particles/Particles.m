@@ -18,6 +18,7 @@ classdef Particles < handle
         old_weight
         nParticles
         nDiscreteStates
+        nFrames
     end
     
     methods
@@ -38,6 +39,7 @@ classdef Particles < handle
 %             obj.log_obs = zeros(nDiscreteStates, nParticles, nFrames, 'int8');
             obj.old_weight = zeros(nParticles, 1);
             obj.nParticles = nParticles;
+            obj.nFrames = nFrames;
         end
         
         function copyParticles(obj, newIdx)
@@ -52,6 +54,24 @@ classdef Particles < handle
                 obj.r = obj.r(newIdx, :);
             end
             obj.n = obj.n(newIdx, :);
+            obj.weight = log(ones(obj.nParticles, 1) / obj.nParticles);
+            
+%             obj.log_obs = obj.log_obs(:, newIdx, :);
+%             obj.log_trans = obj.log_trans(newIdx, :);
+        end
+        
+        function update_last_particle(obj, newIdx, iFrame)
+            if obj.nDiscreteStates > 1 % use rao blackwellized pf
+            % copy particles according to newIdx after resampling
+                obj.m = obj.m(:, newIdx, :);
+                obj.posterior_r = obj.posterior_r(newIdx, :);
+                obj.delta = obj.delta(newIdx, :);
+                obj.psi_mat = obj.psi_mat(newIdx, :, :);
+            else
+                obj.m(:, iFrame) = obj.m(newIdx, iFrame);
+                obj.r(:, iFrame) = obj.r(newIdx, iFrame);
+            end
+            obj.n(:, iFrame-1) = obj.n(newIdx, iFrame-1);
             obj.weight = log(ones(obj.nParticles, 1) / obj.nParticles);
             
 %             obj.log_obs = obj.log_obs(:, newIdx, :);

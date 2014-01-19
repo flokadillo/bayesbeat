@@ -33,9 +33,9 @@ classdef PF
         do_viterbi_filtering
         save_inference_data % save intermediate output of particle filter for visualisation
         state_distance_coefficients % distance factors for k-means clustering [1 x nDims]
-        cluster_merging_thr % if distance < thr: merge 
-        cluster_splitting_thr % if spread > thr: split 
-        
+        cluster_merging_thr % if distance < thr: merge
+        cluster_splitting_thr % if spread > thr: split
+        inferenceMethod
     end
     
     methods
@@ -61,6 +61,7 @@ classdef PF
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
             obj.do_viterbi_filtering = Params.do_viterbi_filtering;
+            obj.inferenceMethod = Params.inferenceMethod;
             obj.save_inference_data = Params.save_inference_data;
             obj.state_distance_coefficients = Params.state_distance_coefficients;
             obj.cluster_merging_thr = Params.cluster_merging_thr;
@@ -80,7 +81,7 @@ classdef PF
             n_m_cells = floor(obj.nParticles / length(n_grid));
             
             
-%             n_m_cells = floor(n_m_cells / (sum(obj.Meff)/obj.M));
+            %             n_m_cells = floor(n_m_cells / (sum(obj.Meff)/obj.M));
             m_grid_size = sum(obj.Meff) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
             r_n = rand(obj.nParticles, 1) - 0.5;
@@ -101,33 +102,33 @@ classdef PF
                 obj.initial_n(c:end) = (r_n(c:end) + 0.5) * (max_N - min_N) + min_N;
                 obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* obj.Meff(obj.rhythm2meter(obj.initial_r(c:end)))';
             end
-%             % n
-%             obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
-%             obj.initial_n = obj.initial_n * (max(obj.maxN)-min(obj.minN)) + min(obj.minN);
-%             % m
-%             if obj.rbpf
-%                 obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
-%                 for iR=1:obj.R
-%                     % check if m is outside Meff and if yes, correct
-%                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
-%                     ind = (obj.initial_m(iR, :) > M_eff_iR + 1);
-%                     temp = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
-%                     % shift by random amount of beats
-%                     obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*M_eff_iR / obj.meter_state2meter(2, iR);
-%                     obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
-%                 end
-%             else
-%                 % assume unit distribution for r-state
-%                 r_parts = floor(linspace(1, obj.nParticles, obj.R + 1));
-%                 obj.initial_m = zeros(obj.nParticles, 1);
-%                 obj.initial_r = zeros(obj.nParticles, 1);
-%                 for iR=1:obj.R
-%                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
-%                     ind = r_parts(iR):r_parts(iR+1);
-%                     obj.initial_m(ind) = rand(length(ind), 1) .* (M_eff_iR-1) + 1;
-%                     obj.initial_r(ind) = ones(length(ind), 1) * iR;
-%                 end
-%             end
+            %             % n
+            %             obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
+            %             obj.initial_n = obj.initial_n * (max(obj.maxN)-min(obj.minN)) + min(obj.minN);
+            %             % m
+            %             if obj.rbpf
+            %                 obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
+            %                 for iR=1:obj.R
+            %                     % check if m is outside Meff and if yes, correct
+            %                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
+            %                     ind = (obj.initial_m(iR, :) > M_eff_iR + 1);
+            %                     temp = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
+            %                     % shift by random amount of beats
+            %                     obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*M_eff_iR / obj.meter_state2meter(2, iR);
+            %                     obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
+            %                 end
+            %             else
+            %                 % assume unit distribution for r-state
+            %                 r_parts = floor(linspace(1, obj.nParticles, obj.R + 1));
+            %                 obj.initial_m = zeros(obj.nParticles, 1);
+            %                 obj.initial_r = zeros(obj.nParticles, 1);
+            %                 for iR=1:obj.R
+            %                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
+            %                     ind = r_parts(iR):r_parts(iR+1);
+            %                     obj.initial_m(ind) = rand(length(ind), 1) .* (M_eff_iR-1) + 1;
+            %                     obj.initial_r(ind) = ones(length(ind), 1) * iR;
+            %                 end
+            %             end
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
@@ -175,7 +176,7 @@ classdef PF
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname, inferenceMethod)
+        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
@@ -184,7 +185,13 @@ classdef PF
             else
                 obj = obj.pf(obs_lik, fname);
             end
-            [m_path, n_path, r_path] = obj.path_via_best_weight();
+            if strcmp(obj.inferenceMethod, 'PF')
+                [m_path, n_path, r_path] = obj.path_via_best_weight();
+            elseif strcmp(obj.inferenceMethod, 'PF_viterbi')
+                [m_path, n_path, r_path] = obj.path_via_viterbi(obs_lik);
+            else
+                error('PF.m: unknown inferenceMethod');
+            end
             % meter path
             t_path = obj.rhythm2meter(r_path);
             % compute beat times and bar positions of beats
@@ -266,7 +273,7 @@ classdef PF
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
             lik = obslik(ind);
         end
-                
+        
         function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
             % probability of best state sequence that ends with state x(t) = j
             %   delta(j) = max_i{ p( X(1:t)=[x(1:t-1), x(t)=j] | y(1:t) ) }
@@ -313,6 +320,62 @@ classdef PF
             
             %             [ posteriorMAP ] = comp_posterior_of_sequence( [bestpath.position, bestpath.tempo, bestpath.meter], y, o1, [], params);
             %             fprintf('log post best weight: %.2f\n', posteriorMAP.sum);
+        end
+        
+        function [m_path, n_path, r_path] = path_via_viterbi(obj, obs_lik)
+            psi = zeros(obj.particles.nParticles, obj.particles.nFrames, 'int16');
+            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
+            delta = log(eval_lik([obj.particles.m(:, 1), obj.particles.r(:, 1)], 1));
+            
+            for iFrame = 2:obj.particles.nFrames
+                % compute tempo matrix: rows are particles at iFrame-1,
+                % cols are particles at iFrame
+                tempo_current = bsxfun(@minus, obj.particles.m(:, iFrame), obj.particles.m(:, iFrame-1)')';
+                rhythm_constant = bsxfun(@eq, obj.particles.r(:, iFrame), obj.particles.r(:, iFrame-1)')';
+                % add Meff to negative tempi
+                for iR=1:obj.R
+                    rhythm_iR = bsxfun(@eq, obj.particles.r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
+                    idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
+                    tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
+                end
+                tempo_prev = obj.particles.n(:, iFrame-1);
+                tempoChange = bsxfun(@minus, tempo_current, tempo_prev);
+                logTransProbCont = log(zeros(size(tempoChange)));
+                % to save computational power set probability of all transitions beyond 10
+                % times std to zero
+                transition_ok = tempoChange < (10 * obj.sigma_N);
+                logTransProbCont(rhythm_constant & transition_ok) = ...
+                    log(normpdf(tempoChange(rhythm_constant & transition_ok), 0, obj.sigma_N));
+                
+                % find best precursor particle
+                [delta, psi(:, iFrame)] = max(bsxfun(@plus, logTransProbCont, delta(:)));
+                delta = delta' + log(eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame));
+            end
+            
+            % Termination
+            particleTraj = zeros(obj.particles.nFrames, 1);
+            [logPost, particleTraj(end)] = max(delta(:));
+            
+            fprintf('logPost(Viterbi) = %.2f\n', logPost);
+            
+            % Backtracking
+            m_path = zeros(obj.particles.nFrames, 1);
+            n_path = zeros(obj.particles.nFrames, 1);
+            r_path = zeros(obj.particles.nFrames, 1);
+            m_path(end) = obj.particles.m(particleTraj(end), obj.particles.nFrames);
+            n_path(end) = obj.particles.n(particleTraj(end), obj.particles.nFrames);
+            r_path(end) = obj.particles.r(particleTraj(end), obj.particles.nFrames);
+            
+            for iFrame = obj.particles.nFrames-1:-1:1
+                particleTraj(iFrame) = psi(particleTraj(iFrame+1), iFrame+1);
+                m_path(iFrame) = obj.particles.m(particleTraj(iFrame), iFrame);
+                n_path(iFrame) = obj.particles.n(particleTraj(iFrame), iFrame);
+                r_path(iFrame) = obj.particles.r(particleTraj(iFrame), iFrame);
+            end
+            n_path = diff(m_path);
+            n_path(n_path<0) = n_path(n_path<0) + obj.Meff(obj.rhythm2meter(r_path(n_path<0)))';
+            n_path = [n_path; n_path(end)];
+            
         end
         
         function obj = pf(obj, obs_lik, fname)
@@ -373,7 +436,7 @@ classdef PF
                         tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
                     end
                     tempo_prev = obj.particles.n(:, iFrame-1);
-                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev); 
+                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev);
                     logTransProbCont = log(zeros(size(tempoChange)));
                     transition_ok = tempoChange < (10 * obj.sigma_N);
                     logTransProbCont(rhythm_constant & transition_ok) = ...
@@ -383,12 +446,12 @@ classdef PF
                     [obj.particles.weight, i_part] = max(bsxfun(@plus, logTransProbCont, obj.particles.weight(:)));
                     obj.particles.m(:, 1:iFrame-1) = obj.particles.m(i_part, 1:iFrame-1);
                     obj.particles.n(:, 1:iFrame-1) = obj.particles.n(i_part, 1:iFrame-1);
-%                     obj.particles.n(:, iFrame-1) = obj.particles.n(:, iFrame-2) + tempoChange(i_part, :);
+                    %                     obj.particles.n(:, iFrame-1) = obj.particles.n(:, iFrame-2) + tempoChange(i_part, :);
                 end
                 
                 % evaluate particle at iFrame-1
                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
-                               
+                
                 obj.particles.weight = obj.particles.weight(:) + log(obs);
                 
                 % Normalise importance weights
@@ -398,32 +461,46 @@ classdef PF
                 Neff = 1/sum(exp(obj.particles.weight).^2);
                 % Resampling
                 % ------------------------------------------------------------
+                if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                    n_last_step = obj.particles.n(:, iFrame-1);
+                end
                 
-%                 fprintf('frame %i, Neff=%.2f\n', iFrame, Neff);
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
-                        obj.particles.copyParticles(newIdx);
-                    
+                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                            obj.particles.update_last_particle(newIdx, iFrame);
+                        else
+                            obj.particles.copyParticles(newIdx);
+                        end
+                        
                     elseif obj.resampling_scheme == 1
                         % warping:
                         w = exp(obj.particles.weight);
                         f = str2func(obj.warp_fun);
-                        w_warped = f(w);                
+                        w_warped = f(w);
                         newIdx = obj.resampleSystematic(w_warped);
-                        obj.particles.copyParticles(newIdx);
+                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                            obj.particles.update_last_particle(newIdx, iFrame);
+                        else
+                            obj.particles.copyParticles(newIdx);
+                        end
                         w_fac = w ./ w_warped;
                         obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
-                    
+                        
                     elseif obj.resampling_scheme == 2
                         % k-means clustering
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
-                        obj.particles.copyParticles(newIdx);
+                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                            obj.particles.update_last_particle(newIdx, iFrame);
+                        else
+                            obj.particles.copyParticles(newIdx);
+                        end
                         obj.particles.weight = outWeights';
                         
                     elseif obj.resampling_scheme == 3
@@ -433,7 +510,11 @@ classdef PF
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
-                        obj.particles.copyParticles(newIdx);
+                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                            obj.particles.update_last_particle(newIdx, iFrame);
+                        else
+                            obj.particles.copyParticles(newIdx);
+                        end
                         obj.particles.weight = outWeights';
                         
                     else
@@ -443,6 +524,9 @@ classdef PF
                 
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'n');
+                if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                    obj.particles.n(:, iFrame-1) = n_last_step;
+                end
                 
                 if obj.save_inference_data
                     % save particle data for visualizing
@@ -459,7 +543,7 @@ classdef PF
                 end
                 
             end
-%             profile viewer
+            %             profile viewer
             fprintf('      Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if obj.save_inference_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
@@ -579,13 +663,13 @@ classdef PF
             states(:, 1) = (states(:, 1)-1) * obj.state_distance_coefficients(1);
             states(:, 2) = states(:, 2) * obj.state_distance_coefficients(2);
             states(:, 3) = (states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
-
+            
             % compute centroid of clusters
             centroids = zeros(k, length(state_dims));
             for iCluster = 1:k
                 centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
             end
-                       
+            
             % do k-means clustering
             options = statset('MaxIter', 1);
             [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
@@ -607,7 +691,7 @@ classdef PF
                 else
                     [c1, c2] = ind2sub([size(D)], arg_min);
                     groups(groups==c2(1)) = c1(1);
-%                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
+                    %                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
                     if length(c1) == 1,  merging = 0;  end
                     merged = 1;
@@ -624,7 +708,7 @@ classdef PF
             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
             for iCluster = 1:length(separate_cl_idx)
-%                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
+                %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = (groups == separate_cl_idx(iCluster));
                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
                     'Distance', 'cityblock');
@@ -652,7 +736,7 @@ classdef PF
     methods (Static)
         %         outIndex = systematicR(inIndex,wn);
         outIndex = resampleSystematic( w, n_samples );
-                
+        
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
             % divide space into fixed cells
             % states: [nParticles x nStates]
