@@ -323,7 +323,7 @@ classdef PF
         end
         
         function [m_path, n_path, r_path] = path_via_viterbi(obj, obs_lik)
-            psi = zeros(obj.particles.nParticles, obj.particles.nFrames, 'int16');
+            psi = zeros(obj.particles.nParticles, obj.particles.nFrames, 'uint16');
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             delta = log(eval_lik([obj.particles.m(:, 1), obj.particles.r(:, 1)], 1));
             
@@ -356,7 +356,7 @@ classdef PF
             particleTraj = zeros(obj.particles.nFrames, 1);
             [logPost, particleTraj(end)] = max(delta(:));
             
-            fprintf('logPost(Viterbi) = %.2f\n', logPost);
+            fprintf('    logPost(Viterbi) = %.2f\n', logPost);
             
             % Backtracking
             m_path = zeros(obj.particles.nFrames, 1);
@@ -420,6 +420,7 @@ classdef PF
             %             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
             resampling_frames = [];
+            n_clusters = [];
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'm');
@@ -467,7 +468,7 @@ classdef PF
                 
                 if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
-                    fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+%                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
                         if strcmp(obj.inferenceMethod, 'PF_viterbi')
@@ -476,7 +477,7 @@ classdef PF
                             obj.particles.copyParticles(newIdx);
                         end
                         
-                    elseif obj.resampling_scheme == 1
+                    elseif obj.resampling_scheme == 1 % APF
                         % warping:
                         w = exp(obj.particles.weight);
                         f = str2func(obj.warp_fun);
@@ -490,12 +491,13 @@ classdef PF
                         w_fac = w ./ w_warped;
                         obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                         
-                    elseif obj.resampling_scheme == 2
+                    elseif obj.resampling_scheme == 2 % K-MEANS
                         % k-means clustering
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
+                        n_clusters = [n_clusters; length(unique(groups))];
                         if strcmp(obj.inferenceMethod, 'PF_viterbi')
                             obj.particles.update_last_particle(newIdx, iFrame);
                         else
@@ -503,13 +505,14 @@ classdef PF
                         end
                         obj.particles.weight = outWeights';
                         
-                    elseif obj.resampling_scheme == 3
+                    elseif obj.resampling_scheme == 3 % APF + K-MEANS
                         % apf and k-means
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
+                        n_clusters = [n_clusters; length(unique(groups))];
                         if strcmp(obj.inferenceMethod, 'PF_viterbi')
                             obj.particles.update_last_particle(newIdx, iFrame);
                         else
@@ -544,7 +547,10 @@ classdef PF
                 
             end
             %             profile viewer
-            fprintf('      Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
+            fprintf('    Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
+            if obj.resampling_scheme > 1
+                fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters));
+            end
             if obj.save_inference_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
                     'logP_data_pf');
@@ -725,9 +731,9 @@ classdef PF
                     'Distance', 'cityblock', 'options', options);
             end
             warning('on');
-            valid_groups = unique(groups);
-            fprintf('    %i clusters; ', length(valid_groups));
-            fprintf('\n');
+%             valid_groups = unique(groups);
+%             fprintf('    %i clusters; ', length(valid_groups));
+%             fprintf('\n');
         end
         
         

@@ -59,7 +59,7 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
-Params.ratio_Neff = 0.02;
+Params.ratio_Neff = 0.01;
 Params.resampling_scheme = 0; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
 Params.state_distance_coefficients = [1, 14, 100];
 Params.cluster_merging_thr = 50; % if distance < thr: merge 
@@ -68,7 +68,7 @@ Params.rbpf = 0;
 Params.do_viterbi_filtering = 0;
 Params.warp_fun = '@(x)x.^(1/2)';
 % Params.warp_fun = '@(x)log(10000 * x + 1)';
-if strcmp(Params.inferenceMethod, 'PF'), 
+if strfind(Params.inferenceMethod, 'PF') > 0 
     Params.pn = Params.sigmaN; 
     if Params.resampling_scheme > 1, Params.comment = sprintf('%i-%i-%i-%i-%i', Params.state_distance_coefficients(1), Params.state_distance_coefficients(2), Params.state_distance_coefficients(3), Params.cluster_merging_thr, Params.cluster_splitting_thr); end
     if ismember(Params.resampling_scheme, [0, 2]), Params.warp_fun = ''; end
