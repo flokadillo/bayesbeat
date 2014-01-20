@@ -11,10 +11,15 @@ classdef RhythmCluster
         clusters_fln        % fln where cluster ids are stored
         dataset             % training dataset on which clustering is performed
         train_lab_fln       % lab file with training data files
+        train_file_list     % list of training files
         data_save_path      % path where cluster ids per bar are stored
         ok_songs_fln        % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
+        data_per_bar        % [nBars x feat_dim*bar_grid]
+        bar2file            % [1 x nBars] vector
+        bar_2_cluster
+        cluster_transition_matrix
     end
     
     methods
@@ -31,7 +36,7 @@ classdef RhythmCluster
             end
         end
         
-        function obj = make_feats_per_song(obj, dataset, data_save_path)
+        function obj = make_feats_per_song(obj, dataset, whole_note_div, data_save_path)
             if ~exist('data_save_path', 'var')
                 obj.data_save_path = '~/diss/src/matlab/beat_tracking/bayes_beat/data/';
             else
@@ -47,7 +52,8 @@ classdef RhythmCluster
                 fprintf('Found %i files in %s\n', length(fileList), dataset);
                 dataPerBar = [];
                 for iDim =1:obj.feature.feat_dim
-                    Output = Data.extract_bars_from_feature(fileList, obj.feature.feat_type{iDim});
+                    Output = Data.extract_bars_from_feature(fileList, obj.feature.feat_type{iDim}, ...
+                        whole_note_div, obj.feature.frame_length,obj.pattern_size, 0);
                     dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
                 end
                 % compute mean per song
@@ -69,7 +75,7 @@ classdef RhythmCluster
             
         end
         
-        function obj = make_feats_per_bar(obj, dataset, data_save_path)
+        function obj = make_feats_per_bar(obj, dataset, whole_note_div, data_save_path)
             if ~exist('data_save_path', 'var')
                 obj.data_save_path = '~/diss/src/matlab/beat_tracking/bayes_beat/data/';
             else
@@ -81,13 +87,18 @@ classdef RhythmCluster
                 fid = fopen(obj.train_lab_fln, 'r');
                 fileList = textscan(fid, '%s');
                 fileList = fileList{1};
+                obj.train_file_list = fileList;
                 fclose(fid);
                 fprintf('Found %i files in %s\n', length(fileList), dataset);
                 dataPerBar = [];
                 for iDim =1:obj.feature.feat_dim
-                    Output = Data.extract_bars_from_feature(fileList, obj.feature.feat_type{iDim});
+                    Output = Data.extract_bars_from_feature(fileList, obj.feature.feat_type{iDim}, ...
+                        whole_note_div, obj.feature.frame_length,obj.pattern_size, 0);
                     dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
                 end
+                obj.bar2file = Output.bar2file;
+                obj.data_per_bar = dataPerBar;
+                
                 % save bars to file
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
                     num2str(obj.feature.feat_dim), 'd_', dataset, '.txt']);
@@ -98,12 +109,56 @@ classdef RhythmCluster
         end
         
         function obj = do_clustering(obj, n_clusters)
-            system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
-                num2str(n_clusters), ' ', obj.feat_matrix_fln]);
-            %             X = load(obj.feat_matrix_fln);
-            %             idx = kmeans(X, n_clusters);
+%             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
+%                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
+            fprintf('WARNING: so far only 2 different meters supported!\n');
+            S = obj.data_per_bar;
+            S(isnan(S)) = -999;
+            opts = statset('MaxIter', 200);
+            [cidx, ctrs] = kmeans(S, n_clusters, 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
+            ctrs(ctrs==-999) = nan;
+            obj.bar_2_cluster = cidx;
+            [~, bar_grid] = size(ctrs);
+            plot_cols = ceil(sqrt(n_clusters));
+
+            h = figure( 'Visible','off');
+            set(h, 'Position', [100 100 n_clusters*100 n_clusters*100]);
+
+            items_per_cluster = hist(cidx, n_clusters);
+            col = hsv(obj.feature.feat_dim);
+            for c = 1:n_clusters
+                subplot(ceil(n_clusters/plot_cols), plot_cols, c)
+                hold on
+                for fdim = 1:obj.feature.feat_dim
+                    data = ctrs(c, (fdim-1)*bar_grid/obj.feature.feat_dim+1:fdim*bar_grid/obj.feature.feat_dim);
+                    data = data - min(data);
+                    data = data / max(data);
+                    data = data + fdim;
+                    plot(data, 'Color', col(fdim, :));
+                end
+                title(sprintf('cluster %i (%i items)', c, items_per_cluster(c)));
+                xlim([1 length(data)])
+            end
+            outfile = '/tmp/out.png';
+            fprintf('writing patterns to %s\n', outfile);
+            % save to png
+            print(h, outfile, '-dpng');
+            
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
+            dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
             obj.n_clusters = n_clusters;
+        end
+        
+        function obj = compute_cluster_transitions(obj)
+            A = zeros(obj.n_clusters, obj.n_clusters);
+            for iFile=1:length(obj.train_file_list)
+                bars = find(obj.bar2file==iFile);
+                for iBar=bars(1:end-1)
+                    A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) = A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) + 1;
+                end
+            end
+            A = bsxfun(@rdivide, A , sum(A , 2));
+            obj.cluster_transition_matrix = A;
         end
         
         function [] = copy_song_patterns_to_bars(obj)
