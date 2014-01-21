@@ -24,6 +24,7 @@ classdef PF
         initial_r           % initial value of r for each particle
         nParticles
         particles
+        particles_grid      % particle grid for viterbi
         sigma_N
         bin2decVector       % vector to compute indices for disc_trans_mat quickly
         ratio_Neff
@@ -185,20 +186,46 @@ classdef PF
             else
                 obj = obj.pf(obs_lik, fname);
             end
-            if strcmp(obj.inferenceMethod, 'PF')
+%             if strcmp(obj.inferenceMethod, 'PF')
                 [m_path, n_path, r_path] = obj.path_via_best_weight();
-            elseif strcmp(obj.inferenceMethod, 'PF_viterbi')
+                [ joint_prob ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
+                fprintf('    Best weight log joint = %.1f\n', joint_prob.sum);
+%             elseif strcmp(obj.inferenceMethod, 'PF_viterbi')
+            if strcmp(obj.inferenceMethod, 'PF_viterbi')
                 [m_path, n_path, r_path] = obj.path_via_viterbi(obs_lik);
-            else
-                error('PF.m: unknown inferenceMethod');
+                [ joint_prob ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
+                fprintf('    Viterbi log joint = %.1f\n', joint_prob.sum);
+%             else
+%                 error('PF.m: unknown inferenceMethod');
             end
             % meter path
             t_path = obj.rhythm2meter(r_path);
+            
+            
+            
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
             beats = obj.find_beat_times(m_path, t_path);
             tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             rhythm = r_path;
+        end
+        
+        function [ joint_prob ] = compute_joint_of_sequence(obj, state_sequence, obs_lik)
+            %obs_lik [R x barPos x nFrames]
+            
+            nFrames = size(obs_lik, 3);
+            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
+            
+            joint_prob.obslik = zeros(nFrames, 1);
+
+            n_diffs = diff(double(state_sequence(:, 2))); % nDiff(1) = s_s(2) - s_s(1)
+            joint_prob.trans = log(normpdf(n_diffs/obj.M, 0, obj.sigma_N));
+
+
+            for iFrame = 1:nFrames
+                joint_prob.obslik(iFrame) = log(eval_lik([state_sequence(iFrame, 1), state_sequence(iFrame, 3)], iFrame));
+            end
+            joint_prob.sum = sum(joint_prob.trans) + sum(joint_prob.obslik);
         end
     end
     
@@ -269,7 +296,13 @@ classdef PF
             subind = floor((states_m_r(:, 1)-1) / m_per_grid) + 1;
             obslik = obslik(:, :, iFrame);
             %             r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
-            ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
+            try
+                ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
+            catch exception
+               fprintf('dimensions R=%i, barGrid=%i x %i x %i, states_m_r=%i - %i, subind = %i - %i\n', ...
+                   obj.R, size(obj.barGrid, 1), size(obj.barGrid, 2), size(obj.barGrid, 3), min(states_m_r), max(states_m_r), ...
+                   min(subind), max(subind)); 
+            end
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
             lik = obslik(ind);
         end
@@ -316,30 +349,41 @@ classdef PF
                 r_path = obj.particles.r(bestParticle, :);
             end
             n_path = obj.particles.n(bestParticle, :)';
-            
-            
-            %             [ posteriorMAP ] = comp_posterior_of_sequence( [bestpath.position, bestpath.tempo, bestpath.meter], y, o1, [], params);
-            %             fprintf('log post best weight: %.2f\n', posteriorMAP.sum);
+            m_path = m_path(:);
+            n_path = n_path(:);
+            r_path = r_path(:);
         end
         
         function [m_path, n_path, r_path] = path_via_viterbi(obj, obs_lik)
-            psi = zeros(obj.particles.nParticles, obj.particles.nFrames, 'uint16');
+            psi = zeros(obj.particles_grid.nParticles, obj.particles_grid.nFrames, 'uint16');
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
-            delta = log(eval_lik([obj.particles.m(:, 1), obj.particles.r(:, 1)], 1));
+            delta = log(eval_lik([obj.particles_grid.m(:, 1), obj.particles_grid.r(:, 1)], 1));
             
-            for iFrame = 2:obj.particles.nFrames
+            for iFrame = 2:obj.particles_grid.nFrames
                 % compute tempo matrix: rows are particles at iFrame-1,
                 % cols are particles at iFrame
-                tempo_current = bsxfun(@minus, obj.particles.m(:, iFrame), obj.particles.m(:, iFrame-1)')';
-                rhythm_constant = bsxfun(@eq, obj.particles.r(:, iFrame), obj.particles.r(:, iFrame-1)')';
+                tempo_current = bsxfun(@minus, obj.particles_grid.m(:, iFrame), obj.particles_grid.m(:, iFrame-1)')';
+                rhythm_constant = bsxfun(@eq, obj.particles_grid.r(:, iFrame), obj.particles_grid.r(:, iFrame-1)')';
+                % estimate for n_iFrame-1
+                
+                if iFrame == 2
+                    tempo_prev = obj.particles_grid.n(:, 1);
+                else
+%                     m_1 = obj.particles_grid.m(:, iFrame-1);
+%                     m_2 = obj.particles_grid.m(:, iFrame-2);
+                    tempo_prev = obj.particles_grid.m(:, iFrame-1) - obj.particles_grid.m(psi(:, iFrame - 1 ), iFrame-2);
+                end
                 % add Meff to negative tempi
                 for iR=1:obj.R
-                    rhythm_iR = bsxfun(@eq, obj.particles.r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
+                    rhythm_iR = bsxfun(@eq, obj.particles_grid.r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
                     idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
                     tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
+                    idx = (obj.particles_grid.r(:, iFrame-1) == iR) & (tempo_prev < 0);
+                    tempo_prev(idx) = tempo_prev(idx) + obj.Meff(obj.rhythm2meter(iR));
                 end
-                tempo_prev = obj.particles.n(:, iFrame-1);
-                tempoChange = bsxfun(@minus, tempo_current, tempo_prev);
+                
+%                 tempo_prev = obj.particles_grid.n(:, iFrame-1);
+                tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
                 logTransProbCont = log(zeros(size(tempoChange)));
                 % to save computational power set probability of all transitions beyond 10
                 % times std to zero
@@ -349,33 +393,36 @@ classdef PF
                 
                 % find best precursor particle
                 [delta, psi(:, iFrame)] = max(bsxfun(@plus, logTransProbCont, delta(:)));
-                delta = delta' + log(eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame));
+                delta = delta' + log(eval_lik([obj.particles_grid.m(:, iFrame), obj.particles_grid.r(:, iFrame)], iFrame));
             end
             
             % Termination
-            particleTraj = zeros(obj.particles.nFrames, 1);
+            particleTraj = zeros(obj.particles_grid.nFrames, 1);
             [logPost, particleTraj(end)] = max(delta(:));
             
-            fprintf('    logPost(Viterbi) = %.2f\n', logPost);
+%             fprintf('    logPost(Viterbi) = %.2f\n', logPost);
             
             % Backtracking
-            m_path = zeros(obj.particles.nFrames, 1);
-            n_path = zeros(obj.particles.nFrames, 1);
-            r_path = zeros(obj.particles.nFrames, 1);
-            m_path(end) = obj.particles.m(particleTraj(end), obj.particles.nFrames);
-            n_path(end) = obj.particles.n(particleTraj(end), obj.particles.nFrames);
-            r_path(end) = obj.particles.r(particleTraj(end), obj.particles.nFrames);
+            m_path = zeros(obj.particles_grid.nFrames, 1);
+            n_path = zeros(obj.particles_grid.nFrames, 1);
+            r_path = zeros(obj.particles_grid.nFrames, 1);
+            m_path(end) = obj.particles_grid.m(particleTraj(end), obj.particles_grid.nFrames);
+            n_path(end) = obj.particles_grid.n(particleTraj(end), obj.particles_grid.nFrames);
+            r_path(end) = obj.particles_grid.r(particleTraj(end), obj.particles_grid.nFrames);
             
-            for iFrame = obj.particles.nFrames-1:-1:1
+            for iFrame = obj.particles_grid.nFrames-1:-1:1
                 particleTraj(iFrame) = psi(particleTraj(iFrame+1), iFrame+1);
-                m_path(iFrame) = obj.particles.m(particleTraj(iFrame), iFrame);
-                n_path(iFrame) = obj.particles.n(particleTraj(iFrame), iFrame);
-                r_path(iFrame) = obj.particles.r(particleTraj(iFrame), iFrame);
+                m_path(iFrame) = obj.particles_grid.m(particleTraj(iFrame), iFrame);
+                n_path(iFrame) = obj.particles_grid.n(particleTraj(iFrame), iFrame);
+                r_path(iFrame) = obj.particles_grid.r(particleTraj(iFrame), iFrame);
             end
             n_path = diff(m_path);
             n_path(n_path<0) = n_path(n_path<0) + obj.Meff(obj.rhythm2meter(r_path(n_path<0)))';
             n_path = [n_path; n_path(end)];
             
+            m_path = m_path(:);
+            n_path = n_path(:);
+            r_path = r_path(:);
         end
         
         function obj = pf(obj, obs_lik, fname)
@@ -386,10 +433,17 @@ classdef PF
                 logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
             end
             obj.particles = Particles(obj.nParticles, nFrames);
+            
             iFrame = 1;
             obj.particles.m(:, iFrame) = obj.initial_m;
             obj.particles.n(:, iFrame) = obj.initial_n;
             obj.particles.r(:, iFrame) = obj.initial_r;
+            if strcmp(obj.inferenceMethod, 'PF_viterbi')
+                obj.particles_grid = Particles(obj.nParticles, nFrames);
+                obj.particles_grid.m(:, iFrame) = obj.initial_m;
+                obj.particles_grid.n(:, iFrame) = obj.initial_n;
+                obj.particles_grid.r(:, iFrame) = obj.initial_r;
+            end
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
             obj.particles.weight = log(obs / sum(obs));
@@ -437,11 +491,11 @@ classdef PF
                         tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
                     end
                     tempo_prev = obj.particles.n(:, iFrame-1);
-                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev);
+                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
                     logTransProbCont = log(zeros(size(tempoChange)));
                     transition_ok = tempoChange < (10 * obj.sigma_N);
                     logTransProbCont(rhythm_constant & transition_ok) = ...
-                        log(normpdf(tempoChange(rhythm_constant & transition_ok), 0, obj.sigma_N));
+                        log(normpdf(tempoChange(rhythm_constant & transition_ok) , 0, obj.sigma_N));
                     
                     % find best precursor particle
                     [obj.particles.weight, i_part] = max(bsxfun(@plus, logTransProbCont, obj.particles.weight(:)));
@@ -471,11 +525,7 @@ classdef PF
 %                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
                         newIdx = obj.resampleSystematic(exp(obj.particles.weight));
-                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                            obj.particles.update_last_particle(newIdx, iFrame);
-                        else
-                            obj.particles.copyParticles(newIdx);
-                        end
+                        obj.particles.copyParticles(newIdx);
                         
                     elseif obj.resampling_scheme == 1 % APF
                         % warping:
@@ -483,11 +533,7 @@ classdef PF
                         f = str2func(obj.warp_fun);
                         w_warped = f(w);
                         newIdx = obj.resampleSystematic(w_warped);
-                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                            obj.particles.update_last_particle(newIdx, iFrame);
-                        else
-                            obj.particles.copyParticles(newIdx);
-                        end
+                        obj.particles.copyParticles(newIdx);
                         w_fac = w ./ w_warped;
                         obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                         
@@ -498,11 +544,7 @@ classdef PF
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
                         n_clusters = [n_clusters; length(unique(groups))];
-                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                            obj.particles.update_last_particle(newIdx, iFrame);
-                        else
-                            obj.particles.copyParticles(newIdx);
-                        end
+                        obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                         
                     elseif obj.resampling_scheme == 3 % APF + K-MEANS
@@ -513,11 +555,7 @@ classdef PF
                         f = str2func(obj.warp_fun);
                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
                         n_clusters = [n_clusters; length(unique(groups))];
-                        if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                            obj.particles.update_last_particle(newIdx, iFrame);
-                        else
-                            obj.particles.copyParticles(newIdx);
-                        end
+                        obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                         
                     else
@@ -527,8 +565,11 @@ classdef PF
                 
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'n');
+                
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                    obj.particles.n(:, iFrame-1) = n_last_step;
+                    obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
+                    obj.particles_grid.n(:, iFrame) =  obj.particles.n(:, iFrame);
+                    obj.particles_grid.r(:, iFrame) =  obj.particles.r(:, iFrame);
                 end
                 
                 if obj.save_inference_data
