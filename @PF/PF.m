@@ -188,13 +188,19 @@ classdef PF
             end
 %             if strcmp(obj.inferenceMethod, 'PF')
                 [m_path, n_path, r_path] = obj.path_via_best_weight();
-                [ joint_prob ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
-                fprintf('    Best weight log joint = %.1f\n', joint_prob.sum);
+                [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
+                fprintf('    Best weight log joint = %.1f\n', joint_prob_best.sum);
 %             elseif strcmp(obj.inferenceMethod, 'PF_viterbi')
             if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                [m_path, n_path, r_path] = obj.path_via_viterbi(obs_lik);
-                [ joint_prob ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
-                fprintf('    Viterbi log joint = %.1f\n', joint_prob.sum);
+                [m_path_v, n_path_v, r_path_v] = obj.path_via_viterbi(obs_lik);
+                [ joint_prob_vit ] = obj.compute_joint_of_sequence([m_path_v, n_path_v, r_path_v], obs_lik);
+                fprintf('    Viterbi log joint = %.1f\n', joint_prob_vit.sum);
+                if joint_prob_vit.sum > joint_prob_best.sum
+                    % use viterbi results
+                    m_path = m_path_v;
+                    n_path = n_path_v;
+                    r_path = r_path_v;
+                end
 %             else
 %                 error('PF.m: unknown inferenceMethod');
             end
@@ -355,11 +361,20 @@ classdef PF
         end
         
         function [m_path, n_path, r_path] = path_via_viterbi(obj, obs_lik)
+            % Find viterbi path through the particle grid. One problem is
+            % that because of the deterministic transition between two
+            % neighboring m-states, each particle has only one possible
+            % successor. What we can do instead is only to use the m-states
+            % of the grid and find the most probable path between those.
+            % The n states are then computed after the m states have been
+            % determined
+
             psi = zeros(obj.particles_grid.nParticles, obj.particles_grid.nFrames, 'uint16');
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             delta = log(eval_lik([obj.particles_grid.m(:, 1), obj.particles_grid.r(:, 1)], 1));
             
             for iFrame = 2:obj.particles_grid.nFrames
+                
                 % compute tempo matrix: rows are particles at iFrame-1,
                 % cols are particles at iFrame
                 tempo_current = bsxfun(@minus, obj.particles_grid.m(:, iFrame), obj.particles_grid.m(:, iFrame-1)')';
@@ -369,9 +384,8 @@ classdef PF
                 if iFrame == 2
                     tempo_prev = obj.particles_grid.n(:, 1);
                 else
-%                     m_1 = obj.particles_grid.m(:, iFrame-1);
-%                     m_2 = obj.particles_grid.m(:, iFrame-2);
                     tempo_prev = obj.particles_grid.m(:, iFrame-1) - obj.particles_grid.m(psi(:, iFrame - 1 ), iFrame-2);
+                    
                 end
                 % add Meff to negative tempi
                 for iR=1:obj.R
@@ -382,12 +396,11 @@ classdef PF
                     tempo_prev(idx) = tempo_prev(idx) + obj.Meff(obj.rhythm2meter(iR));
                 end
                 
-%                 tempo_prev = obj.particles_grid.n(:, iFrame-1);
                 tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
                 logTransProbCont = log(zeros(size(tempoChange)));
                 % to save computational power set probability of all transitions beyond 10
                 % times std to zero
-                transition_ok = tempoChange < (10 * obj.sigma_N);
+                transition_ok = abs(tempoChange) < (10 * obj.sigma_N);
                 logTransProbCont(rhythm_constant & transition_ok) = ...
                     log(normpdf(tempoChange(rhythm_constant & transition_ok), 0, obj.sigma_N));
                 
@@ -466,12 +479,6 @@ classdef PF
                 logP_data_pf(:, 4, iFrame) = obj.particles.weight;
                 logP_data_pf(:, 5, iFrame) = repmat(groups(:), 1, iFrame);
             end
-            %             iFrame = 2;
-            %             obj = obj.propagate_particles_pf(iFrame);
-            %             [obj.particles.m(:, :, iFrame), obj.particles.n(:, iFrame)] = obj.sample_trans_fun(obj.particles.m(:, :, iFrame - 1), ...
-            %                 obj.particles.n(:, iFrame - 1));
-            %             obj = obj.propagate_particles(iFrame);
-            %             obj.particles.psi_mat(:, :, iFrame) = repmat(1:obj.R, obj.nParticles, 1);
             
             resampling_frames = [];
             n_clusters = [];

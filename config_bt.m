@@ -57,13 +57,13 @@ Params.frame_length = 0.02;
 Params.whole_note_div = 64; % number of grid points per whole note
 Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
 Params.init_n_gauss = 2;
-Params.nParticles = 1000;
+Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
-Params.ratio_Neff = 0.01;
-Params.resampling_scheme = 0; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
+Params.ratio_Neff = 0.02;
+Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
 Params.state_distance_coefficients = [1, 14, 100];
 Params.cluster_merging_thr = 50; % if distance < thr: merge 
-Params.cluster_splitting_thr = 60; % if spread > thr: split 
+Params.cluster_splitting_thr = 70; % if spread > thr: split 
 Params.rbpf = 0;
 Params.do_viterbi_filtering = 0;
 Params.warp_fun = '@(x)x.^(1/4)';
