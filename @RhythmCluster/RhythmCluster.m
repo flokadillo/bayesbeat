@@ -20,6 +20,7 @@ classdef RhythmCluster
         bar2file            % [1 x nBars] vector
         bar_2_cluster
         cluster_transition_matrix
+        cluster_transitions_fln
     end
     
     methods
@@ -103,6 +104,7 @@ classdef RhythmCluster
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
                     num2str(obj.feature.feat_dim), 'd_', dataset, '.txt']);
                 dlmwrite(obj.feat_matrix_fln, dataPerBar, 'delimiter', '\t', 'precision', 4);
+                fprintf('Saved data per bar to %s\n', obj.feat_matrix_fln);
             else
                 error('%s not found', obj.train_lab_fln)
             end
@@ -144,8 +146,11 @@ classdef RhythmCluster
             % save to png
             print(h, outfile, '-dpng');
             
-            obj.clusters_fln = '/tmp/cluster_assignments.txt';
+            obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+                num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'.txt']);
             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
+            fprintf('writing bar-cluster assignments to %s\n', obj.clusters_fln);
+            
             obj.n_clusters = n_clusters;
         end
         
@@ -159,6 +164,10 @@ classdef RhythmCluster
             end
             A = bsxfun(@rdivide, A , sum(A , 2));
             obj.cluster_transition_matrix = A;
+            obj.cluster_transitions_fln = fullfile(obj.data_save_path, ['cluster_transitions-', obj.dataset, '-', ...
+                    num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), '.txt']);
+                dlmwrite(obj.feat_matrix_fln, dataPerBar, 'delimiter', '\t', 'precision', 4);
+                fprintf('Saved data per bar to %s\n', obj.feat_matrix_fln);
         end
         
         function [] = copy_song_patterns_to_bars(obj)

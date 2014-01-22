@@ -27,7 +27,7 @@ Params.doTraining = 1;
 Params.smoothingWin = 0;
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
-Params.doLeaveOneOut = 0;
+Params.doLeaveOneOut = 1;
 Params.save_inference_data = 0;
 Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 % Params.trainObservationModel = 1;
@@ -38,7 +38,7 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'P
 
 % Params.M = 2560/1440; % number of discrete position states
 % Params.N = 47/26;
-Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
+Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 26;
 Params.R = 8;
 Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
@@ -97,12 +97,14 @@ end
 
 
 % train data
-Params.train_set = 'boeck';
+Params.train_set = 'ballroom';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), '.txt']);
+Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+    Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 if ~Params.doTraining
     if strfind(Params.inferenceMethod, 'HMM')
         Params.model_fln = fullfile(Params.data_path, ['hmm_', Params.train_set, '.mat']);
@@ -112,7 +114,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'ballroom';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_set = ' ';
 % Params.testLab = '~/diss/data/beats/boeck/train13.wav';

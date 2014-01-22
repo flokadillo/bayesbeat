@@ -197,7 +197,7 @@ classdef Data
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
                     TrainData = Data.extract_bars_from_feature(obj.file_list, ...
-                        featureType{iDim}, whole_note_div, barGrid_eff, frame_length, obj.pattern_size, 1);
+                        featureType{iDim}, whole_note_div, frame_length, obj.pattern_size, 1);
                     temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
                         obj.bar2cluster, obj.bar2file);
                 end

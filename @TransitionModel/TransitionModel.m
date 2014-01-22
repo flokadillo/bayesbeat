@@ -82,19 +82,23 @@ classdef TransitionModel
                         end
                         
                         for rhj = 1:R
-                            tj = rhythm2meter(rhj);
-                            if tj == ti
-                                if rhj == rhi % meter and rhythm constant
-                                    prob2(rhj) = (1-pt) * (1-pr);
-                                else % meter constant, rhythm change
-                                    prob2(rhj) = (1-pt) * (pr/(R-1));
+                            if length(pr) == 1
+                                tj = rhythm2meter(rhj);
+                                if tj == ti
+                                    if rhj == rhi % meter and rhythm constant
+                                        prob2(rhj) = (1-pt) * (1-pr);
+                                    else % meter constant, rhythm change
+                                        prob2(rhj) = (1-pt) * (pr/(R-1));
+                                    end
+                                else
+                                    if rhj == rhi % meter change, rhythm constant
+                                        prob2(rhj) = 0;
+                                    else % meter change, rhythm change
+                                        prob2(rhj) = pt * (pr/(R-1));
+                                    end
                                 end
                             else
-                                if rhj == rhi % meter change, rhythm constant
-                                    prob2(rhj) = 0;
-                                else % meter change, rhythm change
-                                    prob2(rhj) = pt * (pr/(R-1));
-                                end
+                                prob2(rhj) = pr(rhi, rhj);
                             end
                             j = sub2ind([M, N, R], mj, nj, rhj); % get new state index
                             ri(p) = i;  cj(p) = j;

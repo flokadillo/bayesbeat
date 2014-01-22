@@ -5,6 +5,7 @@ classdef HMM
         Meff                % number of positions per meter
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
+        T                   % number of different meter
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
         pt                  % probability of a switch in meter
@@ -31,9 +32,14 @@ classdef HMM
             obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
+            obj.T = Params.T;
             obj.pn = Params.pn;
-            obj.pr = Params.pr;
-            obj.pt = Params.pt;
+            if isfield(Params, 'cluster_transitions_fln') && exist(Params.cluster_transitions_fln, 'file')
+                obj.pr = dlmread(Params.cluster_transitions_fln);
+            else
+                obj.pr = Params.pr;
+                obj.pt = Params.pt;
+            end           
             obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -555,9 +561,9 @@ classdef HMM
             % TODO: implement for changes in meter
             
             %             [meter_states, idx, ~] = unique(meterPath);
-            for iR=1:obj.R
-                beatpositions{iR} = round(linspace(1, obj.Meff(iR), obj.meter_state2meter(1, iR) + 1));
-                beatpositions{iR} = beatpositions{iR}(1:end-1);
+            for iT=1:obj.T
+                beatpositions{iT} = round(linspace(1, obj.Meff(iT), obj.meter_state2meter(1, iT) + 1));
+                beatpositions{iT} = beatpositions{iT}(1:end-1);
             end
             
             %             if round(median(meter(1, :))) == 3 % 3/4
