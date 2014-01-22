@@ -41,13 +41,21 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'P
 Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 26;
 Params.R = 8;
-Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
+%robot
+%Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
+%Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
+%Params.N = 35;
+%Params.R = 1;
+%Params.meters = [1; 4]; % e.g., [9, 3; 8 4]
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 Params.pn = 0.02;  % 7 for n dependent p_n
+%robot
+%Params.pattern_size = 'beat'; % 'beat' or 'bar'
+%Params.pn = 0.001;  % 7 for n dependent p_n
 Params.pr = 0;
 % Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
@@ -78,13 +86,13 @@ end
 % Observation feature
 Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, ... mixOfGauss, MOG, MOG3}
-Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
-Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
+% Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
+% Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'superflux.mvavg.normZ';
-% Params.feat_type{1} = 'sprflx-online';
+Params.feat_type{1} = 'sprflx-online';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored
@@ -115,6 +123,8 @@ end
 
 % % test data
 Params.test_set = 'ballroom';
+%robot=======
+%Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_set = ' ';
 % Params.testLab = '~/diss/data/beats/boeck/train13.wav';

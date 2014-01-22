@@ -481,7 +481,7 @@ classdef HMM
             par.A = [1, 1; 0, 1];
             par.Q = [0.1, 0; 0, 0.001];
             par.C = [1, 0];
-            par.R = 100;
+            par.R = 300;
             P = ones(2, 2);
             x = [m_path_new(150-1); n_path_new(150-1)];
             for iFrame = 150:length(m_path)
