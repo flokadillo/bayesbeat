@@ -1,20 +1,20 @@
-function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, frame_length, pattern_size, dooutput)
-% [out3, out4] = Analyze_Onset_Strength_Inside_A_Bar(source, featExt, mode2 [,
+function [Output] = extract_bars_from_feature(source, feature_type, whole_note_div, frame_length, pattern_size, dooutput)
+% [out3, out4] = Analyze_Onset_Strength_Inside_A_Bar(source, feature_type, mode2 [,
 % numbins, saveflag, bin_thresh] )
 %   Maps the time t to a bar position
 % ----------------------------------------------------------------------
 %INPUT parameter:
 % source            : folder, filename or filelist
-% featExt           : extension of feature file (e.g., BoeckNN,
+% feature_type         : extension of feature file (e.g., BoeckNN,
 %                       bt.SF.filtered82.log). It is assumed that the
 %                       feature file is located in a subfolder
 %                       "beat_activations" within the input source
 %                       folder
-% barGrid           : number of gridpoints of one bar (4/4 meter) [64]
+% whole_note_div     : number of gridpoints of one whole note [64]
 % frame_length       : feature frame_length [0.02]
 %
 %OUTPUT parameter:
-% Output.dataPerBar : [nBars x barGrid] matrix of double 
+% Output.dataPerBar : [nBars x whole_note_div] matrix of double 
 %                       from this, cellfun(@mean, Output.dataPerBar)
 %                       computes the mean of each bar and position and can
 %                       be plotted by plot(mean(cellfun(@mean, Output.dataPerBar)))
@@ -28,7 +28,7 @@ function [Output] = extract_bars_from_feature(source, featExt, barGrid, barGrid_
 % set parameters
 addpath('~/diss/src/matlab/libs/matlab_utils');
 if nargin == 2, 
-    barGrid = 64;
+    whole_note_div = 64;
     frame_length = 0.02;
     dooutput = 0; 
 end
@@ -36,12 +36,28 @@ if ~exist('pattern_size', 'var')
     pattern_size = 'bar';
 end
 
-[listing, nFiles] = parseSource(source, featExt);
+[listing, nFiles] = parseSource(source, feature_type);
 % bar grid for triple and duple meter
 Output.dataPerBar = []; idLastBar = 0;
 Output.fileNames = cell(nFiles, 1);
-barGrid_max = max(barGrid_eff);
-fprintf('    Organize feature values (%s) into bars ...\n', featExt);
+fprintf('    Organize feature values (%s) into bars ...\n', feature_type);
+
+% whole_note_div is loop over all files to find maximum bargrid
+if strcmp(pattern_size, 'bar')
+    bar_grid_max = 0;
+    for iFile=1:nFiles
+        [dataPath, fname, ~] = fileparts(listing(iFile).name);
+        [ annots, error ] = loadAnnotations( dataPath, fname, 'm', dooutput );
+        if length(annots.meter) == 1
+           bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
+        else
+           bar_grid_max = max([bar_grid_max; ceil(whole_note_div * annots.meter(1) / annots.meter(2))]);
+        end
+    end
+else
+    bar_grid_max = round(whole_note_div / 4);
+end
+
 %main loop over all files
 for iFile=1:nFiles
     [dataPath, fname, ~] = fileparts(listing(iFile).name);
@@ -55,7 +71,7 @@ for iFile=1:nFiles
 %         continue;
     end
     Output.fileNames{iFile} = listing(iFile).name;
-    featureFln = fullfile(dataPath, 'beat_activations', [fname, '.', featExt]);
+    featureFln = fullfile(dataPath, 'beat_activations', [fname, '.', feature_type]);
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
@@ -67,25 +83,25 @@ for iFile=1:nFiles
         % effective number of bar positions (depending on meter)
         if strcmp(pattern_size, 'bar')
             if length(annots.meter) == 1
-                barGridEff = barGrid*annots.meter/4;
+                bar_grid_eff = whole_note_div * annots.meter / 4;
             else
-                barGridEff = ceil(barGrid*annots.meter(1)/annots.meter(2));
+                bar_grid_eff = ceil(whole_note_div * annots.meter(1) / annots.meter(2));
             end
         else
             % beat-length patterns: suppose quarter beats 
-            barGridEff = barGrid / 4;
+            bar_grid_eff = whole_note_div / 4;
         end
         
         % collect feature values and determine the corresponding position
         % in a bar
-        barData = get_feature_at_bar_grid(featureFln, annots.beats, barGrid, barGridEff, frame_length, pattern_size);
+        barData = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
-            if currBarGrid < barGrid_max,
-                barData = [barData, cell(size(barData, 1), barGrid_max-size(barData, 2))];
-            elseif currBarGrid > barGrid,
-                barGrid_max = currBarGrid;
+            if currBarGrid < bar_grid_max,
+                barData = [barData, cell(size(barData, 1), bar_grid_max-size(barData, 2))];
+            elseif currBarGrid > whole_note_div,
+                bar_grid_max = currBarGrid;
             end
             Output.dataPerBar = [Output.dataPerBar; barData];          
             Output.bar2file((idLastBar + 1):(idLastBar + nNewBars)) = iFile;
@@ -120,8 +136,8 @@ end
 end
 
 
-function [barData] = get_feature_at_bar_grid(featureFln, beats, barGrid, barGridEff, frame_length, pattern_size)
-% barData   [nBars x barGrid] cell array features values per bar and bargrid
+function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size)
+% barData   [nBars x whole_note_div] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
 [E, fr] = load_features(featureFln, frame_length);
@@ -146,14 +162,14 @@ else
 end
 
 if ismember(meter, [1, 2, 3, 4])
-    beatsBarPos = ((0:meter) * barGrid / 4) + 1;
+    beatsBarPos = ((0:meter) * whole_note_div / 4) + 1;
 elseif ismember(meter, [8, 9])
-    beatsBarPos = ((0:meter) * barGrid / 8) + 1;
+    beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
 else 
     error('meter %i unknown\n', meter);
 end
 
-barData = cell(nBars, barGridEff);
+barData = cell(nBars, bar_grid_eff);
 
 
 
@@ -176,7 +192,7 @@ for iBar=1:nBars
 	currBarData = accumarray(barPosLin', featBar(:), [], @(x) {x});
     
 	% add to bar cell array	
-	barData(iBar, :) = currBarData(1:barGridEff); % last element belongs to next bar -> remove it
+	barData(iBar, :) = currBarData(1:bar_grid_eff); % last element belongs to next bar -> remove it
 end
 
 % interpolate missing values
@@ -191,6 +207,10 @@ if sum(sum(cellfun(@isempty, barData))) > 0
                 data_means(i, ~missing_data), times(missing_data), 'linear', 'extrap'));
         end
     end
+end
+
+if sum(sum(cellfun(@isempty, barData))) > 0
+    lkj=987;
 end
 
 end
@@ -260,7 +280,7 @@ end
 barData = barData(1:num_complete_bars, :);
 end
 
-function [listing, nFiles] = parseSource(source, featExt)
+function [listing, nFiles] = parseSource(source, feature_type)
 
 % parse source
 if iscell(source)  % cell array with path and filenames
@@ -269,7 +289,7 @@ if iscell(source)  % cell array with path and filenames
 else % name of file or folder
     listing = dir(source);
     if length(listing) > 1 % folder
-        fileList = dir(fullfile(source, 'beat_activations', ['*.', featExt]));
+        fileList = dir(fullfile(source, 'beat_activations', ['*.', feature_type]));
         if isempty(fileList)
             fprintf('ERROR extract_bars_from_feature: No feature files in %s found \n', source);
             return;
@@ -277,7 +297,7 @@ else % name of file or folder
         nFiles = length(fileList);
         clear listing;
         for iFile=1:nFiles
-            fname = strrep(fileList(iFile).name, featExt, 'wav');
+            fname = strrep(fileList(iFile).name, feature_type, 'wav');
             listing(iFile).name = fullfile(source, fname);
         end
         
