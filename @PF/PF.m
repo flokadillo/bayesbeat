@@ -743,19 +743,24 @@ classdef PF
                 if min_D > obj.cluster_merging_thr,
                     merging = 0;
                 else
-                    [c1, c2] = ind2sub([size(D)], arg_min);
+                    [c1, c2] = ind2sub(size(D), arg_min);
                     groups(groups==c2(1)) = c1(1);
                     %                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
-                    centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
+                    
+                    % new centroid
+                    centroids(c1(1)) = mean(states(groups==c1(1), :));
+                    total_dist_per_cluster(c1(1)) = abs(bsxfun(@minus, states(groups==c1(1), :), centroids(c1(1))));
                     if length(c1) == 1,  merging = 0;  end
+                    % remove old centroid
+                    centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
                     merged = 1;
                 end
             end
             
-            if merged
-                [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
-                    'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
-            end
+%             if merged
+%                 [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
+%                     'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
+%             end
             
             % check if cluster spread is too high
             split = 0;
@@ -774,7 +779,7 @@ classdef PF
                 split = 1;
             end
             
-            if split
+            if split || merged
                 [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
                     'Distance', 'cityblock', 'options', options);
             end

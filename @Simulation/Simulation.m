@@ -76,12 +76,13 @@ classdef Simulation
                
         function do_sim(obj)
             fileCount = 1;
+%             profile on
             for k=1:obj.nFolds
                 % train on all except k-th fold
                 test_file_ids = obj.retrain(k);
                 % do testing
                 for iFile=test_file_ids
-%                 for iFile=12
+%                 for iFile=1:10
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
                     fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);
@@ -92,6 +93,7 @@ classdef Simulation
                     fileCount = fileCount + 1;
                 end
             end
+%             profile viewer
         end
         
         function test_file_ids = retrain(obj, k)

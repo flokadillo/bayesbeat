@@ -13,7 +13,7 @@ classdef RhythmCluster < handle
         train_lab_fln       % lab file with training data files
         train_file_list     % list of training files
         data_save_path      % path where cluster ids per bar are stored
-        ok_songs_fln        % vector of file ids that contain more than one bar and have supported meter
+        exclude_songs_fln   % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
         data_per_bar        % [nBars x feat_dim*bar_grid]
@@ -49,16 +49,27 @@ classdef RhythmCluster < handle
             end
             % find songs that contain more than one bar and have
             % allowed meter
-            ok_songs = ismember(1:length(obj.train_file_list), unique(obj.bar2file));
+            exclude_song_ids = ~ismember(1:length(obj.train_file_list), unique(obj.bar2file));
+            %             ok_songs = ismember(1:length(obj.train_file_list), unique(obj.bar2file));
             
             % save features (mean of all bars of one song)
             obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat-', ...
                 num2str(obj.feature.feat_dim), 'd-', obj.dataset, '-songs.txt']);
-            dlmwrite(obj.feat_matrix_fln, obj.data_per_song(ok_songs, :), 'delimiter', '\t', 'precision', 4);
+            dlmwrite(obj.feat_matrix_fln, obj.data_per_song(~exclude_song_ids, :), 'delimiter', '\t', 'precision', 4);
             fprintf('Saved data per song to %s\n', obj.feat_matrix_fln);
             
-            obj.ok_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-train_ids.txt']);
-            dlmwrite(obj.ok_songs_fln, unique(obj.bar2file)');
+            obj.exclude_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-exclude.txt']);
+            exclude_song_ids = find(exclude_song_ids);
+            fid = fopen(obj.exclude_songs_fln, 'w');
+            for i=1:length(exclude_song_ids)
+                fprintf(fid, '%s\n', obj.train_file_list{exclude_song_ids(i)});
+            end
+            fclose(fid);
+            
+            fprintf('Saved files to be excluded (%i) to %s\n', length(exclude_song_ids), obj.exclude_songs_fln);
+            %             dlmwrite(obj.exclude_songs_fln, find(exclude_song_ids));
+            %             obj.ok_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-train_ids.txt']);
+            %             dlmwrite(obj.ok_songs_fln, unique(obj.bar2file)');
             
         end
         
@@ -175,7 +186,7 @@ classdef RhythmCluster < handle
                     num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-songs.txt']);
             end
             obj.bar_2_cluster = cidx;
-            dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');           
+            dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
             fprintf('writing bar-cluster assignments to %s\n', obj.clusters_fln);
             obj.n_clusters = n_clusters;
         end
@@ -274,10 +285,14 @@ classdef RhythmCluster < handle
             temp = textscan(fid, '%s', 'delimiter', '\n');
             fileNames = temp{1};
             fclose(fid);
-            if ~isempty(obj.ok_songs_fln)
-                ok_songs = load(obj.ok_songs_fln, '-ascii');
-            else
+            if isempty(obj.exclude_songs_fln)
                 ok_songs = 1:length(fileNames);
+            else
+                fid = fopen(obj.exclude_songs_fln, 'r');
+                exclude_songs = textscan(fid, '%s');
+                fclose(fid);
+                exclude_songs = exclude_songs{1};
+                ok_songs = find(~ismember(obj.train_file_list, exclude_songs));
             end
             meter = zeros(length(ok_songs), 1);
             fileCounter = 0;
@@ -323,12 +338,12 @@ classdef RhythmCluster < handle
                 meters = unique(bar2pattern);
                 temp = 1:length(meters);
                 temp2(meters) = temp;
-                bar2pattern = temp2(bar2pattern);
+                bar2pattern = temp2(bar2pattern)';
             end
             obj.n_clusters = max(bar2pattern);
             
             ca_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'.txt']);
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-songs.txt']);
             dlmwrite(ca_fln, bar2pattern);
             fprintf('writing %s\n', ca_fln);
             

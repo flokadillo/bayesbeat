@@ -33,11 +33,14 @@ classdef Data
                     obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
                     fclose(fid);
                     fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
-                        [dataset, '-train_ids.txt']);
+                        [dataset, '-exclude.txt']);
                     if exist(fln, 'file')
-                        ok_songs = load(fln);
-                        fprintf('    Excluding %i songs\n', length(obj.file_list) - length(ok_songs));
-                        obj.file_list = obj.file_list(ok_songs);
+                        fid = fopen(fln, 'r');
+                        exclude_songs = textscan(fid, '%s');
+                        fclose(fid);
+                        exclude_songs = exclude_songs{1};
+                        fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);                       
+                        obj.file_list = obj.file_list(~ismember(obj.file_list, exclude_songs));
                     end
                 elseif strcmpi(ext, '.wav')
                     obj.file_list{1} = lab_fln;
