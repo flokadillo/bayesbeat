@@ -24,7 +24,7 @@ classdef Data
     
     methods
         
-        function obj = Data(lab_fln)
+        function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
             if exist(lab_fln, 'file')
                 [~, dataset, ext] = fileparts(lab_fln);
@@ -34,7 +34,7 @@ classdef Data
                     fclose(fid);
                     fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
                         [dataset, '-exclude.txt']);
-                    if exist(fln, 'file')
+                    if train && exist(fln, 'file')
                         fid = fopen(fln, 'r');
                         exclude_songs = textscan(fid, '%s');
                         fclose(fid);

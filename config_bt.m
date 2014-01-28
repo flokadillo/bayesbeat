@@ -73,9 +73,9 @@ Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.02;
 Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
-Params.state_distance_coefficients = [1, 14, 100];
-Params.cluster_merging_thr = 50; % if distance < thr: merge 
-Params.cluster_splitting_thr = 70; % if spread > thr: split 
+Params.state_distance_coefficients = [round(Params.M/100), 1, Params.M];
+Params.cluster_merging_thr = 5; % if distance < thr: merge 
+Params.cluster_splitting_thr = 10; % if spread > thr: split 
 Params.rbpf = 0;
 Params.do_viterbi_filtering = 0;
 Params.warp_fun = '@(x)x.^(1/4)';

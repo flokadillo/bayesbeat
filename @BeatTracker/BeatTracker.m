@@ -38,7 +38,7 @@ classdef BeatTracker
         
         function obj = init_train_data(obj, Params)
             % create train_data object
-            obj.train_data = Data(Params.trainLab);
+            obj.train_data = Data(Params.trainLab, 1);
 %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
             obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
 %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
@@ -49,7 +49,7 @@ classdef BeatTracker
         
         function obj = init_test_data(obj, Params)
             % create test_data object
-            obj.test_data = Data(Params.testLab);
+            obj.test_data = Data(Params.testLab, 0);
             if isfield(Params, 'test_annots_folder')
                 obj.test_data = obj.test_data.set_annots_path(Params.test_annots_folder);
                 obj.test_data = obj.test_data.filter_out_meter([3, 4]);

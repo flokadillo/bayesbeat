@@ -714,26 +714,42 @@ classdef PF
             
             % adjust the range of each state variable to make equally
             % important for the clustering
-            states(:, 1) = (states(:, 1)-1) * obj.state_distance_coefficients(1);
-            states(:, 2) = states(:, 2) * obj.state_distance_coefficients(2);
-            states(:, 3) = (states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
+            points = zeros(obj.nParticles, length(state_dims)+1);
+            points(:, 1) = (sin(states(:, 1)' * 2 * pi ./ obj.Meff(obj.rhythm2meter(states(:, 3)))) + 1) * obj.state_distance_coefficients(1);
+            points(:, 2) = (cos(states(:, 1)' * 2 * pi ./ obj.Meff(obj.rhythm2meter(states(:, 3)))) + 1) * obj.state_distance_coefficients(1);
+            points(:, 3) = states(:, 2) * obj.state_distance_coefficients(2);
+            points(:, 4) =(states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
+%             states(:, 1) = (states(:, 1)-1) * obj.state_distance_coefficients(1);
+%             states(:, 2) = states(:, 2) * obj.state_distance_coefficients(2);
+%             states(:, 3) = (states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
             
             % compute centroid of clusters
-            centroids = zeros(k, length(state_dims));
+            centroids = zeros(k, length(state_dims)+1);
             for iCluster = 1:k
-                centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
+                centroids(iCluster, :) = mean(points(groups_old == group_ids(iCluster) , :));
             end
+%             col = hsv(64);
+%             rhyt_idx = states(:, 3)==2;
+%             fac = max([1, floor(64 / max(groups_old(rhyt_idx)))-1]);
+%             figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups_old(rhyt_idx) * fac, :), 'filled');
             
             % do k-means clustering
-            options = statset('MaxIter', 1);
-            [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
-                'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
+            options = statset('MaxIter', 100);
+            [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
+                'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
+            % remove empty clusters
+            total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
+            centroids = centroids(~isnan(centroids(:, 1)), :);
+            [group_ids, ~, j] = unique(groups);
+            group_ids = 1:length(group_ids);
+            groups = group_ids(j)';
+%             figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
             
             % check if centroids are too close
             merging = 1;
             merged = 0;
             while merging
-                D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
+                D = squareform(pdist(centroids, 'euclidean'), 'tomatrix');
                 ind = (tril(D, 0) > 0);
                 D(ind) = nan;
                 D(logical(eye(size(centroids, 1)))) = nan;
@@ -745,14 +761,14 @@ classdef PF
                 else
                     [c1, c2] = ind2sub(size(D), arg_min);
                     groups(groups==c2(1)) = c1(1);
-                    %                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
-                    
                     % new centroid
-                    centroids(c1(1)) = mean(states(groups==c1(1), :));
-                    total_dist_per_cluster(c1(1)) = abs(bsxfun(@minus, states(groups==c1(1), :), centroids(c1(1))));
+                    centroids(c1(1), :) = mean(points(groups==c1(1), :));
+                    % squared Euclidean distance
+                    total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
                     if length(c1) == 1,  merging = 0;  end
                     % remove old centroid
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
+                    total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
                     merged = 1;
                 end
             end
@@ -764,24 +780,33 @@ classdef PF
             
             % check if cluster spread is too high
             split = 0;
-            n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
+            [group_ids, ~, j] = unique(groups);
+            group_ids = 1:length(group_ids);
+            groups = group_ids(j)';
+            n_parts_per_cluster = hist(groups, 1:length(group_ids));
             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
             for iCluster = 1:length(separate_cl_idx)
                 %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
-                parts_idx = (groups == separate_cl_idx(iCluster));
-                [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
-                    'Distance', 'cityblock');
-                gps(gps==1) = separate_cl_idx(iCluster);
-                gps(gps==2) = max(groups) + 1;
-                groups(parts_idx) = gps;
-                centroids(separate_cl_idx(iCluster), :) = C(1, :);
-                centroids = [centroids; C(2, :)];
+                parts_idx = find((groups == separate_cl_idx(iCluster)));
+%                 C(1, :) = centroids(separate_cl_idx(iCluster), :);
+%                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
+%                     'Distance', 'cityblock');
+                groups(parts_idx(1:round(length(parts_idx)/2))) = separate_cl_idx(iCluster);
+                groups(parts_idx(round(length(parts_idx)/2)+1:end)) = max(groups) + 1;
+                centroids(separate_cl_idx(iCluster), :) = mean(points(parts_idx(1:round(length(parts_idx)/2)), :));
+                centroids = [centroids; mean(points(parts_idx(round(length(parts_idx)/2)+1:end), :))];
                 split = 1;
             end
             
             if split || merged
-                [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
-                    'Distance', 'cityblock', 'options', options);
+                [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
+                    'Distance', 'sqEuclidean', 'options', options);
+                [group_ids, ~, j] = unique(groups);
+                group_ids = 1:length(group_ids);
+                groups = group_ids(j)';
+%                 fac = max([1, ceil(64 / max(groups(rhyt_idx))) - 1]);
+%                 fac*max(groups(rhyt_idx))
+%                 figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(round(groups(rhyt_idx) * fac), :), 'filled');
             end
             warning('on');
 %             valid_groups = unique(groups);
@@ -789,7 +814,92 @@ classdef PF
 %             fprintf('\n');
         end
         
-        
+%                 function [groups] = divide_into_clusters(obj, states, state_dims, groups_old)
+%             % states: [nParticles x nStates]
+%             % state_dim: [nStates x 1]
+%             % groups_old: [nParticles x 1] group labels of the particles
+%             %               after last resampling step (used for initialisation)
+%             
+%             warning('off');
+%             group_ids = unique(groups_old);
+%             k = length(group_ids); % number of clusters
+%             
+%             % adjust the range of each state variable to make equally
+%             % important for the clustering
+%             states(:, 1) = (states(:, 1)-1) * obj.state_distance_coefficients(1);
+%             states(:, 2) = states(:, 2) * obj.state_distance_coefficients(2);
+%             states(:, 3) = (states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
+%             
+%             % compute centroid of clusters
+%             centroids = zeros(k, length(state_dims));
+%             for iCluster = 1:k
+%                 centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
+%             end
+%             
+%             % do k-means clustering
+%             options = statset('MaxIter', 1);
+%             [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
+%                 'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
+%             
+%             % check if centroids are too close
+%             merging = 1;
+%             merged = 0;
+%             while merging
+%                 D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
+%                 ind = (tril(D, 0) > 0);
+%                 D(ind) = nan;
+%                 D(logical(eye(size(centroids, 1)))) = nan;
+%                 
+%                 % find minimum distance
+%                 [min_D, arg_min] = min(D(:));
+%                 if min_D > obj.cluster_merging_thr,
+%                     merging = 0;
+%                 else
+%                     [c1, c2] = ind2sub(size(D), arg_min);
+%                     groups(groups==c2(1)) = c1(1);
+%                     %                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
+%                     
+%                     % new centroid
+%                     centroids(c1(1)) = mean(states(groups==c1(1), :));
+%                     total_dist_per_cluster(c1(1)) = abs(bsxfun(@minus, states(groups==c1(1), :), centroids(c1(1))));
+%                     if length(c1) == 1,  merging = 0;  end
+%                     % remove old centroid
+%                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
+%                     merged = 1;
+%                 end
+%             end
+%             
+% %             if merged
+% %                 [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
+% %                     'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
+% %             end
+%             
+%             % check if cluster spread is too high
+%             split = 0;
+%             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
+%             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
+%             for iCluster = 1:length(separate_cl_idx)
+%                 %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
+%                 parts_idx = (groups == separate_cl_idx(iCluster));
+%                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
+%                     'Distance', 'cityblock');
+%                 gps(gps==1) = separate_cl_idx(iCluster);
+%                 gps(gps==2) = max(groups) + 1;
+%                 groups(parts_idx) = gps;
+%                 centroids(separate_cl_idx(iCluster), :) = C(1, :);
+%                 centroids = [centroids; C(2, :)];
+%                 split = 1;
+%             end
+%             
+%             if split || merged
+%                 [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
+%                     'Distance', 'cityblock', 'options', options);
+%             end
+%             warning('on');
+% %             valid_groups = unique(groups);
+% %             fprintf('    %i clusters; ', length(valid_groups));
+% %             fprintf('\n');
+%         end
     end
     
     methods (Static)
