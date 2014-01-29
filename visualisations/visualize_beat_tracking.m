@@ -48,6 +48,9 @@ if exist(fln, 'file')
     nFrames = size(logP_data, 2);
     [~, nPos, ~] = size(obs_lik);
     max_lik = max(obs_lik(:));
+else
+    fprintf('%s not found\n', fln);
+    return
 end
 fln = fullfile(path, [fname, '_pf.mat']);
 if exist(fln, 'file')
@@ -128,7 +131,7 @@ y_pos = [0.61; 0.17];
 % -----------------------------------------------------------------------
 % visualize
 % -----------------------------------------------------------------------
-% nFrames = min([300, nFrames]);
+nFrames = min([1000, nFrames]);
 for iFrame = 1:1:nFrames
 % for iFrame = [1, 10, 100, 1000]
 %     important_pix = find(logP_data(:, iFrame));

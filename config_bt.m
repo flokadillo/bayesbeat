@@ -73,9 +73,9 @@ Params.nParticles = 2000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.02;
 Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
-Params.state_distance_coefficients = [round(Params.M/100), 1, Params.M];
-Params.cluster_merging_thr = 5; % if distance < thr: merge 
-Params.cluster_splitting_thr = 10; % if spread > thr: split 
+Params.state_distance_coefficients = [30, 1, 10];
+Params.cluster_merging_thr = 20; % if distance < thr: merge 
+Params.cluster_splitting_thr = 30; % if spread > thr: split 
 Params.rbpf = 0;
 Params.do_viterbi_filtering = 0;
 Params.warp_fun = '@(x)x.^(1/4)';
@@ -109,12 +109,12 @@ end
 
 
 % train data
-Params.train_set = 'boeck';
+Params.train_set = 'ballroom';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-songs.txt']);
+    num2str(Params.R), '-meter.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 if ~Params.doTraining
@@ -126,7 +126,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'ballroom';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

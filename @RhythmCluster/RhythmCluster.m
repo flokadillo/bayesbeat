@@ -255,7 +255,7 @@ classdef RhythmCluster < handle
             %INPUT parameter:
             % trainLab          : filename of labfile (e.g., 'boeck.lab' or 'ballroom.lab').
             %                       a labfile is a textfile with paths to files that are analyzed
-            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'auto', 'none'}
+            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'none'}
             %                   'meter': bars are clustered according to the meter (functions reads .meter file);
             %                   'dancestyle', according to the genre (functions reads .dancestyle file))
             %                   'none' : put all bars into one single
@@ -338,12 +338,12 @@ classdef RhythmCluster < handle
                 meters = unique(bar2pattern);
                 temp = 1:length(meters);
                 temp2(meters) = temp;
-                bar2pattern = temp2(bar2pattern)';
+                bar2pattern = temp2(bar2pattern)';               
             end
             obj.n_clusters = max(bar2pattern);
-            
+            obj.bar_2_cluster = bar2pattern;
             ca_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-songs.txt']);
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-', clusterType, '.txt']);
             dlmwrite(ca_fln, bar2pattern);
             fprintf('writing %s\n', ca_fln);
             

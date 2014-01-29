@@ -304,13 +304,15 @@ classdef PF
             %             r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
             try
                 ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
+                lik = obslik(ind);
             catch exception
-               fprintf('dimensions R=%i, barGrid=%i x %i x %i, states_m_r=%i - %i, subind = %i - %i\n', ...
-                   obj.R, size(obj.barGrid, 1), size(obj.barGrid, 2), size(obj.barGrid, 3), min(states_m_r), max(states_m_r), ...
-                   min(subind), max(subind)); 
+               fprintf('dimensions R=%i, barGrid=%i, states_m=%.2f - %.2f, subind = %i - %i, m_per_grid=%.2f\n', ...
+                   obj.R, obj.barGrid, min(states_m_r(:, 1)), max(states_m_r(:, 1)), ...
+                   min(subind), max(subind), m_per_grid); 
+%                dimensions R=2, barGrid=1 x 1 x 1, states_m_r=9.224340e-01 - 1, subind = 1.430080e+03 - 2
+
             end
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
-            lik = obslik(ind);
         end
         
         function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
@@ -728,7 +730,7 @@ classdef PF
             for iCluster = 1:k
                 centroids(iCluster, :) = mean(points(groups_old == group_ids(iCluster) , :));
             end
-%             col = hsv(64);
+            col = hsv(64);
 %             rhyt_idx = states(:, 3)==2;
 %             fac = max([1, floor(64 / max(groups_old(rhyt_idx)))-1]);
 %             figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups_old(rhyt_idx) * fac, :), 'filled');
