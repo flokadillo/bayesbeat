@@ -97,10 +97,13 @@ classdef Simulation
         end
         
         function test_file_ids = retrain(obj, k)
-            if obj.Params.doLeaveOneOut == 1
+            % Retrain is used to only update parts of the parameters
+            
+            if obj.Params.doLeaveOneOut == 1 % leave one out
                 test_file_ids = k;
                 obj.system.retrain_model(test_file_ids);
-            elseif obj.Params.doLeaveOneOut > 1
+                
+            elseif obj.Params.doLeaveOneOut > 1 % k-fild cross validation
                 % load lab file of fold and determine indices
                 test_file_ids = load(obj.Params.foldLab{k});
                 fln = fullfile(obj.Params.data_path, [obj.Params.train_set, '-train_ids.txt']);
@@ -112,8 +115,7 @@ classdef Simulation
                    test_file_ids = idx2(idx1);
                 end
                 obj.system.retrain_model(test_file_ids);
-            else
-                % no train/test split
+            else % no train/test split
                 test_file_ids = 1:length(obj.system.test_data.file_list);
             end
             

@@ -77,6 +77,8 @@ classdef BeatTracker
             obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
+            
+            obj = obj.refine_model(3);
         end
         
         function obj = retrain_model(obj, exclude_test_file_id)
@@ -91,6 +93,14 @@ classdef BeatTracker
             obj.model = ...
                 obj.model.retrain_observation_model(obj.train_data.feats_file_pattern_barPos_dim(~file_idx, :, :, :), r_i);
             fprintf('done\n');
+        end
+        
+        function obj = refine_model(obj, iterations)
+            belief_func = obj.train_data.make_belief_functions(obj.model);
+            observations = obj.feature.load_all_features(obj.train_data.file_list);
+            for i = 1:iterations
+                obj.model = obj.model.viterbi_training(observations, belief_func);
+            end
         end
         
         function obj = load_features(obj, input_fln)

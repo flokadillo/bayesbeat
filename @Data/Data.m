@@ -7,6 +7,7 @@ classdef Data
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
         meter                           % meter of each file [nFiles x 1]
+        beats                           % beats of each file {nFiles x 1}[n_beats 2]
         n_bars                          % number of bars of each file [nFiles x 1]
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
@@ -39,7 +40,7 @@ classdef Data
                         exclude_songs = textscan(fid, '%s');
                         fclose(fid);
                         exclude_songs = exclude_songs{1};
-                        fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);                       
+                        fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);
                         obj.file_list = obj.file_list(~ismember(obj.file_list, exclude_songs));
                     end
                 elseif strcmpi(ext, '.wav')
@@ -50,10 +51,11 @@ classdef Data
             end
             obj.lab_fln = lab_fln;
         end
-               
+        
         function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
+            % TODO: bar2file, obj.n_bars should be loaded not computed!
             if exist(cluster_fln, 'file')
                 obj.bar2cluster = load(cluster_fln, '-ascii');
             else
@@ -88,15 +90,15 @@ classdef Data
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 beats_fln = fullfile(fpath, [fname, '.beats']);
                 if exist(beats_fln, 'file')
-                    beats = load(fullfile(fpath, [fname, '.beats']));
+                    obj.beats{iFile} = load(fullfile(fpath, [fname, '.beats']));
                 else
                     error('Beats file %s not found\n', beats_fln);
                 end
                 % determine number of bars
                 if strcmp(obj.pattern_size, 'bar')
-                    [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(beats);
+                    [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(obj.beats{iFile});
                 else
-                    obj.n_bars(iFile) = size(beats, 1) - 1;
+                    obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
                 end
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
                 barCounter = barCounter + obj.n_bars(iFile);
@@ -123,7 +125,7 @@ classdef Data
                 else
                     error('Meter of training data is not supported by the system')
                 end
-                    
+                
             end
         end
         
@@ -181,7 +183,7 @@ classdef Data
                 end
                 % so far, only the first bar of each file is used and assigned the style to the whole file
                 styleId = obj.bar2cluster(obj.bar2file == iFile);
-
+                
                 % convert to n
                 if ~isempty(styleId)
                     tempo_per_cluster(iFile, styleId(1)) = tempo;
@@ -214,6 +216,42 @@ classdef Data
             obj.feats_file_pattern_barPos_dim = dataPerFile;
         end
         
+        function belief_func = make_belief_functions(obj, model)
+            belief_func = cell(length(obj.file_list), 2);
+            n_states = model.M * model.N * model.R;
+            
+            
+            for i_file = 1:length(obj.file_list)
+                t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
+                    (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
+                r_state = find(model.rhythm2meter == t_state);
+                M_i = model.Meff(t_state);
+                tol_win = floor(0.0875 * model.M / obj.meter(i_file, 2));
+                
+                btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
+                beats_m = (M_i * (btype-1) / max(btype)) + 1;
+                % beat frames
+                belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
+                
+                n_beats_i = size(obj.beats{i_file}, 1);
+                i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                s_vals =  true((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                for iBeat=1:n_beats_i
+                    m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
+                    m = repmat(m_support, 1, model.N * length(r_state));
+                    n = repmat(1:model.N, length(r_state) * length(m_support), 1);
+                    r = repmat(r_state(:), model.N * length(m_support), 1);
+                    states = sub2ind([model.M, model.N, model.R], m(:), n(:), r(:));
+                    idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
+                    i_rows(idx) = iBeat;
+                    j_cols(idx) = states;
+                end
+                belief_func{i_file, 2} = sparse(i_rows, j_cols, s_vals, n_beats_i, n_states);
+            end
+        end
+        
+    
         
     end
     
