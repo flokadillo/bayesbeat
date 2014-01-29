@@ -166,6 +166,19 @@ classdef HMM
             
         end
         
+        function obj = viterbi_training(obj, observations, belief_func)
+            n_files = size(observations, 1);
+            
+            for i_file=1:n_files
+                obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
+                best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
+                
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
+                t_path = obj.rhythm2meter(r_path);
+                beats = obj.find_beat_times(m_path, t_path, n_path);
+                BeatTracker.save_beats(beats, './results/99/temp.beats');
+            end
+        end
         
     end
     
@@ -399,6 +412,83 @@ classdef HMM
             
             fprintf(' done\n');
             
+        end
+        
+        function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
+            nFrames = size(obs_lik, 3);
+            % don't compute states that are irreachable:
+            [row, col] = find(obj.trans_model.A);
+            maxState = max([row; col]);
+            minState = min([row; col]);
+            nStates = maxState + 1 - minState;
+            
+            delta = obj.initial_prob(minState:maxState);
+            A = obj.trans_model.A(minState:maxState, minState:maxState);
+            if length(delta) > 65535
+                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
+                psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
+            else
+                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
+                psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
+            end
+            perc = round(0.1*nFrames);
+            i_row = 1:nStates;
+            j_col = 1:nStates;
+            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind_stepsize = obj.barGrid * obj.R;
+            
+            % incorporate first observation
+            O = zeros(nStates, 1);
+            validInds = ~isnan(ind);
+            O(validInds) = obs_lik(ind(validInds));
+            delta = O .* delta;
+            delta = delta / sum(delta);
+            % move pointer to next observation
+            ind = ind + ind_stepsize;
+            fprintf('    Decoding (viterbi) .');
+            
+            if belief_func{1}(1) == 1
+                delta = delta .* (belief_func{2}(1, minState:maxState))';
+                delta = delta / sum(delta);
+            end
+            
+            for iFrame = 2:nFrames
+
+                D = sparse(i_row, j_col, delta(:), nStates, nStates);
+                [delta_max, psi_mat(:, iFrame)] = max(D * A);
+                
+                if sum(belief_func{1} == iFrame)
+                    delta = delta .* (belief_func{2}(belief_func{1} == iFrame, minState:maxState))';
+                    delta = delta / sum(delta);
+                end
+                
+                % compute likelihood p(yt|x1:t)
+                O = zeros(nStates, 1);
+                validInds = ~isnan(ind);
+                % ind is shifted at each time frame -> all frames are used
+                O(validInds) = obs_lik(ind(validInds));
+                % increase index to new time frame
+                ind = ind + ind_stepsize;
+                delta_max = O .* delta_max';
+                % normalize
+                norm_const = sum(delta_max);
+                delta = delta_max / norm_const;
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
+            end
+            
+            % Backtracing
+            bestpath = zeros(nFrames,1);
+            [ ~, bestpath(nFrames)] = max(delta);
+            for iFrame=nFrames-1:-1:1
+                bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
+            end
+            
+            % add state offset
+            bestpath = bestpath + minState - 1;
+            fprintf(' done\n');
         end
         
         function [bestpath, alpha, psi, minState] = forward_path(obj, obs_lik, fname)

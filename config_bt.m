@@ -30,7 +30,7 @@ Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -43,6 +43,8 @@ Params.M = 1440; % total number of discrete position states (used for the meter 
 Params.N = 26;
 Params.R = 2;
 
+% Params.meters defines meter_state_2_meter, e.g., meter_state=1
+%   corresponds to meter 3/4
 Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
 %robot
 %Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
@@ -109,7 +111,7 @@ end
 
 
 % train data
-Params.train_set = 'ballroom';
+Params.train_set = 'boeck12';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
@@ -126,7 +128,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'ballroom';
+Params.test_set = 'boeck12';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

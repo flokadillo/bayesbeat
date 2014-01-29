@@ -61,6 +61,15 @@ classdef Feature
             end
             obj.feature = cell2mat(detfunc');
         end
+        
+        function observations = load_all_features(obj, file_list)
+            n_files = length(file_list);
+            observations = cell(n_files, 1);
+            for i_file=1:n_files
+                obj = obj.load_feature(file_list{i_file});
+                observations{i_file} = obj.feature;
+            end
+        end
     end
     
     methods(Access=protected)
