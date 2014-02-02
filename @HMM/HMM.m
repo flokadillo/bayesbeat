@@ -23,6 +23,7 @@ classdef HMM
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
         save_inference_data % save intermediate output of particle filter for visualisation
         inferenceMethod
+        tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
     end
     
     methods
@@ -39,7 +40,7 @@ classdef HMM
             else
                 obj.pr = Params.pr;
                 obj.pt = Params.pt;
-            end           
+            end
             obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -49,6 +50,7 @@ classdef HMM
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
             obj.inferenceMethod = Params.inferenceMethod;
+            obj.tempo_tying = Params.tempo_tying;
             
         end
         
@@ -66,6 +68,9 @@ classdef HMM
             end
             
             % Create transition model
+            % Initialise without tempo priot knowledge
+            obj.minN = ones(1, obj.R);
+            obj.maxN = ones(1, obj.R)*obj.N;
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
             
@@ -168,21 +173,89 @@ classdef HMM
         
         function obj = viterbi_training(obj, observations, belief_func)
             n_files = size(observations, 1);
+            feat_dim = size(observations{1}, 2);
+            A_n = zeros(obj.N * obj.R, obj.N);
+            A_r = zeros(obj.R, obj.R);
+            observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
+            init = zeros(obj.N * obj.R, 1);
             
-            for i_file=1:n_files
+%             for i_file=1:n_files
+            for i_file=1:3
+                fprintf('%i/%i) ', i_file, n_files)
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
                 best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
-                
+                if isempty(best_path)
+                    continue;
+                end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-                t_path = obj.rhythm2meter(r_path);
-                beats = obj.find_beat_times(m_path, t_path, n_path);
-                BeatTracker.save_beats(beats, './results/99/temp.beats');
+                
+                for i_dim = 1:feat_dim
+                    %                     subs = [obj.obs_model.state2obs_idx(m_path, 2), ones(length(best_path), 1)*i_dim];
+                    %                     D = accumarray(subs, observations{i_file}(:, i_dim), [], @(x) {x});
+                    observation_per_state{i_file, r_path(1), obj.obs_model.state2obs_idx(best_path(1), 2), i_dim} = ...
+                        [observation_per_state{i_file, r_path(1), obj.obs_model.state2obs_idx(best_path(1), 2), i_dim}; observations{i_file}(1, i_dim)];
+                end
+                for i_frame=2:length(best_path)
+                    % count tempo transitions
+                    idx1 = ((r_path(i_frame-1) - 1) * obj.N) + n_path(i_frame-1);
+                    A_n(idx1, n_path(i_frame)) = A_n(idx1, n_path(i_frame)) + 1;
+                    % re-assign observations to hidden states
+                    for i_dim = 1:feat_dim
+                        observation_per_state{i_file, r_path(i_frame), obj.obs_model.state2obs_idx(best_path(i_frame), 2), i_dim} = ...
+                            [observation_per_state{i_file, r_path(i_frame), obj.obs_model.state2obs_idx(best_path(i_frame), 2), i_dim}; observations{i_file}(i_frame, i_dim)];
+                    end
+                    % count pattern transitions (given a bar crossing occured)
+                    if m_path(i_frame) < m_path(i_frame-1) % bar crossing
+                        A_r(r_path(i_frame-1), r_path(i_frame)) = A_r(r_path(i_frame-1), r_path(i_frame)) + 1;
+                    end
+                end
+                init(((r_path(1) - 1) * obj.N) + n_path(1)) = ...
+                    init(((r_path(1) - 1) * obj.N) + n_path(1)) + 1;
+%                                 t_path = obj.rhythm2meter(r_path);
+%                                 beats = obj.find_beat_times(m_path, t_path, n_path);
+%                                 BeatTracker.save_beats(beats, './results/99/temp.beats');
             end
+            
+            % update initial probabilities
+            init = init / sum(init);
+            obj.initial_prob = repmat(init(:)', obj.M, 1);
+            obj.initial_prob = obj.initial_prob(:);
+            
+            % update transition model
+            obj.pr = bsxfun(@rdivide, A_r, sum(A_r, 2)); % normalise p_r
+            n_times_in_state_ni_at_k_1 = sum(A_n, 2);
+            if obj.tempo_tying == 0
+                A_n(n_times_in_state_ni_at_k_1>0, :) = bsxfun(@rdivide, A_n(n_times_in_state_ni_at_k_1>0, :), n_times_in_state_ni_at_k_1(n_times_in_state_ni_at_k_1>0));
+                obj.pn = A_n;
+            elseif obj.tempo_tying == 1
+                a = 0; 
+                b = sum(n_times_in_state_ni_at_k_1);
+                for i_r=1:obj.R
+                    a = a + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 0));
+                end
+                obj.pn = (1 - a/b) / 2;
+            elseif obj.tempo_tying == 2
+                % todo: correct!
+                pn_up = sum(diag(A_n, 1)) ./ sum(n_times_in_state_ni_at_k_1);
+                pn_down = sum(diag(A_n, -1)) ./ sum(n_times_in_state_ni_at_k_1);
+                obj.pn = [pn_up, pn_down];
+            else
+                error('specify tempo_tying!\n');
+            end
+            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
+                obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
+%             save('./temp/A_ballroom.mat', 'A_n');
+            
+            % update observation model
+            obj.obs_model = obj.obs_model.train_model(observation_per_state);
+            
+            
         end
         
     end
     
     methods (Access=protected)
+        
         
         
         function bestpath = viterbi_decode(obj, obs_lik, fname)
@@ -454,13 +527,18 @@ classdef HMM
             end
             
             for iFrame = 2:nFrames
-
+                
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 
                 if sum(belief_func{1} == iFrame)
                     delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame, minState:maxState);
                     delta_max = delta_max / sum(delta_max);
+                    if sum(isnan(delta_max)) > 0
+                        fprintf(' Viterbi path could not be determined (error at beat %i)\n', find(belief_func{1} == iFrame));
+                        bestpath = [];
+                        return
+                    end
                 end
                 
                 % compute likelihood p(yt|x1:t)
@@ -478,7 +556,7 @@ classdef HMM
                     fprintf('.');
                 end
             end
- 
+                       
             % Backtracing
             bestpath = zeros(nFrames,1);
             [ ~, bestpath(nFrames)] = max(delta);
@@ -580,49 +658,49 @@ classdef HMM
                 else
                     y = m_path(iFrame) + obj.Meff(r_path(iFrame));
                 end
-%                 y = min([abs(m_path(iFrame) - x(1)), ...
-%                         abs(m_path(iFrame) + obj.Meff(r_path(iFrame))- x(1))]) + ...
-%                         x(1);
-
+                %                 y = min([abs(m_path(iFrame) - x(1)), ...
+                %                         abs(m_path(iFrame) + obj.Meff(r_path(iFrame))- x(1))]) + ...
+                %                         x(1);
+                
                 [ x, P, likelihood, P2, E, x_pred ] = KF( x, P, y, par);
                 m_path_new(iFrame) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 x(1) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 n_path_new(iFrame) = x(2);
-%                 if m_path(iFrame) == mod(m_path(iFrame-1) + n_path(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1% valid path
-%                     c = c + 1;
-%                     if c < 30
-%                         % stay at old path
-%                         % find linear index of old state
-%                         [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
-%                             m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
-%                         % find most probable successor of old state
-%                         j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
-%                         if isempty(j_max)
-%                             m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
-%                             n_path_new(iFrame) = n_path_new(iFrame-1);
-%                         else
-%                             [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
-%                         end
-%                         
-%                     else
-%                         m_path_new(iFrame) = m_path(iFrame);
-%                         n_path(iFrame) = n_path(iFrame);
-%                     end
-%                 else
-%                     c = 0;
-%                     % stay at old path
-%                     % find linear index of old state
-%                     [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
-%                         m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
-%                     % find most probable successor of old state
-%                     j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
-%                     if isempty(j_max)
-%                         m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
-%                         n_path_new(iFrame) = n_path_new(iFrame-1);
-%                     else
-%                         [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
-%                     end
-%                 end
+                %                 if m_path(iFrame) == mod(m_path(iFrame-1) + n_path(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1% valid path
+                %                     c = c + 1;
+                %                     if c < 30
+                %                         % stay at old path
+                %                         % find linear index of old state
+                %                         [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
+                %                             m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
+                %                         % find most probable successor of old state
+                %                         j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
+                %                         if isempty(j_max)
+                %                             m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
+                %                             n_path_new(iFrame) = n_path_new(iFrame-1);
+                %                         else
+                %                             [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
+                %                         end
+                %
+                %                     else
+                %                         m_path_new(iFrame) = m_path(iFrame);
+                %                         n_path(iFrame) = n_path(iFrame);
+                %                     end
+                %                 else
+                %                     c = 0;
+                %                     % stay at old path
+                %                     % find linear index of old state
+                %                     [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
+                %                         m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
+                %                     % find most probable successor of old state
+                %                     j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
+                %                     if isempty(j_max)
+                %                         m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
+                %                         n_path_new(iFrame) = n_path_new(iFrame-1);
+                %                     else
+                %                         [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
+                %                     end
+                %                 end
                 
             end
             figure; plot(m_path); hold on; plot(m_path_new(1:iFrame), 'r');
@@ -649,6 +727,9 @@ classdef HMM
             numframes = length(positionPath);
             meter = obj.meter_state2meter(:, meterPath);
             % TODO: implement for changes in meter
+            % TODO: if beat is shortly before the audio start we should
+            % add one beat at the beginning. E.g. m-sequence starts with
+            % m=2
             
             %             [meter_states, idx, ~] = unique(meterPath);
             for iT=1:obj.T

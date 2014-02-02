@@ -17,6 +17,7 @@ classdef Data
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
+        dataset                         % name of the dataset
     end
     
     methods(Static)
@@ -50,6 +51,7 @@ classdef Data
                 error('Lab file %s not found\n', lab_fln);
             end
             obj.lab_fln = lab_fln;
+            obj.dataset = dataset;
         end
         
         function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
@@ -220,8 +222,10 @@ classdef Data
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
             
-            
             for i_file = 1:length(obj.file_list)
+                if i_file == 7
+                    kj=97;
+                end
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
                 r_state = find(model.rhythm2meter == t_state);

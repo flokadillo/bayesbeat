@@ -41,7 +41,7 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'P
 % Params.N = 47/26;
 Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 26;
-Params.R = 2;
+Params.R = 8;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
@@ -56,16 +56,14 @@ bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
 meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
-Params.pn = 0.02;  % 7 for n dependent p_n
+Params.pn = 0.01;  
+Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
 %Params.pattern_size = 'beat'; % 'beat' or 'bar'
-%Params.pn = 0.001;  % 7 for n dependent p_n
+%Params.pn = 0.001; 
 Params.pr = 0;
-% Params.pr = 1 - 1/Params.R; % probability of change of rhythmic pattern
 Params.pt = 0; % meter change
 Params.frame_length = 0.02;
-% Params.barGrid = 64 * max(bar_durations); % max number of grid points 
-% Params.barGrid = 64; % number of grid points per whole note
 Params.whole_note_div = 64; % number of grid points per whole note
 Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
 Params.init_n_gauss = 2;
@@ -111,12 +109,12 @@ end
 
 
 % train data
-Params.train_set = 'boeck';
+Params.train_set = 'ballroom';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), '-kmeans.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 if ~Params.doTraining
@@ -128,7 +126,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'ballroom';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

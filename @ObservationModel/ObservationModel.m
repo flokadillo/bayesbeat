@@ -36,13 +36,13 @@ classdef ObservationModel
             bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
             r2b = obj.barGrid ./ max(bar_durations);
             obj.barGrid_eff = round(bar_durations * r2b);
-            fprintf('* Set up observation model .');
             obj = obj.make_state2obs_idx();
         end
                       
         params = fit_distribution(obj, data_file_pattern_barpos_dim)
          
         function obj = train_model(obj, data_file_pattern_barpos_dim)
+            % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
             obj.learned_params = obj.fit_distribution(data_file_pattern_barpos_dim);
             % store learned params in case of leave-one-out testing, where
             % we update learned_params in each step
