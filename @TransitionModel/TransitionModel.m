@@ -33,6 +33,40 @@ classdef TransitionModel
             if max(maxN) > N
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
+            % set up pattern transition matrix
+            if size(obj.pr, 1) == obj.R
+                % ok, do nothing
+            elseif size(obj.pr, 1) == 1
+                obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1)); 
+                obj.pr(find(eye(obj.R))) = (1-pr);
+            else
+                error('p_r has wrong dimensions!\n');
+            end
+            
+            % set up tempo transition matrix
+            if size(obj.pn, 1) == obj.R * obj.N
+                n_r_trans = obj.pn;
+            elseif size(obj.pn, 1) == 2
+                n_r_trans = zeros(obj.R * obj.N, obj.N);
+                for ri = 1:obj.R
+                    n_const = diag(ones(obj.N, 1) * (1-sum(obj.pn)), 0);    
+                    n_up = diag(ones(obj.N, 1) * obj.pn, 1);
+                        n_down = diag(ones(obj.N, 1) * obj.pn, -1);
+                        n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = ...
+                            n_const + n_up(1:obj.N, 1:obj.N) + n_down(1:obj.N, 1:obj.N);
+                end
+            elseif size(obj.pn, 1) == 1 % prob of tempo increase and decrease are the same (pn/2)
+                n_r_trans = zeros(obj.R * obj.N, obj.N);
+                for ri = 1:obj.R
+                    n_const = diag(ones(obj.N, 1) * (1-2*obj.pn), 0);
+                    n_up = diag(ones(obj.N, 1) * obj.pn, 1);
+                    n_down = diag(ones(obj.N, 1) * obj.pn, -1);
+                    n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = ...
+                            n_const + n_up(1:obj.N, 1:obj.N) + n_down(1:obj.N, 1:obj.N);
+                end
+            else
+                error('p_n has wrong dimensions!\n');
+            end
             
             numstates = M*N*R;
             tic;
@@ -72,34 +106,34 @@ classdef TransitionModel
                     for n_ind = 1:3
                         if n_ind == 1 % tempo decrease
                             nj = ni - 1;
-                            prob = pn/2;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
-                            prob = 1-pn;
+%                             prob = 1-pn;
                         else  % tempo increase
                             nj = ni+1;
-                            prob = pn/2;
+%                             prob = pn/2;
                         end
-                        
+                        prob = n_r_trans((rhi-1)*obj.N + ni, nj);
                         for rhj = 1:R
-                            if length(pr) == 1
-                                tj = rhythm2meter(rhj);
-                                if tj == ti
-                                    if rhj == rhi % meter and rhythm constant
-                                        prob2(rhj) = (1-pt) * (1-pr);
-                                    else % meter constant, rhythm change
-                                        prob2(rhj) = (1-pt) * (pr/(R-1));
-                                    end
-                                else
-                                    if rhj == rhi % meter change, rhythm constant
-                                        prob2(rhj) = 0;
-                                    else % meter change, rhythm change
-                                        prob2(rhj) = pt * (pr/(R-1));
-                                    end
-                                end
-                            else
-                                prob2(rhj) = pr(rhi, rhj);
-                            end
+%                             if length(pr) == 1
+%                                 tj = rhythm2meter(rhj);
+%                                 if tj == ti
+%                                     if rhj == rhi % meter and rhythm constant
+%                                         prob2(rhj) = (1-pt) * (1-pr);
+%                                     else % meter constant, rhythm change
+%                                         prob2(rhj) = (1-pt) * (pr/(R-1));
+%                                     end
+%                                 else
+%                                     if rhj == rhi % meter change, rhythm constant
+%                                         prob2(rhj) = 0;
+%                                     else % meter change, rhythm change
+%                                         prob2(rhj) = pt * (pr/(R-1));
+%                                     end
+%                                 end
+%                             else
+                                prob2(rhj) = obj.pr(rhi, rhj);
+%                             end
+                            
                             j = sub2ind([M, N, R], mj, nj, rhj); % get new state index
                             ri(p) = i;  cj(p) = j;
                             p = p + 1;
@@ -111,7 +145,7 @@ classdef TransitionModel
                         else
                             val(p-R:p-1) = prob .* (prob2 / sum(prob2));
                         end
-                        
+%                         val(p-R:p-1) = prob;
                     end
                     % --------------------------------------------------------------
                 else % inside the bar
@@ -119,14 +153,15 @@ classdef TransitionModel
                     for n_ind = 1:3 % constant, decrease, increase
                         if n_ind == 1 % tempo decrease
                             nj = ni - 1;
-                            prob = pn/2;
+%                             prob = pn/2;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
-                            prob = 1-pn;
+%                             prob = 1-pn;
                         else  % tempo increase
                             nj = ni+1;
-                            prob = pn/2;
+%                             prob = pn/2;
                         end
+                        prob = n_r_trans((rhi-1)*obj.N + ni, nj);
                         j = sub2ind([M, N, R], mj, nj, rhi);
                         ri(p) = i;  cj(p) = j;   val(p) = prob;
                         p = p + 1;
@@ -149,11 +184,11 @@ classdef TransitionModel
                     mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
                     i = sub2ind([M N R], mi, ni, rhi); % state i
                     j = sub2ind([M N R], mj, nj, rhi); % state j
-                    ri(p) = i;  cj(p) = j;   val(p) = 1-pn;   p = p + 1;
+                    ri(p) = i;  cj(p) = j;   val(p) = n_r_trans((rhi-1)*obj.N + ni, nj);   p = p + 1;
                     % 2) tempo increase
                     nj = ni + 1;
                     j = sub2ind([M N R], mj, nj, rhi);
-                    ri(p) = i;  cj(p) = j;   val(p) = pn;   p = p + 1;
+                    ri(p) = i;  cj(p) = j;   val(p) = 1 - val(p-1);   p = p + 1;
                     % -----------------------------------------------
                     % ni = maximal tempo:
                     % -----------------------------------------------
@@ -164,11 +199,11 @@ classdef TransitionModel
                     mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
                     i = sub2ind([M N R], mi, ni, rhi);
                     j = sub2ind([M N R], mj, nj, rhi);
-                    ri(p) = i;  cj(p) = j;   val(p) = 1-pn;   p = p + 1;
+                    ri(p) = i;  cj(p) = j;   val(p) = n_r_trans((rhi-1)*obj.N + ni, nj);   p = p + 1;
                     % 2) tempo decrease
                     nj = ni - 1;
                     j = sub2ind([M N R],mj,nj,rhi);
-                    ri(p) = i;  cj(p) = j;   val(p) = pn;   p = p + 1;
+                    ri(p) = i;  cj(p) = j;   val(p) = 1 - val(p-1);   p = p + 1;
                 end
             end
             

@@ -100,6 +100,8 @@ classdef BeatTracker
             observations = obj.feature.load_all_features(obj.train_data.file_list);
             for i = 1:iterations
                 obj.model = obj.model.viterbi_training(observations, belief_func);
+                hmm = obj.model;
+                save(['./temp/hmm-', obj.train_data.dataset, '-', num2str(i), '.mat'], 'hmm');
             end
         end
         

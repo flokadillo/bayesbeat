@@ -153,7 +153,7 @@ classdef RhythmCluster < handle
             % save cluster assignments
             if strcmpi(type, 'bar')
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'.txt']);
+                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
             else
                 % read index of  valid songs
                 ok_songs = load(obj.ok_songs_fln, '-ascii');
@@ -183,7 +183,7 @@ classdef RhythmCluster < handle
                 cidx = bar2pattern;
                 
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-songs.txt']);
+                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
             end
             obj.bar_2_cluster = cidx;
             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
