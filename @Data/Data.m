@@ -237,7 +237,7 @@ classdef Data
                 n_beats_i = size(obj.beats{i_file}, 1);
                 i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
                 j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
-                s_vals =  true((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                s_vals = ones((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
                 for iBeat=1:n_beats_i
                     m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
                     m = repmat(m_support, 1, model.N * length(r_state));
@@ -248,7 +248,8 @@ classdef Data
                     i_rows(idx) = iBeat;
                     j_cols(idx) = states;
                 end
-                belief_func{i_file, 2} = sparse(i_rows, j_cols, s_vals, n_beats_i, n_states);
+%                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
+                belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
         end
         

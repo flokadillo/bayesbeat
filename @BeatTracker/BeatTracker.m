@@ -96,10 +96,19 @@ classdef BeatTracker
         end
         
         function obj = refine_model(obj, iterations)
+            fprintf('* Set up belief functions');
+%             profile on
             belief_func = obj.train_data.make_belief_functions(obj.model);
+%             profile viewer
+            fprintf(' ... done\n');
+            fprintf('* Load features');
             observations = obj.feature.load_all_features(obj.train_data.file_list);
+            fprintf(' ... done\n');
             for i = 1:iterations
+                fprintf('* Viterbi training: iteration %i\n', i);
+%                 profile on
                 obj.model = obj.model.viterbi_training(observations, belief_func);
+%                 profile viewer
                 hmm = obj.model;
                 save(['./temp/hmm-', obj.train_data.dataset, '-', num2str(i), '.mat'], 'hmm');
             end

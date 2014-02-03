@@ -156,13 +156,13 @@ classdef RhythmCluster < handle
                     num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
             else
                 % read index of  valid songs
-                ok_songs = load(obj.ok_songs_fln, '-ascii');
+                exclude_songs = load(obj.exclude_songs_fln, '-ascii');
                 meter = zeros(length(obj.train_file_list), 1);
                 fileCounter = 0;
                 bar2pattern = [];
                 nBars = zeros(length(obj.train_file_list), 1);
                 for iFile = 1:length(obj.train_file_list)
-                    if ~ismember(iFile, ok_songs)
+                    if ismember(iFile, exclude_songs)
                         continue;
                     end
                     beats = load(regexprep(obj.train_file_list{iFile}, '.wav.*', '.beats'));
