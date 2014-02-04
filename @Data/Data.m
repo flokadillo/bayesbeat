@@ -104,7 +104,12 @@ classdef Data
                 end
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
                 barCounter = barCounter + obj.n_bars(iFile);
+                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile)
+                    error('%s: Number of bars not consistent !', fname);
+                end
             end
+                
+            
             % Check consistency cluster_fln - train_lab
             if sum(obj.n_bars) ~= length(obj.bar2file)
                 error('Number of bars not consistent !');

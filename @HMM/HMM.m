@@ -70,7 +70,7 @@ classdef HMM
             % Create transition model
             % Initialise without tempo priot knowledge
             obj.minN = ones(1, obj.R);
-            obj.maxN = ones(1, obj.R)*max([obj.N, obj.maxN]);
+            obj.maxN = ones(1, obj.R)*max([obj.N, obj.maxN + 1]);
             %             profile on
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
@@ -225,9 +225,9 @@ classdef HMM
                 end
                 init(((r_path(1) - 1) * obj.N) + n_path(1)) = ...
                     init(((r_path(1) - 1) * obj.N) + n_path(1)) + 1;
-                t_path = obj.rhythm2meter(r_path);
-                beats = obj.find_beat_times(m_path, t_path, n_path);
-                BeatTracker.save_beats(beats, './results/99/temp.beats');
+%                 t_path = obj.rhythm2meter(r_path);
+%                 beats = obj.find_beat_times(m_path, t_path, n_path);
+%                 BeatTracker.save_beats(beats, './results/99/temp.beats');
             end
             
             % update initial probabilities
@@ -238,6 +238,9 @@ classdef HMM
             % update transition model
             obj.pr = bsxfun(@rdivide, A_r, sum(A_r, 2)); % normalise p_r
             n_times_in_state_ni_at_k_1 = sum(A_n, 2);
+            % save tempo transitions
+            obj.trans_model.tempo_transition_probs = A_n;
+            obj.trans_model.tempo_transition_probs(n_times_in_state_ni_at_k_1>0, :) = bsxfun(@rdivide, A_n(n_times_in_state_ni_at_k_1>0, :), n_times_in_state_ni_at_k_1(n_times_in_state_ni_at_k_1>0));
             if obj.tempo_tying == 0
                 A_n(n_times_in_state_ni_at_k_1>0, :) = bsxfun(@rdivide, A_n(n_times_in_state_ni_at_k_1>0, :), n_times_in_state_ni_at_k_1(n_times_in_state_ni_at_k_1>0));
                 obj.pn = A_n;

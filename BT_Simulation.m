@@ -16,10 +16,9 @@ function [] = BT_Simulation(sim_id)
 % 03.01.2013 modularize code into subfunctions
 % ------------------------------------------------------------------------
 addpath('~/diss/src/matlab/beat_tracking/SilverBeat/utils')
-sim = Simulation('config_bt');
-if nargin == 1
-    sim = sim.set_up_results_dir(sim_id);
-end
+% profile on
+
+sim = Simulation('config_bt', sim_id);
 
 % output hash of current git revision
 [~, cmdout] = system('git rev-parse HEAD');

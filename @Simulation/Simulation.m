@@ -12,13 +12,13 @@ classdef Simulation
     end
     
     methods
-        function obj = Simulation(config_fun)
+        function obj = Simulation(config_fun, sim_id)
             
             obj.Params = eval(config_fun);
             
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
-            obj.system = sys_constructor(obj.Params, sim_id);
+            obj.system = sys_constructor(obj.Params, [], sim_id);
             % create train_data object
             obj.system = obj.system.init_train_data(obj.Params);
             % create test_data object

@@ -37,11 +37,11 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'P
 % System description
 % State space size
 
-% Params.M = 2560/1440; % number of discrete position states
-% Params.N = 47/26;
-Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
-Params.N = 22;
-Params.R = 8;
+% Params.M = 2560/1440/1216; % number of discrete position states
+% Params.N = 47/26/22;
+Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
+Params.N = 26;
+Params.R = 2;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
@@ -109,12 +109,12 @@ end
 
 
 % train data
-Params.train_set = 'ballroom';
+Params.train_set = 'boeck';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans.txt']);
+    num2str(Params.R), '-meter.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 if ~Params.doTraining
@@ -126,7 +126,7 @@ if ~Params.doTraining
 end
 
 % % test data
-Params.test_set = 'ballroom';
+Params.test_set = 'boeck';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

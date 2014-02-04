@@ -14,7 +14,7 @@ classdef BeatTracker
         function obj = BeatTracker(Params, model_fln, sim_id)
             
             % parse probabilistic model
-            if nargin == 2
+            if ~isempty(model_fln)
                 if exist(model_fln, 'file')
                     load(model_fln, 'obj.model');
                 else
@@ -23,7 +23,7 @@ classdef BeatTracker
             end
             obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
-            obj.sim_dir = fullfile(Params.results_path, sim_id);
+            obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
         end
         
         function obj = init_model(obj, Params)
@@ -79,7 +79,7 @@ classdef BeatTracker
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             
-            obj = obj.refine_model(3);
+            obj = obj.refine_model(1);
         end
         
         function obj = retrain_model(obj, exclude_test_file_id)

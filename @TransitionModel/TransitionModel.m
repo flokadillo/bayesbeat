@@ -15,6 +15,7 @@ classdef TransitionModel
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
         sample_fh
+        tempo_transition_probs % [N*R x N]
         
     end
     
