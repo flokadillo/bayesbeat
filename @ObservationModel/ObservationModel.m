@@ -83,15 +83,37 @@ classdef ObservationModel
         lik_func_handle = set_lik_func_handle(obj)
         
         function mean_params = comp_mean_params(obj)
-            [R, barpos] = size(obj.learned_params);
-            mean_params = zeros(R, barpos);
-            for iR=1:R
-               for b=1:barpos
+%             [R, barpos] = size(obj.learned_params);
+            feat_dims = obj.learned_params{1, 1}.NDimensions;
+            mean_params = zeros(obj.R, obj.barGrid, feat_dims);
+            for iR=1:obj.R
+               for b=1:obj.barGrid
                    if ~isempty(obj.learned_params{iR, b})
-                        mean_params(iR, b)=obj.learned_params{iR, b}.PComponents * obj.learned_params{iR, b}.mu;
+                        mean_params(iR, b, :)=obj.learned_params{iR, b}.PComponents * obj.learned_params{iR, b}.mu;
                    end
                end
             end           
+        end
+        
+        function plot_learned_patterns(obj)
+            mean_params = obj.comp_mean_params;
+            h = figure;
+            set(h, 'Position', [100 100 obj.R*100 obj.R*100]);
+            plot_cols = ceil(sqrt(obj.R));
+            col = hsv(obj.learned_params{1, 1}.NDimensions);
+            for c = 1:obj.R
+                subplot(ceil(obj.R/plot_cols), plot_cols, c)
+                hold on
+                for fdim = 1:obj.learned_params{1, 1}.NDimensions
+                    data = mean_params(c, :, fdim);
+                    data = data - min(data);
+                    data = data / max(data);
+                    data = data + fdim;
+                    plot(data, 'Color', col(fdim, :));
+                end
+                title(sprintf('cluster %i', c));
+                xlim([1 length(data)])
+            end 
         end
     end
     

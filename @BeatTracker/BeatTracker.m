@@ -7,10 +7,11 @@ classdef BeatTracker
         feature
         train_data
         test_data
+        sim_dir                 % directory where results are saved
     end
     
     methods
-        function obj = BeatTracker(Params, model_fln)
+        function obj = BeatTracker(Params, model_fln, sim_id)
             
             % parse probabilistic model
             if nargin == 2
@@ -22,7 +23,7 @@ classdef BeatTracker
             end
             obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
-            
+            obj.sim_dir = fullfile(Params.results_path, sim_id);
         end
         
         function obj = init_model(obj, Params)
@@ -104,13 +105,16 @@ classdef BeatTracker
             fprintf('* Load features');
             observations = obj.feature.load_all_features(obj.train_data.file_list);
             fprintf(' ... done\n');
+            hmm = obj.model;
+            save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+            
             for i = 1:iterations
                 fprintf('* Viterbi training: iteration %i\n', i);
 %                 profile on
                 obj.model = obj.model.viterbi_training(observations, belief_func);
 %                 profile viewer
                 hmm = obj.model;
-                save(['./temp/hmm-', obj.train_data.dataset, '-', num2str(i), '.mat'], 'hmm');
+                save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
             end
         end
         
