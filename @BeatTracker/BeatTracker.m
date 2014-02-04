@@ -7,7 +7,8 @@ classdef BeatTracker
         feature
         train_data
         test_data
-        sim_dir                 % directory where results are saved
+        sim_dir                 % directory where results are save
+        viterbi_learning_iterations
     end
     
     methods
@@ -24,6 +25,7 @@ classdef BeatTracker
             obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
             obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+            obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
         end
         
         function obj = init_model(obj, Params)
@@ -79,7 +81,9 @@ classdef BeatTracker
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             
-            obj = obj.refine_model(1);
+            if obj.viterbi_learning_iterations > 0
+                obj = obj.refine_model(obj.viterbi_learning_iterations);
+            end
         end
         
         function obj = retrain_model(obj, exclude_test_file_id)

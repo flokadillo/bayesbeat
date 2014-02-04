@@ -181,7 +181,7 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             
             %             for i_file=1:n_files
-            for i_file=1:2
+            for i_file=1:n_files
                 fprintf('%i/%i) ', i_file, n_files)
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
                 best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
@@ -201,23 +201,11 @@ classdef HMM
                         end
                     end
                 end
-                
-%                 for i_dim = 1:feat_dim
-                    %                     subs = [obj.obs_model.state2obs_idx(best_path, 2), ones(length(best_path), 1)*i_dim];
-                    %                     D = accumarray(subs, observations{i_file}(:, i_dim), [], @(x) {x});
-%                     observation_per_state{i_file, r_path(1), obj.obs_model.state2obs_idx(best_path(1), 2), i_dim} = ...
-%                         [observation_per_state{i_file, r_path(1), obj.obs_model.state2obs_idx(best_path(1), 2), i_dim}; observations{i_file}(1, i_dim)];
-%                 end
-                
+                               
                 for i_frame=2:length(best_path)
                     % count tempo transitions
                     idx1 = ((r_path(i_frame-1) - 1) * obj.N) + n_path(i_frame-1);
                     A_n(idx1, n_path(i_frame)) = A_n(idx1, n_path(i_frame)) + 1;
-                    % re-assign observations to hidden states
-%                     for i_dim = 1:feat_dim
-%                         observation_per_state{i_file, r_path(i_frame), obj.obs_model.state2obs_idx(best_path(i_frame), 2), i_dim} = ...
-%                             [observation_per_state{i_file, r_path(i_frame), obj.obs_model.state2obs_idx(best_path(i_frame), 2), i_dim}; observations{i_file}(i_frame, i_dim)];
-%                     end
                     % count pattern transitions (given a bar crossing occured)
                     if m_path(i_frame) < m_path(i_frame-1) % bar crossing
                         A_r(r_path(i_frame-1), r_path(i_frame)) = A_r(r_path(i_frame-1), r_path(i_frame)) + 1;
@@ -252,17 +240,23 @@ classdef HMM
                 end
                 obj.pn = (1 - a/b) / 2;
             elseif obj.tempo_tying == 2
-                % todo: correct!
-                pn_up = sum(diag(A_n, 1)) ./ sum(n_times_in_state_ni_at_k_1);
-                pn_down = sum(diag(A_n, -1)) ./ sum(n_times_in_state_ni_at_k_1);
+                n_up = 0;
+                n_down = 0;
+                c = sum(n_times_in_state_ni_at_k_1);
+                for i_r=1:obj.R
+                    n_up = n_up + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 1));
+                    n_down = n_down + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), -1));
+                end
+                pn_up = n_up / sum(n_times_in_state_ni_at_k_1);
+                pn_down = n_down / sum(n_times_in_state_ni_at_k_1);
                 obj.pn = [pn_up, pn_down];
             else
                 error('specify tempo_tying!\n');
             end
             % find min and max tempo states for each pattern
             for r_i = 1:obj.R
-                obj.minN(i_r) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
-                obj.maxN(i_r) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
+                obj.minN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
+                obj.maxN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
