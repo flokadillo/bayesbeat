@@ -1,5 +1,9 @@
 classdef TransitionModel
     % Transition Model Class
+    properties (SetAccess=public)
+        tempo_transition_probs % [N*R x N]
+    end
+    
     properties (SetAccess=private)
         A               % sparse transition matrix [nStates x nStates]
         M               % number of max bar positions
@@ -15,9 +19,11 @@ classdef TransitionModel
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
         sample_fh
-        tempo_transition_probs % [N*R x N]
+        
         
     end
+    
+    
     
     methods
         function obj = TransitionModel(M, Meff, N, R, pn, pr, pt, rhythm2meter, minN, maxN)

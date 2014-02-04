@@ -181,7 +181,7 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             
             %             for i_file=1:n_files
-            for i_file=1:n_files
+            for i_file=1:2
                 fprintf('%i/%i) ', i_file, n_files)
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
                 best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
@@ -258,6 +258,11 @@ classdef HMM
                 obj.pn = [pn_up, pn_down];
             else
                 error('specify tempo_tying!\n');
+            end
+            % find min and max tempo states for each pattern
+            for r_i = 1:obj.R
+                obj.minN(i_r) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
+                obj.maxN(i_r) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);

@@ -40,7 +40,7 @@ Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'P
 % Params.M = 2560/1440/1216; % number of discrete position states
 % Params.N = 47/26/22;
 Params.M = 1440; % total number of discrete position states (used for the meter with the longest duration)
-Params.N = 26;
+Params.N = 27;
 Params.R = 2;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
