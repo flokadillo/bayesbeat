@@ -1,4 +1,4 @@
-classdef BeatTracker
+classdef BeatTracker < handle
     % Beat tracker Class
     properties (SetAccess=private)
         input_fln               % input filename (.wav or feature file)
@@ -12,12 +12,14 @@ classdef BeatTracker
     end
     
     methods
-        function obj = BeatTracker(Params, model_fln, sim_id)
+        function obj = BeatTracker(Params, sim_id, model_fln)
             
             % parse probabilistic model
             if ~isempty(model_fln)
                 if exist(model_fln, 'file')
-                    load(model_fln, 'obj.model');
+                    c = load(model_fln);
+                    fields = fieldnames(c);
+                    obj.model = c.(fields{1});
                 else
                     error('Model file %s not found', model_fln);
                 end
@@ -28,7 +30,7 @@ classdef BeatTracker
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
         end
         
-        function obj = init_model(obj, Params)
+        function init_model(obj, Params)
             switch Params.inferenceMethod(1:2)
                 case 'HM'
                     obj.model = HMM(Params, obj.train_data.rhythm2meter);
@@ -39,7 +41,7 @@ classdef BeatTracker
             end
         end
         
-        function obj = init_train_data(obj, Params)
+        function init_train_data(obj, Params)
             % create train_data object
             obj.train_data = Data(Params.trainLab, 1);
 %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
@@ -50,7 +52,7 @@ classdef BeatTracker
                 Params.frame_length, Params.reorganize_bars_into_cluster);
         end
         
-        function obj = init_test_data(obj, Params)
+        function init_test_data(obj, Params)
             % create test_data object
             obj.test_data = Data(Params.testLab, 0);
             if isfield(Params, 'test_annots_folder')
@@ -64,7 +66,7 @@ classdef BeatTracker
             end
         end
         
-        function obj = train_model(obj, use_tempo_prior)
+        function train_model(obj, use_tempo_prior)
             tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
             if use_tempo_prior
                 % define max/min tempo for each rhythm separately
@@ -86,7 +88,7 @@ classdef BeatTracker
             end
         end
         
-        function obj = retrain_model(obj, exclude_test_file_id)
+        function retrain_model(obj, exclude_test_file_id)
             fprintf('    Retraining observation model ');
             if length(exclude_test_file_id) == 1
                 r_i = unique(obj.train_data.bar2cluster(obj.train_data.bar2file == exclude_test_file_id));
@@ -100,7 +102,7 @@ classdef BeatTracker
             fprintf('done\n');
         end
         
-        function obj = refine_model(obj, iterations)
+        function refine_model(obj, iterations)
             fprintf('* Set up belief functions');
 %             profile on
             belief_func = obj.train_data.make_belief_functions(obj.model);
@@ -122,32 +124,24 @@ classdef BeatTracker
             end
         end
         
-        function obj = load_features(obj, input_fln)
+        function load_features(obj, input_fln)
             obj.feature = obj.feature.load_feature(input_fln);
         end
         
-        function obj = compute_features(obj, input_fln)
+        function compute_features(obj, input_fln)
             obj.input_fln = input_fln;
         end
         
-        function results = do_inference(obj, test_file_id, smooth_win)
-%             profile on;
+        function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
             obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname);
-            
-            % smoothing
-            if smooth_win > 0
-                beats(:, 1) = obj.smooth_beats_sequence(beats(:, 1), smooth_win);
-            end
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
             results{4} = rhythm;
-%             profile viewer;
-            
             annot_fln = strrep(obj.feature.input_fln, 'wav', 'beats');
             if exist(annot_fln, 'file')
                 annots = load(annot_fln);
@@ -164,7 +158,7 @@ classdef BeatTracker
 
         end
         
-        function obj = load_model(obj, fln)
+        function load_model(obj, fln)
             temp = load(fln);
             names = fieldnames(temp);
             obj.model = temp.(names{1});

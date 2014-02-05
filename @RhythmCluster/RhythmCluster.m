@@ -108,13 +108,13 @@ classdef RhythmCluster < handle
         end
         
         function do_clustering(obj, n_clusters, type)
-            % type = 'bar' : cluster data_per_bar
-            % type = 'song': cluster data_per_song
+            % type = 'bars' : cluster data_per_bar
+            % type = 'songs': cluster data_per_song
             
             %             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
             %                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
             fprintf('WARNING: so far only 2 different meters supported!\n');
-            if strcmpi(type, 'bar')
+            if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
             else
                 S = obj.data_per_song;
@@ -151,7 +151,7 @@ classdef RhythmCluster < handle
             print(h, outfile, '-dpng');
             
             % save cluster assignments
-            if strcmpi(type, 'bar')
+            if strcmpi(type, 'bars')
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
                     num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
             else
@@ -179,11 +179,11 @@ classdef RhythmCluster < handle
                         patternId = cidx(fileCounter);
                         bar2pattern = [bar2pattern; ones(nBars(iFile), 1) * patternId];
                     end
+                    obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+                        num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans-songs.txt']);
                 end
                 cidx = bar2pattern;
-                
-                obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
+
             end
             obj.bar_2_cluster = cidx;
             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');

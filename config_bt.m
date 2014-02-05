@@ -21,16 +21,13 @@ Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
-Params.loadFeaturesFromFile = 0;
-Params.doTraining = 1;
-
-Params.smoothingWin = 0;
+% ====================
 Params.useTempoPrior = 0;
 Params.patternGiven = 0;
 Params.doLeaveOneOut = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 0;
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
@@ -116,15 +113,8 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), '-meter.txt']);
-Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
-if ~Params.doTraining
-    if strfind(Params.inferenceMethod, 'HMM')
-        Params.model_fln = fullfile(Params.data_path, ['hmm_', Params.train_set, '.mat']);
-    elseif strfind(Params.inferenceMethod, 'PF')
-        Params.model_fln = fullfile(Params.data_path, ['pf_', Params.train_set, '.mat']);
-    end
-end
+% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
 Params.test_set = 'cuidado_hainsworth_klapuri_simac';
@@ -136,6 +126,6 @@ Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
-clusterFName = strrep(clusterFName, '-songs', '');
+% clusterFName = strrep(clusterFName, '-songs', '');
 Params.featuresFln = fullfile(Params.data_path, [clusterFName, '_', Params.featStr, '.mat']);
 end

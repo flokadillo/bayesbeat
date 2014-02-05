@@ -18,7 +18,7 @@ classdef Simulation
             
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
-            obj.system = sys_constructor(obj.Params, [], sim_id);
+            obj.system = sys_constructor(obj.Params, sim_id, []);
             % create train_data object
             obj.system = obj.system.init_train_data(obj.Params);
             % create test_data object
@@ -122,7 +122,7 @@ classdef Simulation
         end
         
         function results = test(obj, iFile)
-            results = obj.system.do_inference(iFile, obj.Params.smoothingWin);
+            results = obj.system.do_inference(iFile);
         end
         
         function obj = set_comp_time(obj, comp_time)
