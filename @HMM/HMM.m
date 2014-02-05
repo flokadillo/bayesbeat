@@ -25,6 +25,7 @@ classdef HMM
         inferenceMethod
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
         viterbi_learning_iterations 
+        n_depends_on_r  % no dependency between n and r
     end
     
     methods
@@ -53,7 +54,7 @@ classdef HMM
             obj.inferenceMethod = Params.inferenceMethod;
             obj.tempo_tying = Params.tempo_tying;
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
-            
+            obj.n_depends_on_r = Params.n_depends_on_r;
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
@@ -62,15 +63,20 @@ classdef HMM
             meter_denom = meter_denom(obj.rhythm2meter);
             
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
-                obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
+                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
+                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
             else
-                obj.minN = round(obj.M * obj.frame_length * minTempo ./ 60);
-                obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ 60);
+                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
+                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
             end
             
             if max(obj.maxN) > obj.N
                 error('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
+            end
+            
+            if ~obj.n_depends_on_r % no dependency between n and r
+                obj.minN = ones(1, obj.R) * min(obj.minN);
+                obj.maxN = ones(1, obj.R) * max(obj.maxN);
             end
             
             % Create transition model
@@ -81,7 +87,7 @@ classdef HMM
 
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
-            %             profile viewer
+
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');
@@ -186,8 +192,6 @@ classdef HMM
             A_r = zeros(obj.R, obj.R);
             observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
             init = zeros(obj.N * obj.R, 1);
-            
-            %             for i_file=1:n_files
             for i_file=1:n_files
                 fprintf('%i/%i) ', i_file, n_files)
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
@@ -196,19 +200,16 @@ classdef HMM
                     continue;
                 end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-                
                 b = ones(length(best_path), 1) * (1:feat_dim);
                 subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
                 D = accumarray(subs, observations{i_file}(:), [], @(x) {x});
-                
                 for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
                         for i_dim = 1:feat_dim
                             observation_per_state{i_file, i_r, i_pos, i_dim} = D{i_pos, i_dim};
                         end
                     end
-                end
-                               
+                end        
                 for i_frame=2:length(best_path)
                     % count tempo transitions
                     idx1 = ((r_path(i_frame-1) - 1) * obj.N) + n_path(i_frame-1);
@@ -220,16 +221,11 @@ classdef HMM
                 end
                 init(((r_path(1) - 1) * obj.N) + n_path(1)) = ...
                     init(((r_path(1) - 1) * obj.N) + n_path(1)) + 1;
-%                 t_path = obj.rhythm2meter(r_path);
-%                 beats = obj.find_beat_times(m_path, t_path, n_path);
-%                 BeatTracker.save_beats(beats, './results/99/temp.beats');
             end
-            
             % update initial probabilities
             init = init / sum(init);
             obj.initial_prob = repmat(init(:)', obj.M, 1);
             obj.initial_prob = obj.initial_prob(:);
-            
             % update transition model
             % pattern transitions
             obj.pr = bsxfun(@rdivide, A_r, sum(A_r, 2)); % normalise p_r
@@ -250,7 +246,6 @@ classdef HMM
             elseif obj.tempo_tying == 2
                 n_up = 0;
                 n_down = 0;
-%                 c = sum(n_times_in_state_ni_at_k_1);
                 for i_r=1:obj.R
                     n_up = n_up + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 1));
                     n_down = n_down + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), -1));
@@ -263,17 +258,17 @@ classdef HMM
             end
             % find min and max tempo states for each pattern
             for r_i = 1:obj.R
-                obj.minN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
-                obj.maxN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
+                    obj.minN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
+                    obj.maxN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
+            end
+            if ~obj.n_depends_on_r % no dependency between n and r
+                obj.minN = ones(1, obj.R) * min(obj.minN);
+                obj.maxN = ones(1, obj.R) * max(obj.maxN);
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
-            %             save('./temp/A_ballroom.mat', 'A_n');
-            
+                obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);          
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
-            
-            
         end
         
     end
