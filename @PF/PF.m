@@ -80,12 +80,10 @@ classdef PF
             max_N = max(obj.maxN);
             n_grid = min_N:max_N;
             n_m_cells = floor(obj.nParticles / length(n_grid));
-            
-            
-            %             n_m_cells = floor(n_m_cells / (sum(obj.Meff)/obj.M));
             m_grid_size = sum(obj.Meff) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
             r_n = rand(obj.nParticles, 1) - 0.5;
+            nParts = zeros(obj.R, 1);
             c=1;
             for iR = 1:obj.R
                 % create positions between 1 and obj.Meff(obj.rhythm2meter(iR))
@@ -101,35 +99,8 @@ classdef PF
             if sum(nParts) < obj.nParticles
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) + 1;
                 obj.initial_n(c:end) = (r_n(c:end) + 0.5) * (max_N - min_N) + min_N;
-                obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* obj.Meff(obj.rhythm2meter(obj.initial_r(c:end)))';
+                obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* (obj.Meff(obj.rhythm2meter(obj.initial_r(c:end)))-1)' + 1;
             end
-            %             % n
-            %             obj.initial_n = betarnd(2.222, 3.908, obj.nParticles, 1);
-            %             obj.initial_n = obj.initial_n * (max(obj.maxN)-min(obj.minN)) + min(obj.minN);
-            %             % m
-            %             if obj.rbpf
-            %                 obj.initial_m = repmat(rand(1, obj.nParticles) .* (obj.M-1) + 1, obj.R, 1);
-            %                 for iR=1:obj.R
-            %                     % check if m is outside Meff and if yes, correct
-            %                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
-            %                     ind = (obj.initial_m(iR, :) > M_eff_iR + 1);
-            %                     temp = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
-            %                     % shift by random amount of beats
-            %                     obj.initial_m(iR, ind) = temp + floor(rand(1, sum(ind)) * obj.meter_state2meter(1, iR))*M_eff_iR / obj.meter_state2meter(2, iR);
-            %                     obj.initial_m(iR, ind) = mod(obj.initial_m(iR, ind) - 1, M_eff_iR) + 1;
-            %                 end
-            %             else
-            %                 % assume unit distribution for r-state
-            %                 r_parts = floor(linspace(1, obj.nParticles, obj.R + 1));
-            %                 obj.initial_m = zeros(obj.nParticles, 1);
-            %                 obj.initial_r = zeros(obj.nParticles, 1);
-            %                 for iR=1:obj.R
-            %                     M_eff_iR = obj.Meff(obj.rhythm2meter(iR));
-            %                     ind = r_parts(iR):r_parts(iR+1);
-            %                     obj.initial_m(ind) = rand(length(ind), 1) .* (M_eff_iR-1) + 1;
-            %                     obj.initial_r(ind) = ones(length(ind), 1) * iR;
-            %                 end
-            %             end
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)

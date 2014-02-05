@@ -36,6 +36,7 @@ classdef Feature
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
+                    fprintf('    Extracting features from %s\n', fname);
                     param.compress = 0;
                     param.norm_each_file = 2; % 2 for z-score computation
                     param.doMvavg = 1;
