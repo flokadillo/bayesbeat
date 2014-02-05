@@ -24,6 +24,7 @@ classdef HMM
         save_inference_data % save intermediate output of particle filter for visualisation
         inferenceMethod
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
+        viterbi_learning_iterations 
     end
     
     methods
@@ -51,6 +52,7 @@ classdef HMM
             obj.save_inference_data = Params.save_inference_data;
             obj.inferenceMethod = Params.inferenceMethod;
             obj.tempo_tying = Params.tempo_tying;
+            obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             
         end
         
@@ -67,11 +69,16 @@ classdef HMM
                 obj.maxN = round(obj.M * obj.frame_length * maxTempo ./ 60);
             end
             
+            if max(obj.maxN) > obj.N
+                error('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
+            end
+            
             % Create transition model
-            % Initialise without tempo priot knowledge
-            obj.minN = ones(1, obj.R);
-            obj.maxN = ones(1, obj.R)*max([obj.N, obj.maxN + 1]);
-            %             profile on
+            if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
+                obj.minN = ones(1, obj.R);
+                obj.maxN = ones(1, obj.R) * obj.N;
+            end
+
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
             %             profile viewer
