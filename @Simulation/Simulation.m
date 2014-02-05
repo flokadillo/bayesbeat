@@ -20,30 +20,38 @@ classdef Simulation
             % create beat tracker object
             obj.system = sys_constructor(obj.Params, sim_id, []);
             % create train_data object
-            obj.system = obj.system.init_train_data(obj.Params);
+            obj.system.init_train_data(obj.Params);
             % create test_data object
-            obj.system = obj.system.init_test_data(obj.Params);
+            obj.system.init_test_data(obj.Params);
             % initialize probabilistic model
-            obj.system = obj.system.init_model(obj.Params);
+            obj.system.init_model(obj.Params);
             
-            if  obj.Params.doLeaveOneOut > 1
+            if  obj.Params.n_folds_for_cross_validation > 1
                 % do k-fold cross validation: check if lab files for folds are present
                 [fpath, fname, ~] = fileparts(obj.Params.testLab);
-                for k=1:obj.Params.doLeaveOneOut
+                for k=1:obj.Params.n_folds_for_cross_validation
                     obj.Params.foldLab{k} = fullfile(fpath, [fname, '-fold', num2str(k), '.lab']);
                     if ~exist(obj.Params.foldLab{k}, 'file')
                         error('Lab file for %i th fold not found: %s', k, obj.Params.foldLab{k});
                     end
                 end
-                obj.nFolds = obj.Params.doLeaveOneOut;
-            elseif obj.Params.doLeaveOneOut == 1
+                obj.nFolds = obj.Params.n_folds_for_cross_validation;
+            elseif obj.Params.n_folds_for_cross_validation == 1
                 obj.nFolds = length(obj.system.test_data.file_list);
-            elseif obj.Params.doLeaveOneOut == 0
+            elseif obj.Params.n_folds_for_cross_validation == 0
                 obj.nFolds = 1;
             else
-                error('Parameter doLeaveOneOut is invalid (=%.2f)', obj.Params.doLeaveOneOut)
+                error('Parameter n_folds_for_cross_validation is invalid (=%.2f)', obj.Params.n_folds_for_cross_validation)
             end
-            obj.save_results2file = 0;
+            obj.save_results2file = 1;
+            obj.sim_id = sim_id;
+            obj.sim_dir = fullfile(obj.Params.results_path, num2str(sim_id));
+            obj.Params.logFileName = num2str(obj.sim_id);
+            obj.Params.paramsName = fullfile(obj.sim_dir, 'params.mat');
+            % copy config file to simulation folder
+            if exist(obj.sim_dir, 'file')
+                system(['cp ', fullfile(obj.Params.base_path, 'config_bt.m'), ' ', obj.sim_dir]);
+            end
         end
         
         function obj = set_up_results_dir(obj, sim_id)
@@ -62,16 +70,8 @@ classdef Simulation
         end
         
         function obj = train_system(obj)
-            if obj.Params.doTraining
                 % train model
-                obj.system = obj.system.train_model(obj.Params.useTempoPrior);
-            else
-                if exist(obj.Params.model_fln, 'file')
-                    obj.system = obj.system.load_model(obj.Params.model_fln);
-                else
-                    error('No model file was found: please train the model first');
-                end  
-            end
+                obj.system.train_model(obj.Params.useTempoPrior);
         end
                
         function do_sim(obj)
@@ -99,11 +99,11 @@ classdef Simulation
         function test_file_ids = retrain(obj, k)
             % Retrain is used to only update parts of the parameters
             
-            if obj.Params.doLeaveOneOut == 1 % leave one out
+            if obj.Params.n_folds_for_cross_validation == 1 % leave one out
                 test_file_ids = k;
                 obj.system.retrain_model(test_file_ids);
                 
-            elseif obj.Params.doLeaveOneOut > 1 % k-fild cross validation
+            elseif obj.Params.n_folds_for_cross_validation > 1 % k-fild cross validation
                 % load lab file of fold and determine indices
                 test_file_ids = load(obj.Params.foldLab{k});
                 fln = fullfile(obj.Params.data_path, [obj.Params.train_set, '-train_ids.txt']);

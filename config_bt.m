@@ -22,9 +22,16 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % Simulation parameter
 % ====================
+% useTempoPrior: if 1, then apply some non-uniform initial distribution over the
+% tempo states
 Params.useTempoPrior = 0;
+
+% patternGiven: if 1, use the pattern labels as additional input to the
+% system
 Params.patternGiven = 0;
-Params.doLeaveOneOut = 0;
+
+% n_folds_for_cross_validation: 
+Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
@@ -117,7 +124,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'cuidado_hainsworth_klapuri_simac';
+Params.test_set = 'boeck';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
