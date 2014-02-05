@@ -23,6 +23,7 @@ sim = Simulation('config_bt', sim_id);
 % output hash of current git revision
 [~, cmdout] = system('git rev-parse HEAD');
 fprintf('Git SHA-1: %s\n', cmdout);
+fprintf('Process ID: %i\n', feature('getpid'));
 
 sim = sim.train_system();
 

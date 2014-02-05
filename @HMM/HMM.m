@@ -194,7 +194,7 @@ classdef HMM
                 subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
                 D = accumarray(subs, observations{i_file}(:), [], @(x) {x});
                 
-                for i_r = unique(r_path)'
+                for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
                         for i_dim = 1:feat_dim
                             observation_per_state{i_file, i_r, i_pos, i_dim} = D{i_pos, i_dim};
@@ -224,6 +224,7 @@ classdef HMM
             obj.initial_prob = obj.initial_prob(:);
             
             % update transition model
+            % pattern transitions
             obj.pr = bsxfun(@rdivide, A_r, sum(A_r, 2)); % normalise p_r
             n_times_in_state_ni_at_k_1 = sum(A_n, 2);
             % save tempo transitions
@@ -242,7 +243,7 @@ classdef HMM
             elseif obj.tempo_tying == 2
                 n_up = 0;
                 n_down = 0;
-                c = sum(n_times_in_state_ni_at_k_1);
+%                 c = sum(n_times_in_state_ni_at_k_1);
                 for i_r=1:obj.R
                     n_up = n_up + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 1));
                     n_down = n_down + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), -1));

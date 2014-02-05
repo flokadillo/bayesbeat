@@ -40,8 +40,8 @@ classdef Feature
                     param.norm_each_file = 2; % 2 for z-score computation
                     param.doMvavg = 1;
                     param.offline = 1;
-                    param.logThresh = 30;           % Mean + 1.7 * Variance of all feature values
-                    param.normalizingConst = 35;
+%                     param.logThresh = 30;           % Mean + 1.7 * Variance of all feature values
+%                     param.normalizingConst = 35;
                     if strfind(obj.feat_type{iDim}, 'lo230')
                         param.min_f = 0;
                         param.max_f = 230;
@@ -56,7 +56,7 @@ classdef Feature
                 
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001
-                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, fr{iDim}, 1/obj.frame_length );
+                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
                 end
             end
             obj.feature = cell2mat(detfunc');

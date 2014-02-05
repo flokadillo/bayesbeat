@@ -233,8 +233,8 @@ classdef TransitionModel
             sum_over_j = full(sum(obj.A, 2));
             % find corrupt states: sum_over_j should be either 0 (if state is
             % never visited) or 1
-            zero_probs_j = abs(sum_over_j) < 1e-10;  % p ≃ 0
-            one_probs_j = abs(sum_over_j-1) < 1e-10; % p ≃ 1
+            zero_probs_j = abs(sum_over_j) < 1e-5;  % p ≃ 0
+            one_probs_j = abs(sum_over_j-1) < 1e-5; % p ≃ 1
             corrupt_states_i = find(~zero_probs_j & ~one_probs_j, 1);
             
             if dooutput
@@ -259,7 +259,7 @@ classdef TransitionModel
                         fprintf('      %i (%i - %i - %i) with p=%.3f\n', trans_states(i), m, n, r, full(obj.A(corrupt_states_i(1), trans_states(i))));
                         sumProb = sumProb + full(obj.A(corrupt_states_i(1),trans_states(i)));
                     end
-                    fprintf('      sum: p=%.3f\n', sumProb);
+                    fprintf('      sum: p=%.10f\n', sumProb);
                 end
                 
             end
