@@ -278,7 +278,8 @@ classdef RhythmCluster < handle
             end
             
             bar2pattern = [];
-            dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz'};
+%             dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz'};
+%             dancestyles = {'ChaCha', 'Jive', 'Rumba', 'Waltz'};
             
             % read list of training files
             fid = fopen(obj.train_lab_fln, 'r');
@@ -309,7 +310,10 @@ classdef RhythmCluster < handle
                         patternId = meter(fileCounter+1);
                     case 'dancestyle'
                         [ data, ~ ] = loadAnnotations( annotsPath, fname, 's', 1 );
-                        patternId = find(strcmp(dancestyles, data.style));
+                        patternId = find(strcmp(rhythm_names, data.style));
+                        if isempty(patternId)
+                           fprintf('Please add %s to the rhythm_names\n', data.style);
+                        end
                     case 'auto'
                         patternId = songClusterIds(iFile);
                     case 'rhythm'

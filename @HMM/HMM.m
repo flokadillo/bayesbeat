@@ -192,7 +192,7 @@ classdef HMM
             A_r = zeros(obj.R, obj.R);
             observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
             init = zeros(obj.N * obj.R, 1);
-            for i_file=10:10
+            for i_file=1:n_files
                 [~, fname, ~] = fileparts(file_list{i_file});
                 fprintf('%i/%i) %s', i_file, n_files, fname);
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
@@ -261,7 +261,7 @@ classdef HMM
                 end
                 pn_up = n_up / sum(n_times_in_state_ni_at_k_1);
                 pn_down = n_down / sum(n_times_in_state_ni_at_k_1);
-                obj.pn = [pn_up, pn_down];
+                obj.pn = [pn_up; pn_down];
             else
                 error('specify tempo_tying!\n');
             end

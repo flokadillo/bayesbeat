@@ -47,7 +47,7 @@ Params.viterbi_learning_iterations = 1;
 % Params.N = 47/26/22;
 Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 23;
-Params.R = 2;
+Params.R = 4;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
@@ -63,7 +63,7 @@ meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 Params.pn = 0.01;  
-Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
+Params.tempo_tying = 2; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
 %Params.pattern_size = 'beat'; % 'beat' or 'bar'
 %Params.pn = 0.001; 
@@ -115,17 +115,17 @@ end
 
 
 % train data
-Params.train_set = 'boeck';
+Params.train_set = 'ballroom40';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
-% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+    num2str(Params.R), '-dancestyle.txt']);
+%Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+ %    Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'boeck';
+Params.test_set = 'ballroom40';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

@@ -57,8 +57,8 @@ classdef TransitionModel
                 n_r_trans = zeros(obj.R * obj.N, obj.N);
                 for ri = 1:obj.R
                     n_const = diag(ones(obj.N, 1) * (1-sum(obj.pn)), 0);
-                    n_up = diag(ones(obj.N, 1) * obj.pn, 1);
-                    n_down = diag(ones(obj.N, 1) * obj.pn, -1);
+                    n_up = diag(ones(obj.N, 1) * obj.pn(1), 1);
+                    n_down = diag(ones(obj.N, 1) * obj.pn(2), -1);
                     n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = ...
                         n_const + n_up(1:obj.N, 1:obj.N) + n_down(1:obj.N, 1:obj.N);
                 end
@@ -233,8 +233,8 @@ classdef TransitionModel
             sum_over_j = full(sum(obj.A, 2));
             % find corrupt states: sum_over_j should be either 0 (if state is
             % never visited) or 1
-            zero_probs_j = abs(sum_over_j) < 1e-5;  % p ≃ 0
-            one_probs_j = abs(sum_over_j-1) < 1e-5; % p ≃ 1
+            zero_probs_j = abs(sum_over_j) < 1e-4;  % p ≃ 0
+            one_probs_j = abs(sum_over_j-1) < 1e-4; % p ≃ 1
             corrupt_states_i = find(~zero_probs_j & ~one_probs_j, 1);
             
             if dooutput
