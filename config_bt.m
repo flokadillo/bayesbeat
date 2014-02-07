@@ -25,6 +25,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 % useTempoPrior: if 1, then apply some non-uniform initial distribution over the
 % tempo states
 Params.useTempoPrior = 0;
+Params.n_depends_on_r = 1;
 
 % patternGiven: if 1, use the pattern labels as additional input to the
 % system
@@ -35,7 +36,7 @@ Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
-Params.viterbi_learning_iterations = 0;
+Params.viterbi_learning_iterations = 1;
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
