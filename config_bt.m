@@ -63,7 +63,7 @@ meter2M = Params.M ./ max(bar_durations);
 Params.Meff = round(bar_durations * meter2M);
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 Params.pn = 0.01;  
-Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
+Params.tempo_tying = 2; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
 %Params.pattern_size = 'beat'; % 'beat' or 'bar'
 %Params.pn = 0.001; 

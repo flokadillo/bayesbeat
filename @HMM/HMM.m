@@ -185,7 +185,7 @@ classdef HMM
             
         end
         
-        function obj = viterbi_training(obj, observations, belief_func)
+        function obj = viterbi_training(obj, observations, belief_func, file_list)
             n_files = size(observations, 1);
             feat_dim = size(observations{1}, 2);
             A_n = zeros(obj.N * obj.R, obj.N);
@@ -193,16 +193,25 @@ classdef HMM
             observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
             init = zeros(obj.N * obj.R, 1);
             for i_file=1:n_files
-                fprintf('%i/%i) ', i_file, n_files)
+                [~, fname, ~] = fileparts(file_list{i_file});
+                fprintf('%i/%i) %s', i_file, n_files, fname);
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
                 best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
                 if isempty(best_path)
                     continue;
                 end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
+                t_path = obj.rhythm2meter(r_path);
+                % compute beat times and bar positions of beats
+                beats = obj.find_beat_times(m_path, t_path, n_path);
+                beats(:, 1) = beats(:, 1) + (belief_func{i_file, 1}(1)-1) * obj.frame_length;
+                BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
+                
                 b = ones(length(best_path), 1) * (1:feat_dim);
                 subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
-                D = accumarray(subs, observations{i_file}(:), [], @(x) {x});
+                % only use observation between first and last observation
+                obs = observations{i_file}(belief_func{i_file, 1}(1):belief_func{i_file, 1}(end), :);
+                D = accumarray(subs, obs(:), [], @(x) {x});
                 for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
                         for i_dim = 1:feat_dim
@@ -252,7 +261,7 @@ classdef HMM
                 end
                 pn_up = n_up / sum(n_times_in_state_ni_at_k_1);
                 pn_down = n_down / sum(n_times_in_state_ni_at_k_1);
-                obj.pn = [pn_up, pn_down];
+                obj.pn = [pn_up; pn_down];
             else
                 error('specify tempo_tying!\n');
             end
@@ -507,7 +516,7 @@ classdef HMM
         end
         
         function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
-            nFrames = size(obs_lik, 3);
+            nFrames = belief_func{1}(end) - belief_func{1}(1) + 1;
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
             maxState = max([row; col]);
@@ -526,31 +535,20 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+            ind = sub2ind(size(obs_lik), obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
+            % start index at the first belief function
+            ind = ind + ind_stepsize * (belief_func{1}(1)-1);
+             
+            fprintf('    Decoding (viterbi training) .');
             
-            % incorporate first observation
-            O = zeros(nStates, 1);
-            validInds = ~isnan(ind);
-            O(validInds) = obs_lik(ind(validInds));
-            delta = O .* delta;
-            delta = delta / sum(delta);
-            % move pointer to next observation
-            ind = ind + ind_stepsize;
-            fprintf('    Decoding (viterbi) .');
-            
-            if belief_func{1}(1) == 1
-                delta = delta .* (belief_func{2}(1, minState:maxState))';
-                delta = delta / sum(delta);
-            end
-            
-            for iFrame = 2:nFrames
+            for iFrame = 1:nFrames
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 
-                if sum(belief_func{1} == iFrame)
-                    delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame, minState:maxState);
+                if sum(belief_func{1} == iFrame+belief_func{1}(1)-1)
+                    delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+belief_func{1}(1)-1, minState:maxState);
                     delta_max = delta_max / sum(delta_max);
                     if sum(isnan(delta_max)) > 0
                         fprintf(' Viterbi path could not be determined (error at beat %i)\n', find(belief_func{1} == iFrame));

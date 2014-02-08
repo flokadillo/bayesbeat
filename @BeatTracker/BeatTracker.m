@@ -117,7 +117,7 @@ classdef BeatTracker < handle
             for i = 1:iterations
                 fprintf('* Viterbi training: iteration %i\n', i);
 %                 profile on
-                obj.model = obj.model.viterbi_training(observations, belief_func);
+                obj.model = obj.model.viterbi_training(observations, belief_func, obj.train_data.file_list);
 %                 profile viewer
                 hmm = obj.model;
                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
