@@ -121,8 +121,8 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), '-dancestyle.txt']);
-%Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
- %    Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
 Params.test_set = 'ballroom';
