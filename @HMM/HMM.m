@@ -201,16 +201,16 @@ classdef HMM
                     continue;
                 end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-                t_path = obj.rhythm2meter(r_path);
-                % compute beat times and bar positions of beats
-                beats = obj.find_beat_times(m_path, t_path, n_path);
-                beats(:, 1) = beats(:, 1) + (belief_func{i_file, 1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
+%                 % compute beat times and bar positions of beats
+%                 t_path = obj.rhythm2meter(r_path);
+%                 beats = obj.find_beat_times(m_path, t_path, n_path);
+%                 beats(:, 1) = beats(:, 1) + (belief_func{i_file, 1}(1)-1) * obj.frame_length;
+%                 BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
                 
                 b = ones(length(best_path), 1) * (1:feat_dim);
                 subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
                 % only use observation between first and last observation
-                obs = observations{i_file}(belief_func{i_file, 1}(1):belief_func{i_file, 1}(end), :);
+                obs = observations{i_file}(belief_func{i_file, 1}(1):min([belief_func{i_file, 1}(end), size(obs_lik, 3) ]), :);
                 D = accumarray(subs, obs(:), [], @(x) {x});
                 for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
@@ -516,7 +516,9 @@ classdef HMM
         end
         
         function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
-            nFrames = belief_func{1}(end) - belief_func{1}(1) + 1;
+            start_frame = max([belief_func{1}(1), 1]); % make sure that belief_func is >= 1
+            end_frame = min([belief_func{1}(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames
+            nFrames = end_frame - start_frame + 1;
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
             maxState = max([row; col]);
@@ -539,7 +541,7 @@ classdef HMM
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
             % start index at the first belief function
-            ind = ind + ind_stepsize * (belief_func{1}(1)-1);
+            ind = ind + ind_stepsize * (start_frame-1);
              
             fprintf('    Decoding (viterbi training) .');
             
@@ -547,8 +549,8 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 
-                if sum(belief_func{1} == iFrame+belief_func{1}(1)-1)
-                    delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+belief_func{1}(1)-1, minState:maxState);
+                if sum(belief_func{1} == iFrame+start_frame-1)
+                    delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+start_frame-1, minState:maxState);
                     delta_max = delta_max / sum(delta_max);
                     if sum(isnan(delta_max)) > 0
                         fprintf(' Viterbi path could not be determined (error at beat %i)\n', find(belief_func{1} == iFrame));

@@ -21,11 +21,7 @@ for iFile=1:nFiles
     fprintf('      %i/%i\n',iFile, nFiles );
     barIds = find(bar2file == iFile); 
         for iBar = 1:length(barIds)  
-            if iBar==48 && iFile==97
-                klj=987;
-            end
             for iPos = 1:barGrid
-%                 iPos
                 dataPerFile{iFile, clusterIdx(barIds(iBar)), iPos} = ...
                     [dataPerFile{iFile, clusterIdx(barIds(iBar)), iPos}; dataPerBar{barIds(iBar), iPos}];
             end

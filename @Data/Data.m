@@ -104,14 +104,16 @@ classdef Data
                 end
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
                 barCounter = barCounter + obj.n_bars(iFile);
-                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile)
+                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile) 
                     error('%s: Number of bars not consistent !', fname);
                 end
             end
                 
             
             % Check consistency cluster_fln - train_lab
-            if sum(obj.n_bars) ~= length(obj.bar2file)
+            if length(obj.bar2cluster) ~= length(obj.bar2file)
+                fprintf('    %s: %i bars\n', cluster_fln, length(obj.bar2cluster));
+                fprintf('    computed from beat files: %i bars\n', length(obj.bar2file));
                 error('Number of bars not consistent !');
             end
             % find meter of each rhythmic pattern
@@ -227,6 +229,7 @@ classdef Data
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
             
+%             for i_file = 1:length(obj.file_list)
             for i_file = 1:length(obj.file_list)
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
@@ -237,7 +240,7 @@ classdef Data
                 btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
                 beats_m = (M_i * (btype-1) / max(btype)) + 1;
                 % beat frames
-                belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
+                
                 
                 n_beats_i = size(obj.beats{i_file}, 1);
                 i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
@@ -254,6 +257,8 @@ classdef Data
                     j_cols(idx) = states;
                 end
 %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
+                belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
+                belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
                 belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
         end
