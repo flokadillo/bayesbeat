@@ -31,22 +31,32 @@ classdef BeatTracker < handle
         end
         
         function init_model(obj, Params)
-            switch Params.inferenceMethod(1:2)
-                case 'HM'
-                    obj.model = HMM(Params, obj.train_data.rhythm2meter);
-                case 'PF'
-                    obj.model = PF(Params, obj.train_data.rhythm2meter);
-                otherwise
-                    error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
+            if isfield(Params, 'model_fln')
+                if exist(Params.model_fln, 'file')
+                    c = load(Params.model_fln);
+                    fields = fieldnames(c);
+                    obj.model = c.(fields{1});
+                else
+                    
+                    
+                    switch Params.inferenceMethod(1:2)
+                        case 'HM'
+                            obj.model = HMM(Params, obj.train_data.rhythm2meter);
+                        case 'PF'
+                            obj.model = PF(Params, obj.train_data.rhythm2meter);
+                        otherwise
+                            error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
+                    end
+                end
             end
         end
         
         function init_train_data(obj, Params)
             % create train_data object
             obj.train_data = Data(Params.trainLab, 1);
-%             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
+            %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
             obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
-%             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
+            %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
                 Params.barGrid_eff, Params.featureDim, Params.featuresFln, Params.feat_type, ...
                 Params.frame_length, Params.reorganize_bars_into_cluster);
@@ -104,9 +114,9 @@ classdef BeatTracker < handle
         
         function refine_model(obj, iterations)
             fprintf('* Set up belief functions');
-%             profile on
+            %             profile on
             belief_func = obj.train_data.make_belief_functions(obj.model);
-%             profile viewer
+            %             profile viewer
             fprintf(' ... done\n');
             fprintf('* Load features');
             observations = obj.feature.load_all_features(obj.train_data.file_list);
@@ -116,11 +126,12 @@ classdef BeatTracker < handle
             
             for i = 1:iterations
                 fprintf('* Viterbi training: iteration %i\n', i);
-%                 profile on
-                obj.model = obj.model.viterbi_training(observations, belief_func, obj.train_data.file_list);
-%                 profile viewer
+                %                 profile on
+                [obj.model, bar2cluster] = obj.model.viterbi_training(observations, belief_func, obj.train_data);
+                %                 profile viewer
                 hmm = obj.model;
                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
+                save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
             end
         end
         
@@ -155,7 +166,7 @@ classdef BeatTracker < handle
                 end
             end
             %
-
+            
         end
         
         function load_model(obj, fln)

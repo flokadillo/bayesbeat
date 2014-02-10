@@ -25,7 +25,8 @@ classdef HMM
         inferenceMethod
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
         viterbi_learning_iterations 
-        n_depends_on_r  % no dependency between n and r
+        n_depends_on_r      % no dependency between n and r
+        
     end
     
     methods
@@ -185,15 +186,17 @@ classdef HMM
             
         end
         
-        function obj = viterbi_training(obj, observations, belief_func, file_list)
+        function [obj, bar2cluster] = viterbi_training(obj, observations, belief_func, train_data)
             n_files = size(observations, 1);
             feat_dim = size(observations{1}, 2);
             A_n = zeros(obj.N * obj.R, obj.N);
             A_r = zeros(obj.R, obj.R);
             observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
             init = zeros(obj.N * obj.R, 1);
+            % pattern id that each bar was assigned to in viterbi
+            bar2cluster = zeros(size(train_data.bar2cluster));
             for i_file=1:n_files
-                [~, fname, ~] = fileparts(file_list{i_file});
+                [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('%i/%i) %s', i_file, n_files, fname);
                 obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
                 best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
@@ -207,6 +210,18 @@ classdef HMM
 %                 beats(:, 1) = beats(:, 1) + (belief_func{i_file, 1}(1)-1) * obj.frame_length;
 %                 BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
                 
+                % save pattern id per bar
+                temp = zeros(size(train_data.beats{i_file}, 1), 1);
+                temp(train_data.bar_start_id{i_file}+1) = 1;
+                temp = round(train_data.beats{i_file}(temp & train_data.full_bar_beats{i_file}, 1) / obj.frame_length);
+                if sum(train_data.bar2file == i_file) == length(temp)
+                    % make sure temp is between 1 and nFrames
+                    temp(temp<1) = 1;
+                    temp(temp>length(r_path)) = length(r_path);
+                    bar2cluster(train_data.bar2file == i_file) = r_path(temp);
+                else
+                    fprintf('    WARNING: incosistency in @HMM/viterbi_training\n');
+                end
                 b = ones(length(best_path), 1) * (1:feat_dim);
                 subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
                 % only use observation between first and last observation
@@ -214,9 +229,7 @@ classdef HMM
                 D = accumarray(subs, obs(:), [], @(x) {x});
                 for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
-                        for i_dim = 1:feat_dim
-                            observation_per_state{i_file, i_r, i_pos, i_dim} = D{i_pos, i_dim};
-                        end
+                       observation_per_state(i_file, i_r, i_pos, :) = D(i_pos, :);
                     end
                 end        
                 for i_frame=2:length(best_path)

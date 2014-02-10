@@ -9,6 +9,8 @@ classdef Data
         meter                           % meter of each file [nFiles x 1]
         beats                           % beats of each file {nFiles x 1}[n_beats 2]
         n_bars                          % number of bars of each file [nFiles x 1]
+        bar_start_id                    % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
+        full_bar_beats                  % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
@@ -98,7 +100,7 @@ classdef Data
                 end
                 % determine number of bars
                 if strcmp(obj.pattern_size, 'bar')
-                    [obj.n_bars(iFile), ~, ~] = obj.get_full_bars(obj.beats{iFile});
+                    [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
                 else
                     obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
                 end
