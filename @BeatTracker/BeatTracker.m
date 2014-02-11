@@ -36,19 +36,20 @@ classdef BeatTracker < handle
                     c = load(Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
-                else
-                    
-                    
-                    switch Params.inferenceMethod(1:2)
-                        case 'HM'
-                            obj.model = HMM(Params, obj.train_data.rhythm2meter);
-                        case 'PF'
-                            obj.model = PF(Params, obj.train_data.rhythm2meter);
-                        otherwise
-                            error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
-                    end
+                end
+            else
+                
+                
+                switch Params.inferenceMethod(1:2)
+                    case 'HM'
+                        obj.model = HMM(Params, obj.train_data.rhythm2meter);
+                    case 'PF'
+                        obj.model = PF(Params, obj.train_data.rhythm2meter);
+                    otherwise
+                        error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
                 end
             end
+            
         end
         
         function init_train_data(obj, Params)

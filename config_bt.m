@@ -47,7 +47,7 @@ Params.viterbi_learning_iterations = 1;
 % Params.N = 47/26/22;
 Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 23;
-Params.R = 4;
+Params.R = 8;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
@@ -115,17 +115,17 @@ end
 
 
 % train data
-Params.train_set = 'ballroom40';
+Params.train_set = 'ballroom_train_1';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-dancestyle.txt']);
+    num2str(Params.R), '-kmeans-songs.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'ballroom40';
+Params.test_set = 'ballroom_test_1';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

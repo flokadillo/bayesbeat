@@ -20,6 +20,7 @@ classdef RhythmCluster < handle
         data_per_song       % [nSongs x feat_dim*bar_grid]
         bar2file            % [1 x nBars] vector
         bar_2_cluster
+        file_2_cluster
         cluster_transition_matrix
         cluster_transitions_fln
     end
@@ -298,6 +299,7 @@ classdef RhythmCluster < handle
             meter = zeros(length(ok_songs), 1);
             fileCounter = 0;
             nBars = zeros(length(ok_songs), 1);
+            obj.file_2_cluster = zeros(length(ok_songs), 1);
             for iFile = 1:length(ok_songs)
                 beats = load(regexprep(fileNames{ok_songs(iFile)}, '.wav.*', '.beats'));
                 countTimes = round(rem(beats(:, 2), 1) * 10);
@@ -314,6 +316,7 @@ classdef RhythmCluster < handle
                         if isempty(patternId)
                            fprintf('Please add %s to the rhythm_names\n', data.style);
                         end
+                        obj.file_2_cluster(iFile) = patternId;
                     case 'auto'
                         patternId = songClusterIds(iFile);
                     case 'rhythm'
