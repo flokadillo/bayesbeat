@@ -72,7 +72,8 @@ classdef HMM
             end
             
             if max(obj.maxN) > obj.N
-                error('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
+                fprintf('Warning: N should be %i instead of %i\n', max(obj.maxN), obj.N);
+                obj.maxN(obj.maxN > obj.N) = obj.N;
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
@@ -154,8 +155,7 @@ classdef HMM
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
-                [hidden_state_sequence, ~, psi, min_state] = obj.forward_path(obs_lik, fname);
-                
+                [hidden_state_sequence, ~, psi, min_state] = obj.forward_path(obs_lik, fname); 
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
