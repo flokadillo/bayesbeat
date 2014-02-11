@@ -155,7 +155,7 @@ classdef HMM
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
-                [hidden_state_sequence, ~, psi, min_state] = obj.forward_path(obs_lik, fname); 
+                [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
@@ -167,7 +167,12 @@ classdef HMM
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
+                alpha = reshape(alpha, obj.M, obj.N, size(alpha, 2));
+                [~, m_marginal] = max(squeeze(sum(alpha, 2)));
+                m_path_old = m_path;
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
+                figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
+                legend('viterbi', 'marginal best', 'viterbi refined');
             end
             
             %             dets=[m_path(:), n_path(:), r_path(:)];
@@ -662,7 +667,9 @@ classdef HMM
             end
             
             [~, bestpath] = max(alpha);
-            
+            temp = zeros(maxState, nFrames);
+            temp(minState:maxState, :) = alpha;
+            alpha = temp;
             % add state offset
             bestpath = bestpath + minState - 1;
             psi = psi + minState - 1;
@@ -688,52 +695,13 @@ classdef HMM
                 else
                     y = m_path(iFrame) + obj.Meff(r_path(iFrame));
                 end
-                %                 y = min([abs(m_path(iFrame) - x(1)), ...
-                %                         abs(m_path(iFrame) + obj.Meff(r_path(iFrame))- x(1))]) + ...
-                %                         x(1);
                 
                 [ x, P, likelihood, P2, E, x_pred ] = KF( x, P, y, par);
                 m_path_new(iFrame) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 x(1) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 n_path_new(iFrame) = x(2);
-                %                 if m_path(iFrame) == mod(m_path(iFrame-1) + n_path(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1% valid path
-                %                     c = c + 1;
-                %                     if c < 30
-                %                         % stay at old path
-                %                         % find linear index of old state
-                %                         [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
-                %                             m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
-                %                         % find most probable successor of old state
-                %                         j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
-                %                         if isempty(j_max)
-                %                             m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
-                %                             n_path_new(iFrame) = n_path_new(iFrame-1);
-                %                         else
-                %                             [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
-                %                         end
-                %
-                %                     else
-                %                         m_path_new(iFrame) = m_path(iFrame);
-                %                         n_path(iFrame) = n_path(iFrame);
-                %                     end
-                %                 else
-                %                     c = 0;
-                %                     % stay at old path
-                %                     % find linear index of old state
-                %                     [j_old] = sub2ind([obj.M, obj.N, obj.R], ...
-                %                         m_path_new(iFrame-1), n_path_new(iFrame-1), r_path(iFrame-1));
-                %                     % find most probable successor of old state
-                %                     j_max = find(psi(:, iFrame) == j_old, 1) + min_state - 1;
-                %                     if isempty(j_max)
-                %                         m_path_new(iFrame) =  mod(m_path_new(iFrame-1) + n_path_new(iFrame-1) - 1, obj.Meff(r_path(iFrame))) + 1;
-                %                         n_path_new(iFrame) = n_path_new(iFrame-1);
-                %                     else
-                %                         [m_path_new(iFrame), n_path_new(iFrame), r_path_new(iFrame)] = ind2sub([obj.M, obj.N, obj.R], j_max);
-                %                     end
-                %                 end
-                
+               
             end
-            figure; plot(m_path); hold on; plot(m_path_new(1:iFrame), 'r');
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath, tempoPath)
