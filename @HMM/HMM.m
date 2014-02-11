@@ -167,12 +167,12 @@ classdef HMM
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
-                alpha = reshape(alpha, obj.M, obj.N, size(alpha, 2));
-                [~, m_marginal] = max(squeeze(sum(alpha, 2)));
-                m_path_old = m_path;
+%                 alpha = reshape(alpha, obj.M, obj.N, size(alpha, 2));
+%                 [~, m_marginal] = max(squeeze(sum(alpha, 2)));
+%                 m_path_old = m_path;
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
-                figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
-                legend('viterbi', 'marginal best', 'viterbi refined');
+%                 figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
+%                 legend('viterbi', 'marginal best', 'viterbi refined');
             end
             
             %             dets=[m_path(:), n_path(:), r_path(:)];
