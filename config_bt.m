@@ -32,10 +32,10 @@ Params.n_depends_on_r = 0;
 Params.patternGiven = 0;
 
 % n_folds_for_cross_validation: 
-Params.n_folds_for_cross_validation = 1;
+Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 0;
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
@@ -115,8 +115,8 @@ end
 
 
 % train data
-% Params.train_set = 'robo_train';
-Params.train_set = 'boeck';
+Params.train_set = 'robo_train';
+% Params.train_set = 'boeck';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');

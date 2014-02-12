@@ -42,8 +42,8 @@ for iPattern=1:nPatterns % all clusters
                 PD = fitdist(featureValues, 'inversegaussian');
                 params{iPattern, iPos} = PD.Params';
             case 'gauss0'
-                params{iPattern, iPos}(1,1) = 0;
-                params{iPattern, iPos}(2,1) = sqrt(sum(featureValues.^2)/(length(featureValues)-1));
+                params{iPattern, iPos}(1) = 0;
+                params{iPattern, iPos}(2) = sqrt(sum(featureValues.^2)/(length(featureValues)-1));
             case 'histogram'
                 params{iPattern, iPos} = histc(featureValues, params.centerbins);
                 % normalize

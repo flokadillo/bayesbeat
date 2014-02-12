@@ -94,6 +94,8 @@ classdef BeatTracker < handle
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             
+%             obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
+            
             if obj.viterbi_learning_iterations > 0
                 obj.refine_model(obj.viterbi_learning_iterations);
             end

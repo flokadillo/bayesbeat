@@ -151,8 +151,23 @@ end
 
 function O = gauss0(observation, obs_params)
 % obs_params.obs:  parameters of gamma distribution for each state [states x 2]
-O = normpdf(observation.onsets, obs_params.obs(:,1), obs_params.obs(:,2));
-% set likelihood to zero for unpossible states
+O = zeros(length(obs_params), length(observation));
+for iPos = 1:length(obs_params)
+    O(iPos, :) = pdf('Normal', observation, obs_params{iPos}(1), obs_params{iPos}(2));
+end
+% O = normpdf(observation, obs_params{iPos}, obs_params{iPos});
+% % set likelihood to zero for unpossible states
+O(isnan(O)) = 0;
+end
+
+function O = gauss(observation, obs_params)
+% obs_params.obs:  parameters of gamma distribution for each state [states x 2]
+O = zeros(length(obs_params), length(observation));
+for iPos = 1:length(obs_params)
+    O(iPos, :) = pdf('Normal', observation, obs_params{iPos}(1), obs_params{iPos}(2));
+end
+% O = normpdf(observation, obs_params{iPos}, obs_params{iPos});
+% % set likelihood to zero for unpossible states
 O(isnan(O)) = 0;
 end
 

@@ -153,11 +153,13 @@ classdef HMM
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            
+%             dlmwrite(['./data/filip/', fname, '-likelihood.txt'], squeeze(obs_lik));
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
+%                 alpha = alpha(:, 1:200);
+%                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha));
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
@@ -298,6 +300,24 @@ classdef HMM
                 obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);          
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
+        end
+        
+        function save_hmm_data_to_text(obj, folder)
+            % save transition matrix
+            A = obj.trans_model.A;
+            save(fullfile(folder, 'transition_model.mat'), 'A');
+            % save initial distribution
+            initial_prob = obj.initial_prob;
+            save(fullfile(folder, 'initial_dist.mat'), 'initial_prob');
+            % save observation model
+            fid = fopen(fullfile(folder, 'observation_model.txt'), 'w');
+            for i_pos=1:obj.obs_model.barGrid
+                fprintf(fid, '%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n'   , obj.obs_model.learned_params{i_pos}.mu(1), ...
+                    obj.obs_model.learned_params{i_pos}.mu(2), obj.obs_model.learned_params{i_pos}.Sigma(1), ...
+                    obj.obs_model.learned_params{i_pos}.Sigma(2), obj.obs_model.learned_params{i_pos}.PComponents(1), ...
+                    obj.obs_model.learned_params{i_pos}.PComponents(2));
+            end
+            fclose(fid);
         end
         
     end
@@ -634,6 +654,7 @@ classdef HMM
             
             alpha = zeros(nStates, nFrames);
             alpha(:, 1) = obj.initial_prob(minState:maxState);
+            alpha(:, 1) = A' * alpha(:, 1); % first transition ftom t=0 to t=1
             
             perc = round(0.1*nFrames);
             ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
