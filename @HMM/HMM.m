@@ -72,13 +72,15 @@ classdef HMM
             end
             
             if max(obj.maxN) > obj.N
-                fprintf('Warning: N should be %i instead of %i\n', max(obj.maxN), obj.N);
+                fprintf('Warning: N should be %i instead of %i, using N as max.\n', max(obj.maxN), obj.N);
                 obj.maxN(obj.maxN > obj.N) = obj.N;
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
+%                 obj.minN = ones(1, obj.R) * min(obj.minN);
+%                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                    obj.minN = ones(1, obj.R) * 8;
+                    obj.maxN = ones(1, obj.R) * obj.N;
             end
             
             % Create transition model
@@ -172,7 +174,7 @@ classdef HMM
 %                 m_path_old = m_path;
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
 %                 figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
-%                 legend('viterbi', 'marginal best', 'viterbi refined');
+%                 legend('forward', 'marginal best', 'forward refined');
             end
             
             %             dets=[m_path(:), n_path(:), r_path(:)];
@@ -361,6 +363,7 @@ classdef HMM
             fprintf('    Decoding (viterbi) .');
             
             for iFrame = 2:nFrames
+                
                 if obj.save_inference_data,
                     for iR=1:obj.R
                         start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
@@ -408,6 +411,14 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
+%                 figure(3); 
+%                 subplot(2, 1, 1)
+%                 plot(log(delta_max))
+%                 subplot(2, 1, 2)
+%                 plot(O)
+%                 if rem(iFrame, 25) == 0
+%                     kj=987;
+%                 end
             end
             if obj.save_inference_data,
                 % save for visualization
@@ -621,7 +632,7 @@ classdef HMM
             
             psi = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             
-            alpha = sparse(nStates, nFrames);
+            alpha = zeros(nStates, nFrames);
             alpha(:, 1) = obj.initial_prob(minState:maxState);
             
             perc = round(0.1*nFrames);
@@ -664,6 +675,11 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
+%                 figure(3); 
+%                 subplot(2, 1, 1)
+%                 plot(log(alpha(:, iFrame)))
+%                 subplot(2, 1, 2)
+%                 plot(O)
             end
             
             [~, bestpath] = max(alpha);
@@ -681,27 +697,29 @@ classdef HMM
             m_path_new = m_path;
             n_path_new = n_path;
             r_path_new = r_path;
-            % Wait for 3 seconds
+            % Wait for 4 seconds
+            wait_int = round(4 / obj.frame_length);
             c=0;
             par.A = [1, 1; 0, 1];
             par.Q = [0.1, 0; 0, 0.001];
             par.C = [1, 0];
-            par.R = 300;
+            par.R = 500;
             P = ones(2, 2);
-            x = [m_path_new(150-1); n_path_new(150-1)];
-            for iFrame = 150:length(m_path)
+            x = [m_path_new(wait_int-1); n_path_new(wait_int-1)];
+            for iFrame = wait_int:length(m_path)
                 if abs(m_path(iFrame) - x(1)) < abs(m_path(iFrame) + obj.Meff(r_path(iFrame))- x(1))
                     y = m_path(iFrame);
                 else
                     y = m_path(iFrame) + obj.Meff(r_path(iFrame));
                 end
-                
-                [ x, P, likelihood, P2, E, x_pred ] = KF( x, P, y, par);
+                x_old = x;
+                [ x, P, ~, ~, ~, ~ ] = KF( x, P, y, par);
                 m_path_new(iFrame) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 x(1) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 n_path_new(iFrame) = x(2);
-               
+                
             end
+%             figure(1); plot(m_path(1:iFrame)); hold on; plot(m_path_new(1:iFrame), '--r')
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath, tempoPath)

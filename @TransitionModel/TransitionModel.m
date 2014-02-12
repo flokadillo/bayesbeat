@@ -41,11 +41,11 @@ classdef TransitionModel
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
             % set up pattern transition matrix
-            if size(obj.pr, 1) == obj.R
-                % ok, do nothing
-            elseif size(obj.pr, 1) == 1
+            if size(obj.pr, 1) == 1
                 obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                obj.pr(find(eye(obj.R))) = (1-pr);
+                obj.pr(eye(obj.R)) = (1-pr);
+            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
+                % ok, do nothing
             else
                 error('p_r has wrong dimensions!\n');
             end
@@ -87,7 +87,7 @@ classdef TransitionModel
                 fprintf('.');
                 mi=1:obj.Meff(rhythm2meter(rhi));
                 ti = rhythm2meter(rhi);
-                for ni = 1:N
+                for ni = minN(rhi):N
                     %             for i = start_i:numstates     % at time k
 %                     if rem(i, perc) == 0
 %                         fprintf('.');

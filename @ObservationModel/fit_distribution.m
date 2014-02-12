@@ -25,6 +25,7 @@ for iPattern=1:nPatterns % all clusters
         
         switch obj.dist_type
             case 'gamma'
+                featureValues(featureValues<eps) = eps;
                 PD = fitdist(featureValues, 'gamma');
                 params{iPattern, iPos} = PD.Params';
             case 'MOG'
@@ -37,6 +38,7 @@ for iPattern=1:nPatterns % all clusters
                 [params{iPattern, iPos}(1,1), params{iPattern, iPos}(2,1)] = ...
                     normfit(featureValues);
             case 'invGauss'
+                featureValues(featureValues<eps) = eps;
                 PD = fitdist(featureValues, 'inversegaussian');
                 params{iPattern, iPos} = PD.Params';
             case 'gauss0'
