@@ -9,6 +9,7 @@ classdef BeatTracker < handle
         test_data
         sim_dir                 % directory where results are save
         viterbi_learning_iterations
+        init_model_fln          % fln of initial model to start with
     end
     
     methods
@@ -36,6 +37,7 @@ classdef BeatTracker < handle
                     c = load(Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
+                    obj.init_model_fln = Params.model_fln;
                 end
             else
                 
@@ -78,21 +80,23 @@ classdef BeatTracker < handle
         end
         
         function train_model(obj, use_tempo_prior)
-            tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
-            if use_tempo_prior
-                % define max/min tempo for each rhythm separately
-                maxTempo = ceil(max(tempo_per_cluster));
-                minTempo = floor(min(tempo_per_cluster));
-            else
-                % define the max/min tempo to be the same for all rhythms
-                maxTempo = repmat(ceil(max(tempo_per_cluster(:))), 1, obj.model.R);
-                minTempo = repmat(floor(min(tempo_per_cluster(:))), 1, obj.model.R);
+            if isempty(obj.init_model_fln)
+                tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
+                if use_tempo_prior
+                    % define max/min tempo for each rhythm separately
+                    maxTempo = ceil(max(tempo_per_cluster));
+                    minTempo = floor(min(tempo_per_cluster));
+                else
+                    % define the max/min tempo to be the same for all rhythms
+                    maxTempo = repmat(ceil(max(tempo_per_cluster(:))), 1, obj.model.R);
+                    minTempo = repmat(floor(min(tempo_per_cluster(:))), 1, obj.model.R);
+                end
+                obj.model = obj.model.make_transition_model(minTempo, maxTempo);
+
+                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
+
+                obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             end
-            obj.model = obj.model.make_transition_model(minTempo, maxTempo);
-            
-            obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
-            
-            obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             
             if obj.viterbi_learning_iterations > 0
                 obj.refine_model(obj.viterbi_learning_iterations);

@@ -37,6 +37,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 5;
+% Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -47,7 +48,7 @@ Params.viterbi_learning_iterations = 5;
 % Params.N = 47/26/22;
 Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 23;
-Params.R = 4;
+Params.R = 6;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
