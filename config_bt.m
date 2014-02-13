@@ -37,7 +37,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 5;
-% Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
+Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 

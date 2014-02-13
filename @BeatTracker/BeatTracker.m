@@ -121,10 +121,16 @@ classdef BeatTracker < handle
 %             fprintf('* Load features');
 %             observations = obj.feature.load_all_features(obj.train_data.file_list);
 %             fprintf(' ... done\n');
-            hmm = obj.model;
-            save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+            if ~isempty(obj.init_model_fln)
+                dash = strfind(obj.init_model_fln, '-');
+                iter_start = str2double(obj.init_model_fln(dash(end)+1:end-4)) + 1;
+            else
+                hmm = obj.model;
+                save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+                iter_start = 1;
+            end
             
-            for i = 1:iterations
+            for i = iter_start:iter_start+iterations-1
                 fprintf('* Viterbi training: iteration %i\n', i);
                 %                 profile on
                 [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
