@@ -38,6 +38,9 @@ classdef BeatTracker < handle
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
                     obj.init_model_fln = Params.model_fln;
+                    fprintf('    Loaded model from %s\n', Params.model_fln);
+                else
+                    fprintf('%s was not found, creating new model ...\n', Params.model_fln);
                 end
             else
                 
