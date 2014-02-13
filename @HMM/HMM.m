@@ -77,10 +77,10 @@ classdef HMM
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
-%                 obj.minN = ones(1, obj.R) * min(obj.minN);
-%                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
-                    obj.minN = ones(1, obj.R) * 8;
-                    obj.maxN = ones(1, obj.R) * obj.N;
+                obj.minN = ones(1, obj.R) * min(obj.minN);
+                obj.maxN = ones(1, obj.R) * max(obj.maxN);
+%                     obj.minN = ones(1, obj.R) * 8;
+%                     obj.maxN = ones(1, obj.R) * obj.N;
             end
             
             % Create transition model
@@ -169,12 +169,15 @@ classdef HMM
             
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
+%             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
+%             figure; plot(m_path); hold on; plot(m_path2, 'r--')
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
 %                 alpha = reshape(alpha, obj.M, obj.N, size(alpha, 2));
 %                 [~, m_marginal] = max(squeeze(sum(alpha, 2)));
 %                 m_path_old = m_path;
-                [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
+%                 [m_path, n_path, r_path] = obj.refine_forward_path1(m_path, n_path, r_path);
+%                 [m_path, n_path, r_path] = obj.refine_forward_path2(m_path, n_path, r_path, psi, alpha);
 %                 figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
 %                 legend('forward', 'marginal best', 'forward refined');
             end
@@ -635,9 +638,9 @@ classdef HMM
             fprintf(' done\n');
         end
         
-        function [bestpath, alpha, psi, minState] = forward_path(obj, obs_lik, fname)
+        function [bestpath, alpha, best_states, minState] = forward_path(obj, obs_lik, fname)
             % HMM forward path
-            
+            update_int = 50;
             nFrames = size(obs_lik, 3);
             
             % don't compute states that are irreachable:
@@ -647,10 +650,10 @@ classdef HMM
             nStates = maxState + 1 - minState;
             
             A = obj.trans_model.A(minState:maxState, minState:maxState);
-            i_row = 1:nStates;
-            j_col = 1:nStates;
+%             i_row = 1:nStates;
+%             j_col = 1:nStates;
             
-            psi = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
+%             psi = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             
             alpha = zeros(nStates, nFrames);
             alpha(:, 1) = obj.initial_prob(minState:maxState);
@@ -660,7 +663,7 @@ classdef HMM
             ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
-            
+            best_states = zeros(nFrames, 1);
             % incorporate first observation
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
@@ -670,23 +673,30 @@ classdef HMM
             % move pointer to next observation
             ind = ind + ind_stepsize;
             fprintf('    Forward path .');
-            
+            [~, best_states(1)] = max(alpha(:, 1));
             for iFrame = 2:nFrames
-                % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
-                % D = matrix of probabilities of best sequences with state i at time
-                % t-1 and state j at time t, when bserving y(1:t)
-                % create a matrix that has the same value of delta for all entries with
-                % the same state i (row)
-                % same as repmat(delta, 1, col)
+                if iFrame == 45
+                    kljh=987;
+                end
                 alpha(:, iFrame) = A' * alpha(:, iFrame-1);
-                D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
-                [~, psi(:, iFrame)] = max(D * A);
+%                 D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
                 %                 [ ~, psi(:, iFrame)] = max(bsxfun(@times, A, alpha(:, iFrame-1)));
                 % compute likelihood p(yt|x1:t)
                 O = zeros(nStates, 1);
                 validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
+                if rem(iFrame, update_int) == 0
+                    [~, best_states(iFrame)] = max(alpha(:, iFrame));
+                else
+                    C = A(best_states(iFrame-1), :)' .* O;
+                    if nnz(C) == 0
+                        [~, best_states(iFrame)] = max(alpha(:, iFrame));
+                    else
+                        [~, best_states(iFrame)] = max(A(best_states(iFrame-1), :)' .* O);
+                    end
+                end
+                    
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 alpha(:, iFrame) = O .* alpha(:, iFrame);
@@ -709,25 +719,29 @@ classdef HMM
             alpha = temp;
             % add state offset
             bestpath = bestpath + minState - 1;
-            psi = psi + minState - 1;
+            best_states = best_states + minState - 1;
+%             psi = psi + minState - 1;
             fprintf(' done\n');
         end
         
-        function [m_path_new, n_path_new, r_path_new] = refine_forward_path(obj, m_path, n_path, r_path, psi, min_state)
+        function [m_path_new, n_path_new, r_path_new] = refine_forward_path1(obj, m_path, n_path, r_path)
+            % Wait until Kalman filter sets in
+            wait_sec = 3;
+            
             addpath('~/diss/src/matlab/libs/matlab_utils')
             m_path_new = m_path;
             n_path_new = n_path;
             r_path_new = r_path;
-            % Wait for 4 seconds
-            wait_int = round(4 / obj.frame_length);
+            
+            wait_int = min([max([round(wait_sec / obj.frame_length), 1]), length(m_path)-1]);
             c=0;
             par.A = [1, 1; 0, 1];
             par.Q = [0.1, 0; 0, 0.001];
             par.C = [1, 0];
             par.R = 500;
             P = ones(2, 2);
-            x = [m_path_new(wait_int-1); n_path_new(wait_int-1)];
-            for iFrame = wait_int:length(m_path)
+            x = [m_path_new(wait_int); n_path_new(wait_int)];
+            for iFrame = wait_int+1:length(m_path)
                 if abs(m_path(iFrame) - x(1)) < abs(m_path(iFrame) + obj.Meff(r_path(iFrame))- x(1))
                     y = m_path(iFrame);
                 else
@@ -738,6 +752,28 @@ classdef HMM
                 m_path_new(iFrame) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 x(1) = mod(x(1) - 1, obj.Meff(r_path(iFrame))) + 1;
                 n_path_new(iFrame) = x(2);
+            end
+%             figure(1); plot(m_path(1:iFrame)); hold on; plot(m_path_new(1:iFrame), '--r')
+        end
+        
+        function [m_path_new, n_path_new, r_path_new] = refine_forward_path2(obj, m_path, n_path, r_path)
+            % Wait until Kalman filter sets in
+            update_sec = 3;
+            
+            addpath('~/diss/src/matlab/libs/matlab_utils')
+            m_path_new = m_path;
+            n_path_new = n_path;
+            r_path_new = r_path;
+            
+            update_int = min([max([round(update_sec / obj.frame_length), 1]), length(m_path)-1]);
+            [ ~, best_state(1)] = max(alpha(:, 1));
+            for iFrame = 1:length(m_path)
+                
+                if rem(iFrame, update_int) == 0
+                    [ ~, best_state(iFrame)] = max(alpha);
+                else
+                    best_state(iFrame) = psi(best_state(iFrame))
+                end
                 
             end
 %             figure(1); plot(m_path(1:iFrame)); hold on; plot(m_path_new(1:iFrame), '--r')
