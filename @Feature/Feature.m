@@ -20,7 +20,7 @@ classdef Feature
         end
         
         
-        function obj = load_feature(obj, input_fln)
+        function observations = load_feature(obj, input_fln)
             % parse input_data
             obj.input_fln = input_fln;
             [fpath, ~, ~] = fileparts(input_fln);
@@ -60,15 +60,14 @@ classdef Feature
                     detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
                 end
             end
-            obj.feature = cell2mat(detfunc');
+            observations = cell2mat(detfunc');
         end
         
         function observations = load_all_features(obj, file_list)
             n_files = length(file_list);
             observations = cell(n_files, 1);
             for i_file=1:n_files
-                obj = obj.load_feature(file_list{i_file});
-                observations{i_file} = obj.feature;
+                observations{i_file} = obj.load_feature(file_list{i_file});
             end
         end
     end

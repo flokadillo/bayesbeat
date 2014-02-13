@@ -227,12 +227,15 @@ classdef Data
             obj.feats_file_pattern_barPos_dim = dataPerFile;
         end
         
-        function belief_func = make_belief_functions(obj, model)
-            belief_func = cell(length(obj.file_list), 2);
+        function belief_func = make_belief_functions(obj, model, file_ids)
+            if nargin < 3
+                file_ids = 1:length(obj.file_list);
+            end
+            belief_func = cell(length(file_ids), 2);
             n_states = model.M * model.N * model.R;
-            
+            counter = 1;    
 %             for i_file = 1:length(obj.file_list)
-            for i_file = 1:length(obj.file_list)
+            for i_file = file_ids(:)'
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
                 r_state = find(model.rhythm2meter == t_state);
@@ -259,9 +262,10 @@ classdef Data
                     j_cols(idx) = states;
                 end
 %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
-                belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
-                belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
-                belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
+                belief_func{counter, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
+                belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
+                belief_func{counter, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
+                counter = counter + 1;
             end
         end
         

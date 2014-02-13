@@ -186,20 +186,23 @@ classdef HMM
             
         end
         
-        function [obj, bar2cluster] = viterbi_training(obj, observations, belief_func, train_data)
-            n_files = size(observations, 1);
-            feat_dim = size(observations{1}, 2);
+        function [obj, bar2cluster] = viterbi_training(obj, features, train_data)
+            n_files = length(train_data.file_list);
             A_n = zeros(obj.N * obj.R, obj.N);
             A_r = zeros(obj.R, obj.R);
-            observation_per_state = cell(n_files, obj.R, obj.barGrid, size(observations{1}, 2));
+            observation_per_state = cell(n_files, obj.R, obj.barGrid, features.feat_dim);
             init = zeros(obj.N * obj.R, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
             for i_file=1:n_files
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('%i/%i) %s', i_file, n_files, fname);
-                obs_lik = obj.obs_model.compute_obs_lik(observations{i_file});
-                best_path = obj.viterbi_iteration(obs_lik, belief_func(i_file, :));
+                % make belief function
+                belief_func = train_data.make_belief_functions(obj, i_file);
+                % load observations
+                observations = features.load_feature(train_data.file_list{i_file});
+                obs_lik = obj.obs_model.compute_obs_lik(observations);
+                best_path = obj.viterbi_iteration(obs_lik, belief_func);
                 if isempty(best_path)
                     continue;
                 end
@@ -222,10 +225,10 @@ classdef HMM
                 else
                     fprintf('    WARNING: incosistency in @HMM/viterbi_training\n');
                 end
-                b = ones(length(best_path), 1) * (1:feat_dim);
-                subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), feat_dim, 1), b(:)];
+                b = ones(length(best_path), 1) * (1:features.feat_dim);
+                subs = [repmat(obj.obs_model.state2obs_idx(best_path, 2), features.feat_dim, 1), b(:)];
                 % only use observation between first and last observation
-                obs = observations{i_file}(belief_func{i_file, 1}(1):min([belief_func{i_file, 1}(end), size(obs_lik, 3) ]), :);
+                obs = observations(belief_func{1}(1):min([belief_func{1}(end), size(obs_lik, 3) ]), :);
                 D = accumarray(subs, obs(:), [], @(x) {x});
                 for i_r = unique(r_path(:))'
                     for i_pos = unique(obj.obs_model.state2obs_idx(best_path, 2))'
@@ -557,11 +560,10 @@ classdef HMM
             ind = ind + ind_stepsize * (start_frame-1);
              
             fprintf('    Decoding (viterbi training) .');
-            
+
             for iFrame = 1:nFrames
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
-                
                 if sum(belief_func{1} == iFrame+start_frame-1)
                     delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+start_frame-1, minState:maxState);
                     delta_max = delta_max / sum(delta_max);

@@ -114,21 +114,16 @@ classdef BeatTracker < handle
         end
         
         function refine_model(obj, iterations)
-            fprintf('* Set up belief functions');
-            %             profile on
-            belief_func = obj.train_data.make_belief_functions(obj.model);
-            %             profile viewer
-            fprintf(' ... done\n');
-            fprintf('* Load features');
-            observations = obj.feature.load_all_features(obj.train_data.file_list);
-            fprintf(' ... done\n');
+%             fprintf('* Load features');
+%             observations = obj.feature.load_all_features(obj.train_data.file_list);
+%             fprintf(' ... done\n');
             hmm = obj.model;
             save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
             
             for i = 1:iterations
                 fprintf('* Viterbi training: iteration %i\n', i);
                 %                 profile on
-                [obj.model, bar2cluster] = obj.model.viterbi_training(observations, belief_func, obj.train_data);
+                [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
                 %                 profile viewer
                 hmm = obj.model;
                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
@@ -136,9 +131,9 @@ classdef BeatTracker < handle
             end
         end
         
-        function load_features(obj, input_fln)
-            obj.feature = obj.feature.load_feature(input_fln);
-        end
+%         function load_features(obj, input_fln)
+%             obj.feature = obj.feature.load_feature(input_fln);
+%         end
         
         function compute_features(obj, input_fln)
             obj.input_fln = input_fln;
@@ -147,9 +142,9 @@ classdef BeatTracker < handle
         function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
-            obj.feature = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
+            observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
-            [beats, tempo, rhythm, meter] = obj.model.do_inference(obj.feature.feature, fname);
+            [beats, tempo, rhythm, meter] = obj.model.do_inference(observations, fname);
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
@@ -161,7 +156,7 @@ classdef BeatTracker < handle
                 if isempty(r)
                     fprintf('    Cannot compute true path, file not in test_data included ...\n');
                 else
-                    [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(obj.feature.feature, 1));
+                    [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
                     anns = [m, n, ones(length(m), 1) * r];
                     save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
                 end
