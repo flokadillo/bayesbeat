@@ -43,7 +43,7 @@ classdef TransitionModel
             % set up pattern transition matrix
             if size(obj.pr, 1) == 1
                 obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                obj.pr(eye(obj.R)) = (1-pr);
+                obj.pr(logical(eye(obj.R))) = (1-pr);
             elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
                 % ok, do nothing
             else

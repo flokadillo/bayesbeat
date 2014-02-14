@@ -77,10 +77,10 @@ classdef HMM
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
-%                     obj.minN = ones(1, obj.R) * 8;
-%                     obj.maxN = ones(1, obj.R) * obj.N;
+%                 obj.minN = ones(1, obj.R) * min(obj.minN)-1;
+%                 obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
+                    obj.minN = ones(1, obj.R) * 8;
+                    obj.maxN = ones(1, obj.R) * obj.N;
             end
             
             % Create transition model
@@ -168,8 +168,8 @@ classdef HMM
             end
             
             % factorial HMM: mega states -> substates
-            [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
-%             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
+%             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
+            [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %             figure; plot(m_path); hold on; plot(m_path2, 'r--')
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
@@ -178,8 +178,8 @@ classdef HMM
 %                 m_path_old = m_path;
 %                 [m_path, n_path, r_path] = obj.refine_forward_path1(m_path, n_path, r_path);
 %                 [m_path, n_path, r_path] = obj.refine_forward_path2(m_path, n_path, r_path, psi, alpha);
-%                 figure; plot(m_path_old); hold on; plot(m_marginal, 'r'); plot(m_path, 'g');
-%                 legend('forward', 'marginal best', 'forward refined');
+%                 figure; plot(m_path_old); hold on; plot(m_path, 'g');
+%                 legend('forward', 'forward refined');
             end
             
             %             dets=[m_path(:), n_path(:), r_path(:)];
@@ -307,20 +307,21 @@ classdef HMM
         
         function save_hmm_data_to_text(obj, folder)
             % save transition matrix
-            A = obj.trans_model.A;
-            save(fullfile(folder, 'transition_model.mat'), 'A');
+            transition_model = obj.trans_model.A;
             % save initial distribution
             initial_prob = obj.initial_prob;
-            save(fullfile(folder, 'initial_dist.mat'), 'initial_prob');
             % save observation model
-            fid = fopen(fullfile(folder, 'observation_model.txt'), 'w');
+            observation_model = zeros(obj.obs_model.barGrid, 6);
             for i_pos=1:obj.obs_model.barGrid
-                fprintf(fid, '%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n'   , obj.obs_model.learned_params{i_pos}.mu(1), ...
-                    obj.obs_model.learned_params{i_pos}.mu(2), obj.obs_model.learned_params{i_pos}.Sigma(1), ...
-                    obj.obs_model.learned_params{i_pos}.Sigma(2), obj.obs_model.learned_params{i_pos}.PComponents(1), ...
-                    obj.obs_model.learned_params{i_pos}.PComponents(2));
+                observation_model(i_pos, 1:2) = obj.obs_model.learned_params{i_pos}.mu;
+                observation_model(i_pos, 3:4) = obj.obs_model.learned_params{i_pos}.Sigma;
+                observation_model(i_pos, 5:6) = obj.obs_model.learned_params{i_pos}.PComponents;
             end
-            fclose(fid);
+            % state 2 obs index
+            state_to_obs = uint8(obj.obs_model.state2obs_idx(:, 2));
+            %save to mat file
+            save(fullfile(folder, 'robot_hmm_data.mat'), 'transition_model', ...
+                'observation_model', 'initial_prob', 'state_to_obs', '-v7.3');
         end
         
     end
@@ -640,7 +641,7 @@ classdef HMM
         
         function [bestpath, alpha, best_states, minState] = forward_path(obj, obs_lik, fname)
             % HMM forward path
-            update_int = 50;
+            update_int = 150;
             nFrames = size(obs_lik, 3);
             
             % don't compute states that are irreachable:
@@ -675,9 +676,6 @@ classdef HMM
             fprintf('    Forward path .');
             [~, best_states(1)] = max(alpha(:, 1));
             for iFrame = 2:nFrames
-                if iFrame == 45
-                    kljh=987;
-                end
                 alpha(:, iFrame) = A' * alpha(:, iFrame-1);
 %                 D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
                 %                 [ ~, psi(:, iFrame)] = max(bsxfun(@times, A, alpha(:, iFrame-1)));
@@ -686,16 +684,7 @@ classdef HMM
                 validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-                if rem(iFrame, update_int) == 0
-                    [~, best_states(iFrame)] = max(alpha(:, iFrame));
-                else
-                    C = A(best_states(iFrame-1), :)' .* O;
-                    if nnz(C) == 0
-                        [~, best_states(iFrame)] = max(alpha(:, iFrame));
-                    else
-                        [~, best_states(iFrame)] = max(A(best_states(iFrame-1), :)' .* O);
-                    end
-                end
+                
                     
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
@@ -706,11 +695,27 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
-%                 figure(3); 
-%                 subplot(2, 1, 1)
-%                 plot(log(alpha(:, iFrame)))
-%                 subplot(2, 1, 2)
-%                 plot(O)
+                
+                if rem(iFrame, update_int) == 0
+                    [~, best_states(iFrame)] = max(alpha(:, iFrame));
+                else
+                    C = A(best_states(iFrame-1), :)' .* O;
+                    if nnz(C) == 0
+                        [~, best_states(iFrame)] = max(alpha(:, iFrame));
+                    else
+                        possible_successors = find(A(best_states(iFrame-1), :));
+                        [m, n] = ind2sub([obj.M, obj.N], possible_successors);
+                        m_extended = m;
+                        max_shift = 10;
+                        for i_shift = 1:max_shift
+                            m_extended = [m_extended, m - i_shift, m + i_shift];
+                        end
+                        m_extended = mod(m_extended - 1, obj.M) + 1; % new position
+                        possible_successors = sub2ind([obj.M, obj.N], m_extended', repmat(n, 1, length(m_extended)/length(n))');
+                        [~, idx] = max(alpha(possible_successors, iFrame));
+                        best_states(iFrame) = possible_successors(idx);
+                    end
+                end
             end
             
             [~, bestpath] = max(alpha);

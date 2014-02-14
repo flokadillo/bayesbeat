@@ -82,7 +82,7 @@ classdef Simulation
                 test_file_ids = obj.retrain(k);
                 % do testing
                 for iFile=test_file_ids
-%                 for iFile=1
+%                 for iFile=13
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
                     fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);
