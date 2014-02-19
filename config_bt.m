@@ -1,12 +1,12 @@
 function Params = config_bt
 % [Params] = config_bt
-%   specifies Paramseters for beat tracking algorithm
+%   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
 % INPUT Parameter:
 %   none
 %
 % OUTPUT Parameter:
-%   Params            : structure array with beat tracking Paramseters
+%   Params            : structure array with beat tracking parameters
 %
 % 06.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
@@ -20,49 +20,60 @@ Params.data_path = fullfile(Params.base_path, 'data');
 Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
-% Simulation parameter
-% ====================
-% useTempoPrior: if 1, then apply some non-uniform initial distribution over the
+% SIMULATION PARAMETERS:
+% ======================
+
+% If useTempoPrior=true, then apply some non-uniform initial distribution over the
 % tempo states
 Params.useTempoPrior = 0;
+% If n_depends_on_r=true, then use different tempo limits for each rhythm
+% state
 Params.n_depends_on_r = 1;
-
-% patternGiven: if 1, use the pattern labels as additional input to the
-% system
+% If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
-
-% n_folds_for_cross_validation: 
+% n_folds_for_cross_validation
+%   0) use train and test set as described below
+%   1) use leave-one-out splitting (train and test are the same)
+%   k) use k-fold cross-validation (train and test are the same)
 Params.n_folds_for_cross_validation = 0;
+% If save_inference_data=true, then save complete posterior probability to
+% file. This is useful for visualisations.
 Params.save_inference_data = 0;
+% If reorganize_bars_into_cluster=true, then reorganise features into
+% patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
+%is loaded from file.
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+% Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
+% 'PF_viterbi'}
+Params.inferenceMethod = 'HMM_viterbi';
+% Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
+% Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
-% Params.trainObservationModel = 1;
-% Params.trainTransitionMatrix = 1;
 
-% System description
+% SYSTEM PARAMETERS:
+% ==================
+
 % State space size
+% ----------------
 
-% Params.M = 2560/1440/1216; % number of discrete position states
-% Params.N = 47/26/22;
-Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
+% Maximum position state (used for the meter with the longest duration)
+Params.M = 1216;
+% Maximum tempo state 
 Params.N = 23;
-Params.R = 8;
-
-% Params.meters defines meter_state_2_meter, e.g., meter_state=1
-%   corresponds to meter 3/4
-Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
-%robot
-%Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
-%Params.N = 35;
-%Params.R = 1;
-%Params.meters = [1; 4]; % e.g., [9, 3; 8 4]
-Params.T = size(Params.meters, 2);
-bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
-meter2M = Params.M ./ max(bar_durations);
-Params.Meff = round(bar_durations * meter2M);
+% Number of rhythmic pattern states
+Params.R = 2;
+% Meters that are modelled by the system, e.g., [9, 3; 8 4]
+Params.meters = [3, 4; 4, 4]; 
+% Maximum position state per rhythmic pattern
+Params.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
+% Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
+
+% HMM parameters
+% --------------
+
+% Probability of tempo acceleration and deceleration
 Params.pn = 0.01;  
 Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
@@ -75,7 +86,8 @@ Params.whole_note_div = 64; % number of grid points per whole note
 Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
 Params.init_n_gauss = 2;
 
-% particle filter settings
+% PF parameters
+% -------------
 Params.nParticles = 4000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.02;
@@ -116,17 +128,17 @@ end
 
 
 % train data
-Params.train_set = 'ballroom';
+Params.train_set = 'boeck';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-dancestyle.txt']);
+    num2str(Params.R), '-meter.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'ballroom';
+Params.test_set = 'boeck';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

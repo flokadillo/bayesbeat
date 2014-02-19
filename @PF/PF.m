@@ -47,7 +47,7 @@ classdef PF
             obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
-            obj.T = Params.T;
+            obj.T = size(Params.meters, 2);
             obj.nParticles = Params.nParticles;
             obj.sigma_N = Params.sigmaN;
             obj.pr = Params.pr;

@@ -111,7 +111,6 @@ classdef Data
                 end
             end
                 
-            
             % Check consistency cluster_fln - train_lab
             if length(obj.bar2cluster) ~= length(obj.bar2file)
                 fprintf('    %s: %i bars\n', cluster_fln, length(obj.bar2cluster));
