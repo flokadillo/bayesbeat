@@ -35,9 +35,9 @@ Params.patternGiven = 0;
 Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
-Params.viterbi_learning_iterations = 5;
-Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
+Params.inferenceMethod = 'PF'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+Params.viterbi_learning_iterations = 0;
+% Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
 
@@ -48,7 +48,7 @@ Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-
 % Params.N = 47/26/22;
 Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 23;
-Params.R = 6;
+Params.R = 8;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
@@ -76,7 +76,7 @@ Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid poi
 Params.init_n_gauss = 2;
 
 % particle filter settings
-Params.nParticles = 2000;
+Params.nParticles = 4000;
 Params.sigmaN = 0.0001; % standard deviation
 Params.ratio_Neff = 0.02;
 Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
@@ -116,17 +116,17 @@ end
 
 
 % train data
-Params.train_set = 'ballroom_train_6';
+Params.train_set = 'ballroom';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-dancestyle.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
 % % test data
-Params.test_set = 'ballroom_test_6';
+Params.test_set = 'ballroom';
 %robot=======
 %Params.test_set = 'robo_test';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];

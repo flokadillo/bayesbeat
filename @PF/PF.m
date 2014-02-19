@@ -80,7 +80,7 @@ classdef PF
             max_N = max(obj.maxN);
             n_grid = min_N:max_N;
             n_m_cells = floor(obj.nParticles / length(n_grid));
-            m_grid_size = sum(obj.Meff) / n_m_cells;
+            m_grid_size = sum(obj.Meff(obj.rhythm2meter)) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
             r_n = rand(obj.nParticles, 1) - 0.5;
             nParts = zeros(obj.R, 1);
