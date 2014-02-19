@@ -322,6 +322,7 @@ classdef HMM
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'transition_model', ...
                 'observation_model', 'initial_prob', 'state_to_obs', '-v7.3');
+	    fprintf('Saved model data to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
         end
         
     end
@@ -641,7 +642,7 @@ classdef HMM
         
         function [bestpath, alpha, best_states, minState] = forward_path(obj, obs_lik, fname)
             % HMM forward path
-            update_int = 150;
+            update_int = 100;
             nFrames = size(obs_lik, 3);
             
             % don't compute states that are irreachable:
@@ -689,7 +690,7 @@ classdef HMM
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 alpha(:, iFrame) = O .* alpha(:, iFrame);
-                % normalize
+                % normalize0
                 norm_const = sum(alpha(:, iFrame));
                 alpha(:, iFrame) = alpha(:, iFrame) / norm_const;
                 if rem(iFrame, perc) == 0
@@ -727,6 +728,8 @@ classdef HMM
             best_states = best_states + minState - 1;
 %             psi = psi + minState - 1;
             fprintf(' done\n');
+            dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-alpha.txt'], alpha(:, 1:200) );
+	    dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-best_states.txt'], best_states);		
         end
         
         function [m_path_new, n_path_new, r_path_new] = refine_forward_path1(obj, m_path, n_path, r_path)
