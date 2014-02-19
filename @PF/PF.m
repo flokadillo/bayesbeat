@@ -29,7 +29,6 @@ classdef PF
         bin2decVector       % vector to compute indices for disc_trans_mat quickly
         ratio_Neff
         resampling_scheme   % type of resampling employed
-        rbpf                % rbpf == 1, do rao-blackwellization on the discrete states
         warp_fun            % function that warps the weights w to a compressed space
         do_viterbi_filtering
         save_inference_data % save intermediate output of particle filter for visualisation
@@ -58,7 +57,6 @@ classdef PF
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
             obj.ratio_Neff = Params.ratio_Neff;
-            obj.rbpf = Params.rbpf;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
             obj.do_viterbi_filtering = Params.do_viterbi_filtering;
@@ -70,7 +68,9 @@ classdef PF
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
-        function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
+        function obj = make_initial_distribution(obj, init_n_gauss, tempo_per_cluster)
+            
+            % TODO: Implement prior initial distribution for tempo
             obj.initial_m = zeros(obj.nParticles, 1);
             obj.initial_n = zeros(obj.nParticles, 1);
             obj.initial_r = zeros(obj.nParticles, 1);
@@ -112,14 +112,7 @@ classdef PF
             obj.minN = min(round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60)));
             obj.maxN = max(round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60)));
             
-            if obj.rbpf
-                obj.sample_trans_fun = @(x, y) (obj.propagate_particles_rbpf(x, y, obj.nParticles, obj.sigma_N, ...
-                    obj.minN, obj.maxN, obj.M, obj.Meff, obj.rhythm2meter));
-                %             obj.sample_trans_fun = @(x, y) (x+y+obj.nParticles);
-                obj = obj.createTransitionCPD;
-            else
-                obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
-            end
+            obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
         
         function obj = make_observation_model(obj, data_file_pattern_barpos_dim)
@@ -152,12 +145,8 @@ classdef PF
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            if obj.rbpf
-                obj = obj.rbpf_apf(obs_lik, fname);
-            else
-                obj = obj.pf(obs_lik, fname);
-            end
-%             if strcmp(obj.inferenceMethod, 'PF')
+            obj = obj.pf(obs_lik, fname);
+%              if strcmp(obj.inferenceMethod, 'PF')
                 [m_path, n_path, r_path] = obj.path_via_best_weight();
                 [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
                 fprintf('    Best weight log joint = %.1f\n', joint_prob_best.sum);
@@ -312,21 +301,8 @@ classdef PF
             % ------------------------------------------------------------
             [~, bestParticle] = max(obj.particles.weight);
             
-            if obj.rbpf
-                % Backtracing:
-                nFrames = size(obj.particles.n, 2);
-                r_path = zeros(nFrames,1);
-                [ ~, r_path(nFrames)] = max(obj.particles.delta(bestParticle, :));
-                for i=nFrames-1:-1:1
-                    r_path(i) = obj.particles.psi_mat(bestParticle, r_path(i+1), i+1);
-                end
-                m_path = squeeze(obj.particles.m(:, bestParticle, :));
-                ind = sub2ind([obj.R, nFrames], r_path', (1:nFrames));
-                m_path = m_path(ind)';
-            else
-                m_path = obj.particles.m(bestParticle, :);
-                r_path = obj.particles.r(bestParticle, :);
-            end
+            m_path = obj.particles.m(bestParticle, :);
+            r_path = obj.particles.r(bestParticle, :);
             n_path = obj.particles.n(bestParticle, :)';
             m_path = m_path(:);
             n_path = n_path(:);

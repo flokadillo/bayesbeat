@@ -8,7 +8,6 @@ classdef HMM
         T                   % number of different meter
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
-        pt                  % probability of a switch in meter
         rhythm2meter        % assigns each rhythmic pattern to a meter state (1, 2, ...)
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
         barGrid             % number of different observation model params per bar (e.g., 64)
@@ -42,7 +41,6 @@ classdef HMM
                 obj.pr = dlmread(Params.cluster_transitions_fln);
             else
                 obj.pr = Params.pr;
-                obj.pt = Params.pt;
             end
             obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
@@ -87,7 +85,7 @@ classdef HMM
             end
 
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);
+                obj.rhythm2meter, obj.minN, obj.maxN);
 
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
@@ -107,9 +105,9 @@ classdef HMM
             
         end
         
-        function obj = make_initial_distribution(obj, use_tempo_prior, tempo_per_cluster)
+        function obj = make_initial_distribution(obj, tempo_per_cluster)
             n_states = obj.M * obj.N * obj.R;
-            if use_tempo_prior
+            if obj.init_n_gauss > 0
                 obj.initial_prob = zeros(n_states, 1);
                 for iCluster = 1:size(tempo_per_cluster, 2)
                     meter = obj.meter_state2meter(:, obj.rhythm2meter(iCluster));
@@ -291,7 +289,7 @@ classdef HMM
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.pt, obj.rhythm2meter, obj.minN, obj.maxN);          
+                obj.rhythm2meter, obj.minN, obj.maxN);          
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
         end

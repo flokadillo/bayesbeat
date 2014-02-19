@@ -12,7 +12,6 @@ classdef TransitionModel
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
-        pt              % probability of a switch in meter
         rhythm2meter    % assigns each rhythmic pattern to a meter
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
@@ -26,14 +25,13 @@ classdef TransitionModel
     
     
     methods
-        function obj = TransitionModel(M, Meff, N, R, pn, pr, pt, rhythm2meter, minN, maxN)
+        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter, minN, maxN)
             obj.M = M;
             obj.Meff = Meff;
             obj.N = N;
             obj.R = R;
             obj.pn = pn;
             obj.pr = pr;
-            obj.pt = pt;
             obj.rhythm2meter = rhythm2meter;
             obj.minN = minN;
             obj.maxN = maxN;

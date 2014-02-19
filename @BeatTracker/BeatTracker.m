@@ -82,10 +82,10 @@ classdef BeatTracker < handle
             end
         end
         
-        function train_model(obj, use_tempo_prior)
+        function train_model(obj, init_n_gauss)
             if isempty(obj.init_model_fln)
                 tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
-                if use_tempo_prior
+                if init_n_gauss > 0
                     % define max/min tempo for each rhythm separately
                     maxTempo = ceil(max(tempo_per_cluster));
                     minTempo = floor(min(tempo_per_cluster));
@@ -98,7 +98,7 @@ classdef BeatTracker < handle
 
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
 
-                obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
+                obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
             end
             
             if obj.viterbi_learning_iterations > 0

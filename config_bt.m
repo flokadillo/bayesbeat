@@ -23,9 +23,6 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 % SIMULATION PARAMETERS:
 % ======================
 
-% If useTempoPrior=true, then apply some non-uniform initial distribution over the
-% tempo states
-Params.useTempoPrior = 0;
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
 Params.n_depends_on_r = 1;
@@ -64,59 +61,80 @@ Params.N = 23;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [3, 4; 4, 4]; 
-% Maximum position state per rhythmic pattern
+Params.meters = [3, 4; 4, 4];
+% Number of position grid points per whole note. This is important for the
+% observation model, as parameters are tied within this grid.
+Params.whole_note_div = 64; 
+% Maximum position state per meter
 Params.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
+% Number of grid points of one pattern per meter
+Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
+% Audio frame length [sec]
+Params.frame_length = 0.02;
+% Model initial distribution over tempo states by mixture of init_n_gauss
+% Gaussians.
+Params.init_n_gauss = 0;
 
 % HMM parameters
 % --------------
 
-% Probability of tempo acceleration and deceleration
+% Probability of tempo acceleration (and deceleration)
 Params.pn = 0.01;  
-Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
-%robot
-%Params.pattern_size = 'beat'; % 'beat' or 'bar'
-%Params.pn = 0.001; 
+% Settings for Viterbi learning: tempo_tying
+%   0) p_n tied across position states (different p_n for each n)
+%   1) Global p_n for all changes (only one p_n)
+%   2) Separate p_n for tempo increase and decrease (two different p_n)
+Params.tempo_tying = 1; 
+% Probability of rhythmic pattern change
 Params.pr = 0;
-Params.pt = 0; % meter change
-Params.frame_length = 0.02;
-Params.whole_note_div = 64; % number of grid points per whole note
-Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
-Params.init_n_gauss = 2;
 
 % PF parameters
 % -------------
+
+% Number of particles
 Params.nParticles = 4000;
-Params.sigmaN = 0.0001; % standard deviation
+% Standard deviation of tempo transition. Note that the tempo n is normalised
+% by dividing by M, so the actual sigma is sigmaN * M.
+Params.sigmaN = 0.0001; 
+% If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
 Params.ratio_Neff = 0.02;
-Params.resampling_scheme = 3; % 3 = kmeans+apf, 2 = kmeans, 1 = apf, 0 = sisr
-Params.state_distance_coefficients = [30, 1, 10];
-Params.cluster_merging_thr = 20; % if distance < thr: merge 
-Params.cluster_splitting_thr = 30; % if spread > thr: split 
-Params.rbpf = 0;
+% Type of resampling scheme to be used:
+%   0) Standard SISR (systematic resampling)
+%   1) APF
+%   2) Mixture PF using k-means clustering (MPF)
+%   3) Auxiliary mixture particle filter (AMPF)
+Params.resampling_scheme = 3;
+% On the fly Viterbi filtering (TODO: refactoring!)
 Params.do_viterbi_filtering = 0;
+
+% APF parameters
+% ..............
+% Warping function of weights for APF and AMPF
 Params.warp_fun = '@(x)x.^(1/4)';
-% Params.warp_fun = '@(x)log(10000 * x + 1)';
-if strfind(Params.inferenceMethod, 'PF') > 0 
-    Params.pn = Params.sigmaN; 
-    if Params.resampling_scheme > 1, Params.comment = sprintf('%i-%i-%i-%i-%i', Params.state_distance_coefficients(1), Params.state_distance_coefficients(2), Params.state_distance_coefficients(3), Params.cluster_merging_thr, Params.cluster_splitting_thr); end
-    if ismember(Params.resampling_scheme, [0, 2]), Params.warp_fun = ''; end
-end
 
+% Mixture PF parameters
+% .....................
+% Factors to adjust distance function for k-means [l_m, l_n, l_r]
+Params.state_distance_coefficients = [30, 1, 10];
+% If distance < cluster_merging_thr: merge clusters
+Params.cluster_merging_thr = 20; 
+% If spread > cluster_splitting_thr: split clusters
+Params.cluster_splitting_thr = 30; 
 
-% Observation feature
-Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogram, multivariateHistogram,
-% bivariateGauss, ... mixOfGauss, MOG, MOG3}
+% Observation model
+% -----------------
+
+% Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
+% bivariateGauss, mixOfGauss, MOG, MOG3, ...}
+Params.observationModelType = 'MOG';
+% Features (extension) to be used
 Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
 Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
-%      Params.feat_type{1} = 'bt.SF.filtered82.log';
-%      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
-%      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'superflux.mvavg.normZ';
 % Params.feat_type{1} = 'sprflx-online';
-%      Params.feat_type{1} = 'bt.SF.filtered82.log';
+% Feature dimension
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored
 Params.featStr = '';

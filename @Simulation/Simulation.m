@@ -71,7 +71,7 @@ classdef Simulation
         
         function obj = train_system(obj)
                 % train model
-                obj.system.train_model(obj.Params.useTempoPrior);
+                obj.system.train_model(obj.Params.init_n_gauss);
         end
                
         function do_sim(obj)
