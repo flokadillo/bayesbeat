@@ -136,35 +136,30 @@ Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
-% make filename where features are stored
-Params.featStr = '';
-for iDim = 1:Params.featureDim
-    featType = strrep(Params.feat_type{iDim}, '.', '-');
-    Params.featStr = [Params.featStr, featType];
-end
 
+% DATA:
+% =====
 
+% Train data
+% ----------
 
-% train data
+% Train dataset
 Params.train_set = 'boeck';
+% Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
-% Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
-% Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
-Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+% Path to file where pattern transitions are stored
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+% Path to file where cluster to bar assignments are stored
+Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
+    num2str(Params.R), '-meter.txt']);
 
-% % test data
+% Test data
+% ----------
+
+% Test dataset
 Params.test_set = 'boeck';
-%robot=======
-%Params.test_set = 'robo_test';
+% Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-% Params.test_set = ' ';
-% Params.testLab = '~/diss/data/beats/boeck/train13.wav';
-% Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
 
-[~, clusterFName, ~] = fileparts(Params.clusterIdFln);
-% clusterFName = strrep(clusterFName, '-songs', '');
-Params.featuresFln = fullfile(Params.data_path, [clusterFName, '_', Params.featStr, '.mat']);
 end

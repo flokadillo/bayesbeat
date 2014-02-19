@@ -63,8 +63,16 @@ classdef BeatTracker < handle
             %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
             obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
             %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
+            % make filename of features
+            [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
+            featStr = '';
+            for iDim = 1:Params.featureDim
+                featType = strrep(Params.feat_type{iDim}, '.', '-');
+                featStr = [featStr, featType];
+            end
+            featuresFln = fullfile(Params.data_path, [clusterFName, '_', featStr, '.mat']);
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
-                Params.barGrid_eff, Params.featureDim, Params.featuresFln, Params.feat_type, ...
+                Params.barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
                 Params.frame_length, Params.reorganize_bars_into_cluster);
         end
         
@@ -95,9 +103,9 @@ classdef BeatTracker < handle
                     minTempo = repmat(floor(min(tempo_per_cluster(:))), 1, obj.model.R);
                 end
                 obj.model = obj.model.make_transition_model(minTempo, maxTempo);
-
+                
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
-
+                
                 obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
             end
             
@@ -121,9 +129,9 @@ classdef BeatTracker < handle
         end
         
         function refine_model(obj, iterations)
-%             fprintf('* Load features');
-%             observations = obj.feature.load_all_features(obj.train_data.file_list);
-%             fprintf(' ... done\n');
+            %             fprintf('* Load features');
+            %             observations = obj.feature.load_all_features(obj.train_data.file_list);
+            %             fprintf(' ... done\n');
             if ~isempty(obj.init_model_fln)
                 dash = strfind(obj.init_model_fln, '-');
                 iter_start = str2double(obj.init_model_fln(dash(end)+1:end-4)) + 1;
@@ -144,9 +152,9 @@ classdef BeatTracker < handle
             end
         end
         
-%         function load_features(obj, input_fln)
-%             obj.feature = obj.feature.load_feature(input_fln);
-%         end
+        %         function load_features(obj, input_fln)
+        %             obj.feature = obj.feature.load_feature(input_fln);
+        %         end
         
         function compute_features(obj, input_fln)
             obj.input_fln = input_fln;
@@ -163,19 +171,19 @@ classdef BeatTracker < handle
             results{3} = meter;
             results{4} = rhythm;
             
-%             % save state sequence of annotations to file
-%             annot_fln = strrep(obj.feature.input_fln, 'wav', 'beats');
-%             if exist(annot_fln, 'file')
-%                 annots = load(annot_fln);
-%                 r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
-%                 if isempty(r)
-%                     fprintf('    Cannot compute true path, file not in test_data included ...\n');
-%                 else
-%                     [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
-%                     anns = [m, n, ones(length(m), 1) * r];
-%                     save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
-%                 end
-%             end
+            %             % save state sequence of annotations to file
+            %             annot_fln = strrep(obj.feature.input_fln, 'wav', 'beats');
+            %             if exist(annot_fln, 'file')
+            %                 annots = load(annot_fln);
+            %                 r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
+            %                 if isempty(r)
+            %                     fprintf('    Cannot compute true path, file not in test_data included ...\n');
+            %                 else
+            %                     [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
+            %                     anns = [m, n, ones(length(m), 1) * r];
+            %                     save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+            %                 end
+            %             end
             %
             
         end
