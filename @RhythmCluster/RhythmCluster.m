@@ -306,9 +306,16 @@ classdef RhythmCluster < handle
                 meter(fileCounter+1) = max(countTimes);
                 % get pattern id of file
                 [annotsPath, fname, ~] = fileparts(fileNames{iFile});
+
 %                 if ~ismember(meter(fileCounter+1), [3, 4])
 %                     fprintf('    Unsupported meter (%i): %s\n', meter(fileCounter+1), fname);
 %                 end
+
+                if ~ismember(meter(fileCounter+1), [3, 4])
+                    fprintf('    Unsupported meter (%i): %s\n', meter(fileCounter+1), fname);
+                    continue;
+                end
+
                 %                 fprintf('- %s\n', fname);
                 switch lower(clusterType)
                     case 'meter'
