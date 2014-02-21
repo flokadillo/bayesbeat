@@ -158,21 +158,23 @@ classdef HMM
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %                 alpha = alpha(:, 1:200);
 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha));
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
             end
             
             % factorial HMM: mega states -> substates
 %             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
-            [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
+            
 %             figure; plot(m_path); hold on; plot(m_path2, 'r--')
             
-            if strcmp(obj.inferenceMethod, 'HMM_forward')
+%             if strcmp(obj.inferenceMethod, 'HMM_forward')
 %                 alpha = reshape(alpha, obj.M, obj.N, size(alpha, 2));
 %                 [~, m_marginal] = max(squeeze(sum(alpha, 2)));
 %                 m_path_old = m_path;
@@ -180,7 +182,7 @@ classdef HMM
 %                 [m_path, n_path, r_path] = obj.refine_forward_path2(m_path, n_path, r_path, psi, alpha);
 %                 figure; plot(m_path_old); hold on; plot(m_path, 'g');
 %                 legend('forward', 'forward refined');
-            end
+%             end
             
             %             dets=[m_path(:), n_path(:), r_path(:)];
             %             mean_params = obj.obs_model.comp_mean_params;
@@ -705,14 +707,23 @@ classdef HMM
                         [~, best_states(iFrame)] = max(alpha(:, iFrame));
                     else
                         possible_successors = find(A(best_states(iFrame-1), :));
-                        [m, n] = ind2sub([obj.M, obj.N], possible_successors);
-                        m_extended = m;
+                        [m, n, r] = ind2sub([obj.M, obj.N, obj.R], possible_successors);
+                        m_extended = [];
+                        n_extended = [];
+                        r_extended = [];
                         max_shift = 10;
-                        for i_shift = 1:max_shift
-                            m_extended = [m_extended, m - i_shift, m + i_shift];
+%                         for i_shift = 1:max_shift
+%                             m_extended = [m_extended, m - i_shift, m + i_shift];
+%                         end
+                        for i_s = 1:length(m)  
+                            m_extended = [m_extended, m(i_s):-1:(m(i_s)-max_shift), m(i_s)+1:+1:(m(i_s)+max_shift)];
+                            n_extended = [n_extended, ones(1, 2*max_shift+1)*n(i_s)];
+                            r_extended = [r_extended, ones(1, 2*max_shift+1)*r(i_s)];
+                            m_extended = mod(m_extended - 1, obj.Meff(obj.rhythm2meter(r(i_s)))) + 1; % new position
                         end
-                        m_extended = mod(m_extended - 1, obj.M) + 1; % new position
-                        possible_successors = sub2ind([obj.M, obj.N], m_extended', repmat(n, 1, length(m_extended)/length(n))');
+%                         m_extended = mod(m_extended - 1, obj.M) + 1; % new position
+                        possible_successors = sub2ind([obj.M, obj.N, obj.R], m_extended, ...
+                            n_extended, r_extended);
                         [~, idx] = max(alpha(possible_successors, iFrame));
                         best_states(iFrame) = possible_successors(idx);
                     end
