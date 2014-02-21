@@ -32,10 +32,10 @@ Params.n_depends_on_r = 0;
 Params.patternGiven = 0;
 
 % n_folds_for_cross_validation: 
-Params.n_folds_for_cross_validation = 1;
+Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-Params.inferenceMethod = 'HMM_viterbi'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
+Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 0;
 % Params.trainObservationModel = 1;
 % Params.trainTransitionMatrix = 1;
@@ -49,10 +49,6 @@ Params.M = 1216; % total number of discrete position states (used for the meter 
 Params.N = 28;
 Params.R = 3;
 
-% Params.meters defines meter_state_2_meter, e.g., meter_state=1
-%   corresponds to meter 3/4
-Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
-%robot
 % Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
 % Params.N = 30;
 % Params.R = 1;
@@ -137,10 +133,10 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 Params.test_set = 'robo-all';
 
 % Params.test_set = 'boeck_3_4';
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.test_set = ' ';
-Params.testLab = '~/diss/data/beats/robo_git2/track-110-01.wav';
-% Params.test_annots_folder =  '~/diss/data/beats/ballroom/all';
+Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.test_set = ' ';
+% Params.testLab = '~/diss/data/beats/robo_git2/track-110-01.wav';
+% Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
 % clusterFName = strrep(clusterFName, '-songs', '');

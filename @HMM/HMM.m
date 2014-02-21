@@ -440,11 +440,11 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
-%                 figure(3); 
-%                 subplot(2, 1, 1)
-%                 plot(log(delta_max))
-%                 subplot(2, 1, 2)
-%                 plot(O)
+                figure(3); 
+                subplot(2, 1, 1)
+                plot(log(delta_max))
+                subplot(2, 1, 2)
+                plot(O)
 %                 if rem(iFrame, 25) == 0
 %                     kj=987;
 %                 end
@@ -674,6 +674,7 @@ classdef HMM
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
             O(validInds) = obs_lik(ind(validInds));
+            O(validInds & (O<1e-3)) = 1e-3;
             alpha(:, 1) = O .* alpha(:, 1);
             alpha(:, 1) = alpha(:, 1) / sum(alpha(:, 1));
             % move pointer to next observation
@@ -685,10 +686,11 @@ classdef HMM
 %                 D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
                 %                 [ ~, psi(:, iFrame)] = max(bsxfun(@times, A, alpha(:, iFrame-1)));
                 % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
-                validInds = ~isnan(ind);
+%                 O = zeros(nStates, 1);
+%                 validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
+                O(validInds & (O<1e-5)) = 1e-5;
                 
                     
                 % increase index to new time frame
@@ -741,8 +743,8 @@ classdef HMM
             best_states = best_states + minState - 1;
 %             psi = psi + minState - 1;
             fprintf(' done\n');
-            dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-alpha.txt'], alpha(:, 1:200) );
-	    dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-best_states.txt'], best_states);		
+%             dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-alpha.txt'], alpha(:, 1:200) );
+% 	    dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-best_states.txt'], best_states);		
         end
         
         function [m_path_new, n_path_new, r_path_new] = refine_forward_path1(obj, m_path, n_path, r_path)
