@@ -112,7 +112,11 @@ classdef ObservationModel
                     plot(data, 'Color', col(fdim, :));
                 end
                 title(sprintf('cluster %i', c));
-                xlim([1 length(data)])
+                if ~isempty(find(mean_params(c, :, fdim)==0, 1, 'first'))
+                    xlim([1 find(mean_params(c, :, fdim)==0, 1, 'first')-1])
+                else
+                    xlim([1 length(data)])
+                end
             end 
         end
     end

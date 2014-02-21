@@ -380,8 +380,9 @@ classdef HMM
             
             % incorporate first observation
             O = zeros(nStates, 1);
-            validInds = ~isnan(ind);
+            validInds = ~isnan(ind); % 
             O(validInds) = obs_lik(ind(validInds));
+            O(validInds & (O<1e-10)) = 1e-10;
             delta = O .* delta;
             delta = delta / sum(delta);
             % move pointer to next observation
@@ -424,10 +425,12 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
-                validInds = ~isnan(ind);
+%                 O = zeros(nStates, 1);
+%                 validInds = ~isnan(ind);
+%                 sum(validInds)
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
+                O(validInds & (O<1e-10)) = 1e-10;
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 delta_max = O .* delta_max';
