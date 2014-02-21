@@ -32,7 +32,7 @@ Params.n_depends_on_r = 0;
 Params.patternGiven = 0;
 
 % n_folds_for_cross_validation: 
-Params.n_folds_for_cross_validation = 0;
+Params.n_folds_for_cross_validation = 1;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
@@ -45,18 +45,18 @@ Params.viterbi_learning_iterations = 0;
 
 % Params.M = 2560/1440/1216; % number of discrete position states
 % Params.N = 47/26/22;
-% Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
-% Params.N = 23;
-% Params.R = 1;
+Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
+Params.N = 28;
+Params.R = 1;
 
 % Params.meters defines meter_state_2_meter, e.g., meter_state=1
 %   corresponds to meter 3/4
 % Params.meters = [3, 4; 4, 4]; % e.g., [9, 3; 8 4]
 %robot
-Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
-Params.N = 30;
-Params.R = 1;
-Params.meters = [1; 4]; % e.g., [9, 3; 8 4]
+% Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
+% Params.N = 30;
+% Params.R = 1;
+Params.meters = [2; 4]; % e.g., [9, 3; 8 4]
 % Params.meters = [4; 4];
 Params.T = size(Params.meters, 2);
 bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
@@ -66,7 +66,7 @@ Params.Meff = round(bar_durations * meter2M);
 % Params.pn = 0.01;  
 Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
-Params.pattern_size = 'beat'; % 'beat' or 'bar'
+Params.pattern_size = 'bar'; % 'beat' or 'bar'
 Params.pn = 0.001; 
 Params.pr = 0;
 Params.pt = 0; % meter change
@@ -116,7 +116,7 @@ end
 
 
 % train data
-Params.train_set = 'robo_train';
+Params.train_set = 'robo-2_4';
 % Params.train_set = 'boeck_3_4';
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
@@ -129,7 +129,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % % test data
 % Params.test_set = 'ballroom_test_1';
 % %robot=======
-Params.test_set = 'robo_test';
+Params.test_set = 'robo-2_4';
 % Params.test_set = 'boeck_3_4';
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.test_set = ' ';

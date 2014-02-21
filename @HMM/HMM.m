@@ -60,12 +60,11 @@ classdef HMM
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
             % convert from BPM into barpositions / audio frame
-            meter_denom = obj.meter_state2meter(2, :);
-            meter_denom = meter_denom(obj.rhythm2meter);
+            meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
             
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
-                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
+                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
@@ -77,10 +76,10 @@ classdef HMM
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
-%                 obj.minN = ones(1, obj.R) * min(obj.minN)-1;
-%                 obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
-                    obj.minN = ones(1, obj.R) * 8;
-                    obj.maxN = ones(1, obj.R) * obj.N;
+                obj.minN = ones(1, obj.R) * min(obj.minN)-1;
+                obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
+%                     obj.minN = ones(1, obj.R) * 8;
+%                     obj.maxN = ones(1, obj.R) * obj.N;
             end
             
             % Create transition model
@@ -158,18 +157,20 @@ classdef HMM
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 % HMM forward path
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %                 alpha = alpha(:, 1:200);
 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha));
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
             end
             
             % factorial HMM: mega states -> substates
 %             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
-            [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
+            
 %             figure; plot(m_path); hold on; plot(m_path2, 'r--')
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
