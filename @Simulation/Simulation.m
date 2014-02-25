@@ -14,17 +14,21 @@ classdef Simulation
     methods
         function obj = Simulation(config_fun, sim_id)
             
-            obj.Params = eval(config_fun);
+            if ischar(config_fun)
+                obj.Params = eval(config_fun);
+            else
+                obj.Params = config_fun;
+            end
             
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
             obj.system = sys_constructor(obj.Params, sim_id, []);
             % create train_data object
-            obj.system.init_train_data(obj.Params);
+            obj.system.init_train_data;
             % create test_data object
-            obj.system.init_test_data(obj.Params);
+            obj.system.init_test_data;
             % initialize probabilistic model
-            obj.system.init_model(obj.Params);
+            obj.system.init_model;
             
             if  obj.Params.n_folds_for_cross_validation > 1
                 % do k-fold cross validation: check if lab files for folds are present
@@ -82,7 +86,7 @@ classdef Simulation
                 test_file_ids = obj.retrain(k);
                 % do testing
                 for iFile=test_file_ids
-%                 for iFile=13
+%                 for iFile=3:4
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
                     fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);

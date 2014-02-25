@@ -18,8 +18,10 @@ classdef Data
         meter_state2meter               % specifies meter for each meter state
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
+        feats_silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
+        frame_length
     end
     
     methods(Static)
@@ -28,7 +30,7 @@ classdef Data
     
     methods
         
-        function obj = Data(lab_fln, train)
+        function obj = Data(lab_fln, train, frame_length)
             % read lab_fln (a file where all data files are listed)
             if exist(lab_fln, 'file')
                 [~, dataset, ext] = fileparts(lab_fln);
@@ -54,6 +56,8 @@ classdef Data
             end
             obj.lab_fln = lab_fln;
             obj.dataset = dataset;
+            obj.frame_length = frame_length;
+            
         end
         
         function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
@@ -106,11 +110,11 @@ classdef Data
                 end
                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
                 barCounter = barCounter + obj.n_bars(iFile);
-                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile) 
+                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile)
                     error('%s: Number of bars not consistent !', fname);
                 end
             end
-                
+            
             
             % Check consistency cluster_fln - train_lab
             if length(obj.bar2cluster) ~= length(obj.bar2file)
@@ -231,7 +235,7 @@ classdef Data
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
             
-%             for i_file = 1:length(obj.file_list)
+            %             for i_file = 1:length(obj.file_list)
             for i_file = 1:length(obj.file_list)
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
@@ -258,14 +262,28 @@ classdef Data
                     i_rows(idx) = iBeat;
                     j_cols(idx) = states;
                 end
-%                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
+                %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
                 belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
                 belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
                 belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
         end
         
-    
+        function obj = learn_silence_state(obj, fln )
+            if exist(fln, 'file')
+                addpath('~/diss/src/matlab/libs/matlab_utils');
+                [obj.feats_silence, fr] = readActivations(fln);
+                if (abs(1/fr - obj.frame_length) > 0.001)
+                    % adjusting framerate:
+                    [ obj.feats_silence ] = ChangeFramerateOfActivations( obj.feats_silence, fr, 1/obj.frame_length );
+                    fr = 1/obj.frame_length;
+                end
+            else
+                error('Silence file %s not found\n', feat_fln);
+            end
+        end
+        
+        
         
     end
     

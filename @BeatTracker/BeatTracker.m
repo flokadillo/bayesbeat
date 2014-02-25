@@ -9,6 +9,7 @@ classdef BeatTracker < handle
         test_data
         sim_dir                 % directory where results are save
         viterbi_learning_iterations
+        Params                  % Parameters from config file
     end
     
     methods
@@ -28,52 +29,62 @@ classdef BeatTracker < handle
             obj.inferenceMethod = Params.inferenceMethod;
             obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
+            obj.Params = Params;
+            bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
+            meter2M = Params.M ./ max(bar_durations);
+            obj.Params.Meff = round(bar_durations * meter2M);
+            obj.Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
         end
         
-        function init_model(obj, Params)
-            if isfield(Params, 'model_fln')
-                if exist(Params.model_fln, 'file')
-                    c = load(Params.model_fln);
+        function init_model(obj)
+            if isfield(obj.Params, 'model_fln')
+                if exist(obj.Params.model_fln, 'file')
+                    c = load(obj.Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
                 end
             else
                 
                 
-                switch Params.inferenceMethod(1:2)
+                switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(Params, obj.train_data.rhythm2meter);
+                        obj.model = HMM(obj.Params, obj.train_data.rhythm2meter);
                     case 'PF'
-                        obj.model = PF(Params, obj.train_data.rhythm2meter);
+                        obj.model = PF(obj.Params, obj.train_data.rhythm2meter);
                     otherwise
-                        error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
+                        error('BeatTracker.init_model: inference method %s not known', obj.Params.inferenceMethod);
                 end
             end
             
         end
         
-        function init_train_data(obj, Params)
+        function init_train_data(obj)
             % create train_data object
-            obj.train_data = Data(Params.trainLab, 1);
-            %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
-            obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
+            obj.train_data = Data(obj.Params.trainLab, 1, obj.feature.frame_length);
+            %             obj.train_data = obj.train_data.set_annots_path(obj.Params.train_annots_folder);
+            obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
             %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
-            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
-                Params.barGrid_eff, Params.featureDim, Params.featuresFln, Params.feat_type, ...
-                Params.frame_length, Params.reorganize_bars_into_cluster);
+            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(obj.Params.whole_note_div, ...
+                obj.Params.barGrid_eff, obj.Params.featureDim, obj.Params.featuresFln, obj.Params.feat_type, ...
+                obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
+            if obj.Params.use_silence_state
+                [dataPath, fname, featExt] = fileparts(obj.Params.silence_fln);
+                feat_fln = fullfile(dataPath, 'beat_activations', [fname, '.', obj.Params.feat_type{1}]);
+                obj.train_data = obj.train_data.learn_silence_state(feat_fln);
+            end
         end
         
-        function init_test_data(obj, Params)
+        function init_test_data(obj)
             % create test_data object
-            obj.test_data = Data(Params.testLab, 0);
-            if isfield(Params, 'test_annots_folder')
-                obj.test_data = obj.test_data.set_annots_path(Params.test_annots_folder);
+            obj.test_data = Data(obj.Params.testLab, 0, obj.feature.frame_length);
+            if isfield(obj.Params, 'test_annots_folder')
+                obj.test_data = obj.test_data.set_annots_path(obj.Params.test_annots_folder);
                 obj.test_data = obj.test_data.filter_out_meter([3, 4]);
             end
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
-            if strcmp(Params.train_set, Params.test_set)
-                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
+            if strcmp(obj.Params.train_set, obj.Params.test_set)
+                obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
             end
         end
         
@@ -90,7 +101,11 @@ classdef BeatTracker < handle
             end
             obj.model = obj.model.make_transition_model(minTempo, maxTempo);
             
-            obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
+            if obj.Params.use_silence_state
+                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.feats_silence);
+            else
+                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
+            end
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             

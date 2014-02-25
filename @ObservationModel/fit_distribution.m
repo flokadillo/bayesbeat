@@ -1,5 +1,5 @@
 function params = fit_distribution(obj, dataPerClusterAndPosition)
-
+warning('off');
 fprintf('* Set up observation model .');
 if strcmp(obj.dist_type,'histogram') || strcmp(obj.dist_type,'multivariateHistogram'),
     for  m=1:length(ClusterIdx)
@@ -59,4 +59,5 @@ for iPattern=1:nPatterns % all clusters
     end
 end
 fprintf(' done\n');
+warning('on');
 end

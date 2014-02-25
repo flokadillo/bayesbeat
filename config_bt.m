@@ -45,9 +45,10 @@ Params.viterbi_learning_iterations = 0;
 
 % Params.M = 2560/1440/1216; % number of discrete position states
 % Params.N = 47/26/22;
-Params.M = 1216; % total number of discrete position states (used for the meter with the longest duration)
-Params.N = 28;
+Params.M = 768; % total number of discrete position states (used for the meter with the longest duration)
+Params.N = 11;
 Params.R = 3;
+
 
 % Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
 % Params.N = 30;
@@ -57,21 +58,25 @@ Params.meters = [2, 3, 4; 4, 4, 4]; % e.g., [9, 3; 8 4]
 
 % Params.meters = [4; 4];
 Params.T = size(Params.meters, 2);
-bar_durations = Params.meters(1, :) ./ Params.meters(2, :);
-meter2M = Params.M ./ max(bar_durations);
-Params.Meff = round(bar_durations * meter2M);
+
+
 % Params.pattern_size = 'beat'; % 'beat' or 'bar'
 % Params.pn = 0.01;  
 Params.tempo_tying = 1; % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
 %robot
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
-Params.pn = 0.001; 
+Params.pn = 0.01; 
 Params.pr = 0;
 Params.pt = 0; % meter change
+Params.use_silence_state = 0;
+Params.p2s = 0.001;
+Params.pfs = 0.001;
+Params.silence_fln = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
 Params.frame_length = 0.02;
 Params.whole_note_div = 64; % number of grid points per whole note
-Params.barGrid_eff = Params.whole_note_div * bar_durations; % number of grid points per meter
+
 Params.init_n_gauss = 2;
+Params.max_shift = 6;
 
 % particle filter settings
 Params.nParticles = 2000;
@@ -101,7 +106,7 @@ Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogr
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'superflux.mvavg.normZ';
-Params.feat_type{1} = 'sprflx-mvavg';
+Params.feat_type{1} = 'sprflx';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored
