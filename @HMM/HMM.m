@@ -184,7 +184,13 @@ classdef HMM
             else
                 error('inference method not specified\n');
             end
-            
+            figure; 
+            subplot(3, 1, 1)
+            plot(m_path)
+            subplot(3, 1, 2)
+            plot(r_path)
+            subplot(3, 1, 3)
+            plot(y)
             % factorial HMM: mega states -> substates
 %             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
@@ -206,12 +212,13 @@ classdef HMM
             %             mean_params = mean_params(ind);
             %             save(['./temp/', fname, '_map.mat'], 'dets', 'y', 'mean_params');
             % meter path
-            t_path = obj.rhythm2meter(r_path);
+            idx = r_path <= obj.R;
+            t_path = obj.rhythm2meter(r_path(idx));
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
-            beats = obj.find_beat_times(m_path, t_path, n_path);
-            tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
-            rhythm = r_path;
+            beats = obj.find_beat_times(m_path(idx), t_path, n_path(idx));
+            tempo = meter(2, :) .* 60 .* n_path(idx) / (obj.M * obj.frame_length);
+            rhythm = r_path(idx);
             
             
         end
@@ -692,7 +699,7 @@ classdef HMM
             if obj.use_silence_state
                 ind = sub2ind([obj.R+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                     obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
-                ind_stepsize = obj.barGrid * obj.R + 1;
+                ind_stepsize = obj.barGrid * (obj.R + 1);
             else
                 ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                     obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
@@ -766,9 +773,9 @@ classdef HMM
             end
             
             [~, bestpath] = max(alpha);
-            temp= zeros(maxState, nFrames);
-            temp(minState:maxState, :) = alpha;
-            alpha = temp;
+%             temp= zeros(maxState, nFrames);
+%             temp(minState:maxState, :) = alpha;
+%             alpha = temp;
             % add state offset
             bestpath = bestpath + minState - 1;
             best_states = best_states + minState - 1;
