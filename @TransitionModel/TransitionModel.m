@@ -230,17 +230,24 @@ classdef TransitionModel
             end
             
             if use_silence_state
-                ri(p:p+N*R) = silence_state_id;
+                p0 = p;
                 % self transition
                 cj(p) = silence_state_id;
                 val(p) = 1 - pfs; 
                 p = p + 1;
                 % transition from silence state to m=1, n(:), r(:)
-                n = repmat(0:N-1, R, 1);
-                r = repmat(0:R-1, 1, N);
-                cj(p:p+N*R-1) = ones(N*R, 1) + n(:)*M + r(:)*M*N;
-                val(p:p+N*R-1) = pfs/(N*R);
-                p = p + N*R;
+                n = [];
+                r = [];
+                for i_r=1:R
+                    temp = repmat((minN(i_r):maxN(i_r))-1, R, 1);
+                    n = [n, temp(:)'];
+                    temp = repmat(0:R-1, 1, maxN(i_r)+1-minN(i_r));
+                    r = [r, temp(:)'];
+                end
+                cj(p:p+length(n(:))-1) = ones(length(n(:)), 1) + n(:)*M + r(:)*M*N;
+                val(p:p+length(n(:))-1) = pfs/(length(n(:)));
+                p = p + length(n(:));
+                ri(p0:p-1) = silence_state_id;
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), numstates+1, numstates+1);
             else
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), numstates, numstates);

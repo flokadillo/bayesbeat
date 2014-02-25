@@ -344,6 +344,11 @@ classdef HMM
                     observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 5:6) = obj.obs_model.learned_params{i_r, i_pos}.PComponents;
                 end
             end
+            if obj.use_silence_state
+                observation_model(obj.R * obj.obs_model.barGrid + 1, 1:2) = obj.obs_model.learned_params{obj.R+1, 1}.mu;
+                observation_model(obj.R * obj.obs_model.barGrid + 1, 3:4) = obj.obs_model.learned_params{obj.R+1, 1}.Sigma;
+                observation_model(obj.R * obj.obs_model.barGrid + 1, 5:6) = obj.obs_model.learned_params{obj.R+1, 1}.PComponents;
+            end
             N = obj.N;
             M = obj.M;
             R = obj.R;
@@ -746,11 +751,8 @@ classdef HMM
                     if nnz(C) == 0
                         [~, best_states(iFrame)] = max(alpha(:, iFrame));
                     else
-                        possible_successors = find(A(best_states(iFrame-1), :));
+                        possible_successors = find(A(best_states(iFrame-1), :)) + minState - 1;
                         [m, n, r] = ind2sub([obj.M, obj.N, obj.R], possible_successors);
-                        if max(r) == 4
-                            kjh=987;
-                        end
                         m_extended = [];
                         n_extended = [];
                         r_extended = [];
@@ -766,6 +768,7 @@ classdef HMM
                         if sum(r>obj.R)>0
                             possible_successors = [possible_successors, sub2ind([obj.M, obj.N, obj.R+1], 1, 1, obj.R+1)];
                         end
+                        possible_successors = possible_successors - minState + 1;
                         [~, idx] = max(alpha(possible_successors, iFrame));
                         best_states(iFrame) = possible_successors(idx);
                     end
