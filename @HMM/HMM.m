@@ -184,13 +184,13 @@ classdef HMM
             else
                 error('inference method not specified\n');
             end
-            figure; 
-            subplot(3, 1, 1)
-            plot(m_path)
-            subplot(3, 1, 2)
-            plot(r_path)
-            subplot(3, 1, 3)
-            plot(y)
+%             figure; 
+%             subplot(3, 1, 1)
+%             plot(m_path)
+%             subplot(3, 1, 2)
+%             plot(r_path)
+%             subplot(3, 1, 3)
+%             plot(y)
             % factorial HMM: mega states -> substates
 %             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
@@ -212,13 +212,15 @@ classdef HMM
             %             mean_params = mean_params(ind);
             %             save(['./temp/', fname, '_map.mat'], 'dets', 'y', 'mean_params');
             % meter path
-            idx = r_path <= obj.R;
-            t_path = obj.rhythm2meter(r_path(idx));
+%             idx = r_path <= obj.R;
+            t_path = zeros(length(r_path), 1);
+            t_path(r_path<=obj.R) = obj.rhythm2meter(r_path(r_path<=obj.R));
             % compute beat times and bar positions of beats
-            meter = obj.meter_state2meter(:, t_path);
-            beats = obj.find_beat_times(m_path(idx), t_path, n_path(idx));
-            tempo = meter(2, :) .* 60 .* n_path(idx) / (obj.M * obj.frame_length);
-            rhythm = r_path(idx);
+            meter = zeros(2, length(r_path));
+            meter(:, r_path<=obj.R) = obj.meter_state2meter(:, t_path(r_path<=obj.R));
+            beats = obj.find_beat_times(m_path, t_path, n_path);
+            tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
+            rhythm = r_path(r_path<=obj.R);
             
             
         end
@@ -861,7 +863,8 @@ classdef HMM
             % 29.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             numframes = length(positionPath);
-            meter = obj.meter_state2meter(:, meterPath);
+            meter = zeros(2, length(meterPath));
+            meter(:, meterPath>0) = obj.meter_state2meter(:, meterPath(meterPath>0));
             % TODO: implement for changes in meter
             % TODO: if beat is shortly before the audio start we should
             % add one beat at the beginning. E.g. m-sequence starts with
@@ -896,6 +899,9 @@ classdef HMM
             beatno = [];
             beatco = 0;
             for i = 1:numframes-1
+                if meterPath(i) == 0
+                    continue;
+                end
                 for b = 1:length(beatpositions{meterPath(i)})
                     if positionPath(i) == beatpositions{meterPath(i)}(b)
                         beats = [beats; i];

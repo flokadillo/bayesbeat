@@ -32,7 +32,7 @@ Params.n_depends_on_r = 0;
 Params.patternGiven = 0;
 
 % n_folds_for_cross_validation: 
-Params.n_folds_for_cross_validation = 0;
+Params.n_folds_for_cross_validation = 1;
 Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
@@ -106,7 +106,7 @@ Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogr
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'superflux.mvavg.normZ';
-Params.feat_type{1} = 'sprflx';
+Params.feat_type{1} = 'sprflx-mvavg';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored
