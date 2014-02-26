@@ -434,6 +434,7 @@ classdef PF
             end
             
             resampling_frames = [];
+%             profile on
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'm');
@@ -555,6 +556,7 @@ classdef PF
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
                     'logP_data_pf');
             end
+%             profile viewer
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath)

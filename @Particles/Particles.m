@@ -31,7 +31,7 @@ classdef Particles < handle
                 obj.nDiscreteStates = nDiscreteStates;
             else
                 obj.m = zeros(nParticles, nFrames, 'single');
-                obj.r = zeros(nParticles, nFrames, 'single');
+                obj.r = zeros(nParticles, nFrames, 'uint8');
             end
             obj.n = zeros(nParticles, nFrames, 'single');
             obj.weight = zeros(nParticles, 1);
