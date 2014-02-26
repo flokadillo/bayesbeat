@@ -1,4 +1,4 @@
-function [outIndex, outWeights, groups] = resample_in_groups(groups, weights, warp_fun)
+function [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun)
 %  [outIndex] = resample_in_groups(groups, weights)
 %  resample particles in groups separately
 % ----------------------------------------------------------------------
@@ -14,16 +14,20 @@ function [outIndex, outWeights, groups] = resample_in_groups(groups, weights, wa
 % ----------------------------------------------------------------------
 valid_groups = unique(groups);
 weights = weights(:);
-% check for groups with zero weights and remove those
-valid_groups_new = valid_groups;
-for iG=valid_groups'
-    if isinf(max(weights(groups==iG)))
-       valid_groups_new = valid_groups_new(valid_groups_new~=iG);
-    end
-end
-valid_groups = valid_groups_new;
-n_groups = length(valid_groups);
+% check for groups with zero weights (log(w)=-inf) and remove those
+w_max = cellfun(@max, accumarray(groups, weights, [], @(x) {x}));
+valid_groups = valid_groups(~isinf(w_max));
 
+n_groups = length(valid_groups);
+% compute total weight of clusters
+tot_w = accumarray(groups, weights, [], @(x) {x});
+tot_w = cellfun(@(x) logsumexp(x, 1), tot_w);
+if n_groups > n_max_clusters
+   % kill cluster with lowest weight
+   [~, bad_group] = min(tot_w);
+   valid_groups = valid_groups(valid_groups~=bad_group);
+end
+n_groups = length(valid_groups);
 parts_per_group = linspace(0, length(weights), n_groups+1);
 parts_per_group = diff(round(parts_per_group));
 parts_per_group(end) = length(weights) - sum(parts_per_group(1:end-1));
@@ -32,6 +36,8 @@ outWeights = zeros(size(weights));
 outIndex = zeros(size(weights));
 groups_old = groups;
 groups = zeros(size(weights));
+
+
 for iG=valid_groups'
     group_i = (groups_old==iG);
     n_parts_in_group = sum(group_i);

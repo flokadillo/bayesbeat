@@ -1,41 +1,42 @@
 classdef PF
     % Hidden Markov Model Class
     properties (SetAccess=private)
-        M                   % number of positions in a 4/4 bar
-        Meff                % number of positions per meter
-        N                   % number of tempo states
-        R                   % number of rhythmic pattern states
-        T                   % number of meters
-        pn                  % probability of a switch in tempo
-        pr                  % probability of a switch in rhythmic pattern
-        pt                  % probability of a switch in meter
-        rhythm2meter        % assigns each rhythmic pattern to a meter state (1, 2, ...)
-        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
-        barGrid             % number of different observation model params per bar (e.g., 64)
-        minN                % min tempo (n_min) for each rhythmic pattern
-        maxN                % max tempo (n_max) for each rhythmic pattern
-        frame_length        % audio frame length in [sec]
-        dist_type           % type of parametric distribution
-        sample_trans_fun    % transition model
-        disc_trans_mat      % transition matrices for discrete states
-        obs_model           % observation model
-        initial_m           % initial value of m for each particle
-        initial_n           % initial value of n for each particle
-        initial_r           % initial value of r for each particle
+        M                           % number of positions in a 4/4 bar
+        Meff                        % number of positions per meter
+        N                           % number of tempo states
+        R                           % number of rhythmic pattern states
+        T                           % number of meters
+        pn                          % probability of a switch in tempo
+        pr                          % probability of a switch in rhythmic pattern
+        rhythm2meter                % assigns each rhythmic pattern to a meter state (1, 2, ...)
+        meter_state2meter           % specifies meter for each meter state (9/8, 8/8, 4/4)
+        barGrid                     % number of different observation model params per bar (e.g., 64)
+        minN                        % min tempo (n_min) for each rhythmic pattern
+        maxN                        % max tempo (n_max) for each rhythmic pattern
+        frame_length                % audio frame length in [sec]
+        dist_type                   % type of parametric distribution
+        sample_trans_fun            % transition model
+        disc_trans_mat              % transition matrices for discrete states
+        obs_model                   % observation model
+        initial_m                   % initial value of m for each particle
+        initial_n                   % initial value of n for each particle
+        initial_r                   % initial value of r for each particle
         nParticles
         particles
-        particles_grid      % particle grid for viterbi
+        particles_grid              % particle grid for viterbi
         sigma_N
-        bin2decVector       % vector to compute indices for disc_trans_mat quickly
+        bin2decVector               % vector to compute indices for disc_trans_mat quickly
         ratio_Neff
-        resampling_scheme   % type of resampling employed
-        warp_fun            % function that warps the weights w to a compressed space
+        resampling_scheme           % type of resampling employed
+        warp_fun                    % function that warps the weights w to a compressed space
         do_viterbi_filtering
-        save_inference_data % save intermediate output of particle filter for visualisation
+        save_inference_data         % save intermediate output of particle filter for visualisation
         state_distance_coefficients % distance factors for k-means clustering [1 x nDims]
-        cluster_merging_thr % if distance < thr: merge
-        cluster_splitting_thr % if spread > thr: split
+        cluster_merging_thr         % if distance < thr: merge
+        cluster_splitting_thr       % if spread > thr: split
         inferenceMethod
+        n_max_clusters              % If number of clusters > n_max_clusters, kill cluster with lowest weight
+        n_initial_clusters          % Number of cluster to start with
     end
     
     methods
@@ -50,7 +51,6 @@ classdef PF
             obj.nParticles = Params.nParticles;
             obj.sigma_N = Params.sigmaN;
             obj.pr = Params.pr;
-            obj.pt = Params.pt;
             obj.barGrid = max(Params.barGrid_eff);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -65,6 +65,8 @@ classdef PF
             obj.state_distance_coefficients = Params.state_distance_coefficients;
             obj.cluster_merging_thr = Params.cluster_merging_thr;
             obj.cluster_splitting_thr = Params.cluster_splitting_thr;
+            obj.n_max_clusters = Params.n_max_clusters;
+            obj.n_initial_clusters = Params.n_initial_clusters;
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
@@ -412,7 +414,9 @@ classdef PF
             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
             if obj.resampling_scheme > 1
-                groups = obj.divide_into_fixed_cells(states, state_dims, 16);
+                % divide particles into clusters by kmeans
+                groups = obj.divide_into_fixed_cells(states, state_dims, obj.n_initial_clusters);
+                n_clusters = zeros(nFrames, 1);
             else
                 groups = ones(obj.nParticles, 1);
             end
@@ -430,7 +434,6 @@ classdef PF
             end
             
             resampling_frames = [];
-            n_clusters = [];
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 obj = obj.propagate_particles_pf(iFrame, 'm');
@@ -498,8 +501,8 @@ classdef PF
                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight);
-                        n_clusters = [n_clusters; length(unique(groups))];
+                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters);
+                        n_clusters(iFrame) = length(unique(groups));
                         obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                         
@@ -509,8 +512,8 @@ classdef PF
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, f);
-                        n_clusters = [n_clusters; length(unique(groups))];
+                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters, f);
+                        n_clusters(iFrame) = length(unique(groups));
                         obj.particles.copyParticles(newIdx);
                         obj.particles.weight = outWeights';
                         
@@ -546,7 +549,7 @@ classdef PF
             %             profile viewer
             fprintf('    Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if obj.resampling_scheme > 1
-                fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters));
+                fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters(n_clusters>0)));
             end
             if obj.save_inference_data
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
@@ -677,7 +680,7 @@ classdef PF
             for iCluster = 1:k
                 centroids(iCluster, :) = mean(points(groups_old == group_ids(iCluster) , :));
             end
-            col = hsv(64);
+%             col = hsv(64);
 %             rhyt_idx = states(:, 3)==2;
 %             fac = max([1, floor(64 / max(groups_old(rhyt_idx)))-1]);
 %             figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups_old(rhyt_idx) * fac, :), 'filled');
@@ -737,13 +740,16 @@ classdef PF
             for iCluster = 1:length(separate_cl_idx)
                 %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
                 parts_idx = find((groups == separate_cl_idx(iCluster)));
-%                 C(1, :) = centroids(separate_cl_idx(iCluster), :);
-%                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
-%                     'Distance', 'cityblock');
                 groups(parts_idx(1:round(length(parts_idx)/2))) = separate_cl_idx(iCluster);
                 groups(parts_idx(round(length(parts_idx)/2)+1:end)) = max(groups) + 1;
                 centroids(separate_cl_idx(iCluster), :) = mean(points(parts_idx(1:round(length(parts_idx)/2)), :));
-                centroids = [centroids; mean(points(parts_idx(round(length(parts_idx)/2)+1:end), :))];
+                try
+                    centroids = [centroids; mean(points(parts_idx(round(length(parts_idx)/2)+1:end), :))];
+                catch exception
+                    fprintf('Size centroids: %i x %i\n', size(centroids, 1), size(centroids, 2));
+                    fprintf('round(length(parts_idx))/2 = %i\n', round(length(parts_idx)/2));
+                    fprintf('mean(points): %i x %i\n', size(mean(points(parts_idx(1:round(length(parts_idx)/2)))), 1), size(mean(points(parts_idx(1:round(length(parts_idx)/2)))), 2));
+                end
                 split = 1;
             end
             
@@ -758,97 +764,9 @@ classdef PF
 %                 figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(round(groups(rhyt_idx) * fac), :), 'filled');
             end
             warning('on');
-%             valid_groups = unique(groups);
-%             fprintf('    %i clusters; ', length(valid_groups));
-%             fprintf('\n');
+
         end
         
-%                 function [groups] = divide_into_clusters(obj, states, state_dims, groups_old)
-%             % states: [nParticles x nStates]
-%             % state_dim: [nStates x 1]
-%             % groups_old: [nParticles x 1] group labels of the particles
-%             %               after last resampling step (used for initialisation)
-%             
-%             warning('off');
-%             group_ids = unique(groups_old);
-%             k = length(group_ids); % number of clusters
-%             
-%             % adjust the range of each state variable to make equally
-%             % important for the clustering
-%             states(:, 1) = (states(:, 1)-1) * obj.state_distance_coefficients(1);
-%             states(:, 2) = states(:, 2) * obj.state_distance_coefficients(2);
-%             states(:, 3) = (states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
-%             
-%             % compute centroid of clusters
-%             centroids = zeros(k, length(state_dims));
-%             for iCluster = 1:k
-%                 centroids(iCluster, :) = mean(states(groups_old == group_ids(iCluster) , :));
-%             end
-%             
-%             % do k-means clustering
-%             options = statset('MaxIter', 1);
-%             [groups, centroids, total_dist_per_cluster] = kmeans(states, k, 'replicates', 1, ...
-%                 'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
-%             
-%             % check if centroids are too close
-%             merging = 1;
-%             merged = 0;
-%             while merging
-%                 D = squareform(pdist(centroids, 'cityblock'), 'tomatrix');
-%                 ind = (tril(D, 0) > 0);
-%                 D(ind) = nan;
-%                 D(logical(eye(size(centroids, 1)))) = nan;
-%                 
-%                 % find minimum distance
-%                 [min_D, arg_min] = min(D(:));
-%                 if min_D > obj.cluster_merging_thr,
-%                     merging = 0;
-%                 else
-%                     [c1, c2] = ind2sub(size(D), arg_min);
-%                     groups(groups==c2(1)) = c1(1);
-%                     %                     fprintf('   merging cluster %i + %i > %i\n', c1(1), c2(1), c1(1))
-%                     
-%                     % new centroid
-%                     centroids(c1(1)) = mean(states(groups==c1(1), :));
-%                     total_dist_per_cluster(c1(1)) = abs(bsxfun(@minus, states(groups==c1(1), :), centroids(c1(1))));
-%                     if length(c1) == 1,  merging = 0;  end
-%                     % remove old centroid
-%                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
-%                     merged = 1;
-%                 end
-%             end
-%             
-% %             if merged
-% %                 [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
-% %                     'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
-% %             end
-%             
-%             % check if cluster spread is too high
-%             split = 0;
-%             n_parts_per_cluster = hist(groups, 1:size(centroids, 1));
-%             separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
-%             for iCluster = 1:length(separate_cl_idx)
-%                 %                 fprintf('   splitting cluster %i\n', separate_cl_idx(iCluster));
-%                 parts_idx = (groups == separate_cl_idx(iCluster));
-%                 [gps, C] = kmeans(states(parts_idx, :), 2, 'replicates', 2, ...
-%                     'Distance', 'cityblock');
-%                 gps(gps==1) = separate_cl_idx(iCluster);
-%                 gps(gps==2) = max(groups) + 1;
-%                 groups(parts_idx) = gps;
-%                 centroids(separate_cl_idx(iCluster), :) = C(1, :);
-%                 centroids = [centroids; C(2, :)];
-%                 split = 1;
-%             end
-%             
-%             if split || merged
-%                 [groups, ~, ~] = kmeans(states, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
-%                     'Distance', 'cityblock', 'options', options);
-%             end
-%             warning('on');
-% %             valid_groups = unique(groups);
-% %             fprintf('    %i clusters; ', length(valid_groups));
-% %             fprintf('\n');
-%         end
     end
     
     methods (Static)
@@ -882,7 +800,7 @@ classdef PF
             end
         end
         
-        [outIndex, outWeights, groups] = resample_in_groups(groups, weights, warp_fun);
+        [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun);
         
     end
     

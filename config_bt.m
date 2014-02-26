@@ -42,7 +42,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
@@ -59,7 +59,7 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 4;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
@@ -122,6 +122,10 @@ Params.state_distance_coefficients = [30, 1, 10];
 Params.cluster_merging_thr = 20; 
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
+% If number of clusters > n_max_clusters, kill cluster with lowest weight
+Params.n_max_clusters = 64;
+% Number of cluster to start with
+Params.n_initial_clusters = 64;
 
 % Observation model
 % -----------------
@@ -144,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck';
+Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -152,13 +156,13 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), '-kmeans-songs.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'boeck';
+Params.test_set = 'ballroom';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 
