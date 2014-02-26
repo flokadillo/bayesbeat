@@ -68,9 +68,18 @@ classdef BeatTracker < handle
                 obj.Params.barGrid_eff, obj.Params.featureDim, obj.Params.featuresFln, obj.Params.feat_type, ...
                 obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
             if obj.Params.use_silence_state
-                [dataPath, fname, featExt] = fileparts(obj.Params.silence_fln);
-                feat_fln = fullfile(dataPath, 'beat_activations', [fname, '.', obj.Params.feat_type{1}]);
-                obj.train_data = obj.train_data.learn_silence_state(feat_fln);
+                fprintf('Warning: So far, only one feature dimension supported (%s)\n', obj.Params.feat_type{1});
+                obj.train_data.feats_silence = [];
+                for iFile=1:length(obj.Params.silence_fln)
+                    [dataPath, fname, ~] = fileparts(obj.Params.silence_fln{iFile});
+                    feat_fln = fullfile(dataPath, 'beat_activations', [fname, '.', obj.Params.feat_type{1}]);
+                    [silence{iFile}, fr] = Feature.read_activations(feat_fln);
+                    if (abs(1/fr - obj.feature.frame_length) > 0.001)
+                       error('Wrong sampling rate!\n'); 
+                    end
+                    obj.train_data.feats_silence = [obj.train_data.feats_silence; silence{iFile}];
+                end
+%                 obj.train_data.feats_silence  = cellfun(@(x) {x}ones(size(silence)), silence,  [], );
             end
         end
         
@@ -109,7 +118,7 @@ classdef BeatTracker < handle
             
             obj.model = obj.model.make_initial_distribution(use_tempo_prior, tempo_per_cluster);
             
-%             obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
+            obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
             
             if obj.viterbi_learning_iterations > 0
                 obj.refine_model(obj.viterbi_learning_iterations);

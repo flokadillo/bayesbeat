@@ -1,6 +1,6 @@
 classdef Data
     % Data Class (represents training and test data)
-    properties (SetAccess=private)
+    properties 
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
         %         annots_path                     % path to annotations
@@ -269,19 +269,18 @@ classdef Data
             end
         end
         
-        function obj = learn_silence_state(obj, fln )
-            if exist(fln, 'file')
-                addpath('~/diss/src/matlab/libs/matlab_utils');
-                [obj.feats_silence, fr] = readActivations(fln);
-                if (abs(1/fr - obj.frame_length) > 0.001)
-                    % adjusting framerate:
-                    [ obj.feats_silence ] = ChangeFramerateOfActivations( obj.feats_silence, fr, 1/obj.frame_length );
-                    fr = 1/obj.frame_length;
-                end
-            else
-                error('Silence file %s not found\n', feat_fln);
-            end
-        end
+%         function feats_silence = extract_feature(obj, fln )
+%             if exist(fln, 'file')
+%                 addpath('~/diss/src/matlab/libs/matlab_utils');
+%                 [feats_silence, fr] = readActivations(fln);
+%                 if (abs(1/fr - obj.frame_length) > 0.001)
+%                     % adjusting framerate:
+%                     [ feats_silence ] = ChangeFramerateOfActivations( obj.feats_silence, fr, 1/obj.frame_length );
+%                 end
+%             else
+%                 error('Silence file %s not found\n', feat_fln);
+%             end
+%         end
         
         
         

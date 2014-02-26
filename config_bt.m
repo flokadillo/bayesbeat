@@ -32,9 +32,9 @@ Params.n_depends_on_r = 0;
 Params.patternGiven = 0;
 
 % n_folds_for_cross_validation: 
-Params.n_folds_for_cross_validation = 1;
+Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
-Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 0;
 % Params.trainObservationModel = 1;
@@ -71,7 +71,9 @@ Params.pt = 0; % meter change
 Params.use_silence_state = 1;
 Params.p2s = 0.00001; % to silence
 Params.pfs = 0.001; % from silence
-Params.silence_fln = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
+Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
+Params.silence_fln{2} = '/home/florian/diss/data/beats/robo_git2/track-silence-2.wav';
+Params.silence_fln{3} = '/home/florian/diss/data/beats/robo_git2/track-silence-3.wav';
 Params.frame_length = 0.02;
 Params.whole_note_div = 64; % number of grid points per whole note
 
@@ -106,7 +108,7 @@ Params.observationModelType = 'MOG';  % types = {invGauss, fixed, gamma, histogr
 %      Params.feat_type{2} = 'mid250_425_superflux.mvavg.normZ';
 %      Params.feat_type{3} = 'hi450_superflux.mvavg.normZ';
 % Params.feat_type{1} = 'superflux.mvavg.normZ';
-Params.feat_type{1} = 'sprflx-mvavg';
+Params.feat_type{1} = 'sprflx';
 %      Params.feat_type{1} = 'bt.SF.filtered82.log';
 Params.featureDim = length(Params.feat_type);
 % make filename where features are stored

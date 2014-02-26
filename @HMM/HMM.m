@@ -85,8 +85,10 @@ classdef HMM
             
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN)-1;
-                obj.maxN = ones(1, obj.R) * max(obj.maxN)+2;
+                obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
                 obj.N = max(obj.maxN);
+                fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
+                    round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
 %                     obj.minN = ones(1, obj.R) * 8;
 %                     obj.maxN = ones(1, obj.R) * obj.N;
             end
