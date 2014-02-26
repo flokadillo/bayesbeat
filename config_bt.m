@@ -34,7 +34,7 @@ Params.patternGiven = 0;
 % n_folds_for_cross_validation: 
 Params.n_folds_for_cross_validation = 0;
 Params.save_inference_data = 0;
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 Params.inferenceMethod = 'HMM_forward'; % 'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'
 Params.viterbi_learning_iterations = 0;
 % Params.trainObservationModel = 1;
@@ -72,8 +72,8 @@ Params.use_silence_state = 1;
 Params.p2s = 0.00001; % to silence
 Params.pfs = 0.001; % from silence
 Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
-Params.silence_fln{2} = '/home/florian/diss/data/beats/robo_git2/track-silence-2.wav';
-Params.silence_fln{3} = '/home/florian/diss/data/beats/robo_git2/track-silence-3.wav';
+% Params.silence_fln{2} = '/home/florian/diss/data/beats/robo_git2/track-silence-2.wav';
+% Params.silence_fln{3} = '/home/florian/diss/data/beats/robo_git2/track-silence-3.wav';
 Params.frame_length = 0.02;
 Params.whole_note_div = 64; % number of grid points per whole note
 
@@ -137,12 +137,12 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Params.test_set = 'ballroom_test_1';
 % %robot=======
 
-Params.test_set = 'robo-all';
+% Params.test_set = 'robo-all';
 
 % Params.test_set = 'boeck_3_4';
-Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-% Params.test_set = ' ';
-% Params.testLab = '~/diss/data/beats/robo_git2/track-110-01.wav';
+% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.test_set = ' ';
+Params.testLab = '~/diss/data/beats/robo_git2/test/flo_2.wav';
 % Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);

@@ -85,7 +85,7 @@ classdef HMM
             
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN)-1;
-                obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
+                obj.maxN = ones(1, obj.R) * max(obj.maxN)+2;
                 obj.N = max(obj.maxN);
                 fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
                     round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
@@ -186,13 +186,13 @@ classdef HMM
             else
                 error('inference method not specified\n');
             end
-%             figure; 
-%             subplot(3, 1, 1)
-%             plot(m_path)
-%             subplot(3, 1, 2)
-%             plot(r_path)
-%             subplot(3, 1, 3)
-%             plot(y)
+            figure; 
+            subplot(3, 1, 1)
+            plot(m_path)
+            subplot(3, 1, 2)
+            plot(r_path)
+            subplot(3, 1, 3)
+            plot(y)
             % factorial HMM: mega states -> substates
 %             [m_path_old, n_path_old, r_path_old] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
@@ -727,6 +727,11 @@ classdef HMM
             fprintf('    Forward path .');
             [~, best_states(1)] = max(alpha(:, 1));
             for iFrame = 2:nFrames
+                
+                if iFrame == 376
+                    kj=897;
+                end
+                
                 alpha(:, iFrame) = A' * alpha(:, iFrame-1);
 %                 D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
                 %                 [ ~, psi(:, iFrame)] = max(bsxfun(@times, A, alpha(:, iFrame-1)));
@@ -735,9 +740,9 @@ classdef HMM
 %                 validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-%                 O(validInds & (O<1e-5)) = 1e-5;
+                O(validInds & (O<1e-7)) = 1e-7;
+                fprintf('%.2f\n', max(O(validInds)));
                 
-                    
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 alpha(:, iFrame) = O .* alpha(:, iFrame);
