@@ -42,9 +42,9 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'PF';
+Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 0;
+Params.viterbi_learning_iterations = 1;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
 
@@ -148,21 +148,21 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom';
+Params.train_set = 'ballroom_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-kmeans.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'ballroom';
+Params.test_set = 'ballroom_test_1';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 

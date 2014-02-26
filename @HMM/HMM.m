@@ -35,7 +35,7 @@ classdef HMM
             obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
-            obj.T = Params.T;
+%             obj.T = Params.T;
             obj.pn = Params.pn;
             if isfield(Params, 'cluster_transitions_fln') && exist(Params.cluster_transitions_fln, 'file')
                 obj.pr = dlmread(Params.cluster_transitions_fln);
@@ -192,7 +192,8 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
-            for i_file=1:n_files
+%             for i_file=1:n_files
+            for i_file=1:2
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('%i/%i) %s', i_file, n_files, fname);
                 % make belief function
