@@ -281,7 +281,7 @@ classdef HMM
                 error('specify tempo_tying!\n');
             end
             % find min and max tempo states for each pattern
-            for r_i = 1:obj.R
+            for r_i = find(~isnan(obj.pr(:, 1)))'
                     obj.minN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
                     obj.maxN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
             end
