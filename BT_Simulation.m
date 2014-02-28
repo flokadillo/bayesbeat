@@ -18,12 +18,16 @@ function [] = BT_Simulation(sim_id)
 addpath('~/diss/src/matlab/beat_tracking/SilverBeat/utils')
 % profile on
 
-sim = Simulation('config_bt', sim_id);
-
 % output hash of current git revision
 [~, cmdout] = system('git rev-parse HEAD');
 fprintf('Git SHA-1: %s\n', cmdout);
 fprintf('Process ID: %i\n', feature('getpid'));
+
+if exist(['./', sim_id], 'file')
+   system(['cp ./config_bt.m ./', sim_id]);
+end
+
+sim = Simulation('config_bt', sim_id);
 
 sim = sim.train_system();
 
