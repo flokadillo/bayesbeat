@@ -36,7 +36,7 @@ sim = sim.set_comp_time(toc/60);
 
 sim.save_params();
 
-
+fprintf('Simulation finished\n');
 % profile viewer
 
 end % end BT_Simulation
