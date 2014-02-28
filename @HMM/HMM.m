@@ -5,7 +5,6 @@ classdef HMM
         Meff                % number of positions per meter
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
-        T                   % number of different meter
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
         pt                  % probability of a switch in meter
@@ -872,37 +871,14 @@ classdef HMM
             numframes = length(positionPath);
             meter = zeros(2, length(meterPath));
             meter(:, meterPath>0) = obj.meter_state2meter(:, meterPath(meterPath>0));
-            % TODO: implement for changes in meter
             % TODO: if beat is shortly before the audio start we should
             % add one beat at the beginning. E.g. m-sequence starts with
             % m=2
             
-            %             [meter_states, idx, ~] = unique(meterPath);
-            for iT=1:obj.T
+            for iT=1:size(obj.meter_state2meter, 2)
                 beatpositions{iT} = round(linspace(1, obj.Meff(iT), obj.meter_state2meter(1, iT) + 1));
                 beatpositions{iT} = beatpositions{iT}(1:end-1);
             end
-            
-            %             if round(median(meter(1, :))) == 3 % 3/4
-            %                 numbeats = 3;
-            %                 denom = 4;
-            %             elseif round(median(meter(1, :))) == 4 % 4/4
-            %                 numbeats = 4;
-            %                 denom = 4;
-            %             elseif round(median(meter(1, :))) == 8 % 8/8
-            %                 numbeats = 8;
-            %                 denom = 8;
-            %             elseif round(median(meter(1, :))) == 9 % 9/8
-            %                 numbeats = 9;
-            %                 denom = 8;
-            %             else
-            %                 error('Meter %i not supported yet!\n', median(meterPath));
-            %             end
-            
-            %             beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
-            %             beatpositions = beatpositions(1:end-1);
-            
-            beats = [];
             beatno = [];
             beatco = 0;
             for i = 1:numframes-1

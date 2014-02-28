@@ -94,7 +94,7 @@ for iFile=1:nFiles
         
         % collect feature values and determine the corresponding position
         % in a bar
-        barData = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size);
+        barData = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, annots.meter);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
@@ -136,7 +136,7 @@ end
 end
 
 
-function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size)
+function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter)
 % barData   [nBars x whole_note_div] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
@@ -153,21 +153,23 @@ end
 if strcmp(pattern_size, 'bar')
     [nBars, ~, barStartIdx] = Data.get_full_bars(beats);
     btype = round(rem(beats(:,2),1)*10);
-    meter = max(btype);
+%     meter = max(btype);
 else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
 %     btype = ones(size(beats, 1), 1);
     meter = 1;
 end
-
-if ismember(meter, [1, 2, 3, 4])
-    beatsBarPos = ((0:meter) * whole_note_div / 4) + 1;
-elseif ismember(meter, [8, 9])
-    beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
-else 
-    error('meter %i unknown\n', meter);
-end
+beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
+% if ismember(meter(2), 4)
+%     beatsBarPos = ((0:meter) * whole_note_div / 4) + 1;
+% elseif ismember(meter, [8, 9])
+%     beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
+% elseif ismember(meter, 2)
+%     beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
+% else 
+%     error('meter %i unknown\n', meter);
+% end
 
 barData = cell(nBars, bar_grid_eff);
 

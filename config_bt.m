@@ -142,7 +142,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Params.test_set = 'boeck_3_4';
 % Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 Params.test_set = ' ';
-Params.testLab = '~/diss/data/beats/robo_git2/test/flo_2.wav';
+Params.testLab = '~/diss/data/beats/robo_git2/test/flo_1.wav';
 % Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
