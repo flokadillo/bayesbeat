@@ -61,7 +61,7 @@ Params.N = 23;
 % Number of rhythmic pattern states
 Params.R = 4;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [3, 4; 4, 4];
+Params.meters = [3, 4, 2; 4, 4, 2];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -148,21 +148,21 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_train_1';
+Params.train_set = 'hainsworth_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans.txt']);
+    num2str(Params.R), '-kmeans-songs.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'ballroom_test_1';
+Params.test_set = 'hainsworth_test_1';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 

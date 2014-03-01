@@ -57,14 +57,15 @@ if strcmp(pattern_size, 'bar')
 else
     bar_grid_max = round(whole_note_div / 4);
 end
-
+nchar = 0;
 %main loop over all files
 for iFile=1:nFiles
     [dataPath, fname, ~] = fileparts(listing(iFile).name);
-    fprintf('      %i/%i) %s \n', iFile, nFiles, fname);
+    fprintf(repmat('\b', 1, nchar));
+    nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
     [ annots, error ] = loadAnnotations( dataPath, fname, 'wmb', dooutput );
     if error,
-        if dooutput, fprintf('Skipping %s\n',fname); end
+        if dooutput, fprintf('Error loading annotations, skipping %s\n',fname); end
         continue;
 %     elseif ~ismember(annots.meter, [3; 4])
 %         if dooutput, fprintf('Skipping %s because of meter (%i)\n',fname, annots.meter); end
@@ -110,7 +111,7 @@ for iFile=1:nFiles
         
     end
 end
-
+fprintf('\n');
 end % FUNCTION end
 
 

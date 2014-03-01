@@ -58,17 +58,18 @@ classdef RhythmCluster < handle
                 num2str(obj.feature.feat_dim), 'd-', obj.dataset, '-songs.txt']);
             dlmwrite(obj.feat_matrix_fln, obj.data_per_song(~exclude_song_ids, :), 'delimiter', '\t', 'precision', 4);
             fprintf('Saved data per song to %s\n', obj.feat_matrix_fln);
-            
-            obj.exclude_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-exclude.txt']);
             exclude_song_ids = find(exclude_song_ids);
-            fid = fopen(obj.exclude_songs_fln, 'w');
-            for i=1:length(exclude_song_ids)
-                fprintf(fid, '%s\n', obj.train_file_list{exclude_song_ids(i)});
+            if ~isempty(exclude_song_ids)
+                obj.exclude_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-exclude.txt']);
+                fid = fopen(obj.exclude_songs_fln, 'w');
+                for i=1:length(exclude_song_ids)
+                    fprintf(fid, '%s\n', obj.train_file_list{exclude_song_ids(i)});
+                end
+                fclose(fid);
+                fprintf('Saved files to be excluded (%i) to %s\n', length(exclude_song_ids), obj.exclude_songs_fln);
+%                 dlmwrite(obj.exclude_songs_fln, find(exclude_song_ids));
             end
-            fclose(fid);
             
-            fprintf('Saved files to be excluded (%i) to %s\n', length(exclude_song_ids), obj.exclude_songs_fln);
-            %             dlmwrite(obj.exclude_songs_fln, find(exclude_song_ids));
             %             obj.ok_songs_fln = fullfile(obj.data_save_path, [obj.dataset, '-train_ids.txt']);
             %             dlmwrite(obj.ok_songs_fln, unique(obj.bar2file)');
             
@@ -86,7 +87,7 @@ classdef RhythmCluster < handle
                 dataPerBar = [];
                 for iDim =1:obj.feature.feat_dim
                     Output = Data.extract_bars_from_feature(obj.train_file_list, obj.feature.feat_type{iDim}, ...
-                        whole_note_div, obj.feature.frame_length,obj.pattern_size, 0);
+                        whole_note_div, obj.feature.frame_length,obj.pattern_size, 1);
                     dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
                 end
                 obj.bar2file = Output.bar2file;
@@ -157,7 +158,11 @@ classdef RhythmCluster < handle
                     num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
             else
                 % read index of  valid songs
-                exclude_songs = load(obj.exclude_songs_fln, '-ascii');
+                if exist(obj.exclude_songs_fln, 'f')
+                    exclude_songs = load(obj.exclude_songs_fln, '-ascii');
+                else
+                    exclude_songs = [];
+                end
                 meter = zeros(length(obj.train_file_list), 1);
                 fileCounter = 0;
                 bar2pattern = [];
@@ -170,7 +175,8 @@ classdef RhythmCluster < handle
                     countTimes = round(rem(beats(:, 2), 1) * 10);
                     % filter out meters that are not 3 or 4
                     meter(fileCounter+1) = max(countTimes);
-                    if ~ismember(meter(fileCounter+1), [3, 4])
+                    if ~ismember(meter(fileCounter+1), [2, 3, 4])
+                        fprintf('    Warning: Skipping %s because of meter (%i)\n', obj.train_file_list{iFile}, meter(fileCounter+1));
                         continue
                     end
                     fileCounter = fileCounter + 1;
