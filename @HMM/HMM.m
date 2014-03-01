@@ -56,18 +56,17 @@ classdef HMM
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
-            % convert from BPM into barpositions / audio frame
-            meter_denom = obj.meter_state2meter(2, :);
-            meter_denom = meter_denom(obj.rhythm2meter);
-            
+	    % convert from BPM into barpositions / audio frame
+            meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
+
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60));
-                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60));
+                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
-            end
-            
+            end            
+
             if max(obj.maxN) > obj.N
                 error('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
             end
