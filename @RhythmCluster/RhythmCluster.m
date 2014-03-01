@@ -194,7 +194,7 @@ classdef RhythmCluster < handle
             end
             obj.bar_2_cluster = cidx;
             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
-            fprintf('writing bar-cluster assignments to %s\n', obj.clusters_fln);
+            fprintf('writing %i bar-cluster assignments to %s\n', length(obj.bar_2_cluster), obj.clusters_fln);
             obj.n_clusters = n_clusters;
         end
         
