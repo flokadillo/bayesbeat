@@ -59,9 +59,9 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 4;
+Params.R = 3;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [3, 4, 2; 4, 4, 2];
+Params.meters = [3, 4, 2; 4, 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -156,7 +156,7 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-meter.txt']);
 
 % Test data
 % ----------

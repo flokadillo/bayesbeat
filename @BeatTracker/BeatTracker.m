@@ -43,8 +43,6 @@ classdef BeatTracker < handle
                     fprintf('%s was not found, creating new model ...\n', Params.model_fln);
                 end
             else
-                
-                
                 switch Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(Params, obj.train_data.rhythm2meter);
@@ -93,16 +91,8 @@ classdef BeatTracker < handle
         function train_model(obj, init_n_gauss)
             if isempty(obj.init_model_fln)
                 tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
-                if init_n_gauss > 0
-                    % define max/min tempo for each rhythm separately
-                    maxTempo = ceil(max(tempo_per_cluster));
-                    minTempo = floor(min(tempo_per_cluster));
-                else
-                    % define the max/min tempo to be the same for all rhythms
-                    maxTempo = repmat(ceil(max(tempo_per_cluster(:))), 1, obj.model.R);
-                    minTempo = repmat(floor(min(tempo_per_cluster(:))), 1, obj.model.R);
-                end
-                obj.model = obj.model.make_transition_model(minTempo, maxTempo);
+               
+                obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
                 
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
                 

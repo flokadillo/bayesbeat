@@ -67,9 +67,6 @@ classdef Simulation
             %                 Params.obsFileName = fullfile(obj.sim_dir, 'observationModel.mat');
             %                 Params.transitionMatrixFile = fullfile(obj.sim_dir, 'transitionMatrix.mat');
             % copy config file to simulation folder
-            if exist(obj.sim_dir, 'file')
-                system(['cp ', fullfile(obj.Params.base_path, 'config_bt.m'), ' ', obj.sim_dir]);
-            end
             obj.save_results2file = 1;
         end
         

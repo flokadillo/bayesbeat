@@ -56,7 +56,8 @@ classdef HMM
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
-	    % convert from BPM into barpositions / audio frame
+            
+            % convert from BPM into barpositions / audio frame
             meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
 
             if strcmp(obj.pattern_size, 'bar')
@@ -68,7 +69,7 @@ classdef HMM
             end            
 
             if max(obj.maxN) > obj.N
-                error('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
+                fprintf('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
@@ -203,10 +204,10 @@ classdef HMM
                     continue;
                 end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-%                 % compute beat times and bar positions of beats
+% %                 % compute beat times and bar positions of beats
 %                 t_path = obj.rhythm2meter(r_path);
 %                 beats = obj.find_beat_times(m_path, t_path, n_path);
-%                 beats(:, 1) = beats(:, 1) + (belief_func{i_file, 1}(1)-1) * obj.frame_length;
+%                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
 %                 BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
                 
                 % save pattern id per bar
