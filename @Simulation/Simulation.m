@@ -12,9 +12,17 @@ classdef Simulation
     end
     
     methods
-        function obj = Simulation(config_fun, sim_id)
-            
-            obj.Params = eval(config_fun);
+        function obj = Simulation(config_fun, sim_id, config_path)
+
+            if exist('config_path', 'var')
+                old_path = cd(config_path);
+                obj.Params = eval(config_fun);
+                fprintf('* Reading %s\n', fullfile(config_path, [config_fun, '.m']));
+                cd(old_path);
+            else
+                obj.Params = eval(config_fun);
+                fprintf('* Reading %s\n', ['./', config_fun, '.m']);
+            end
             
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
@@ -48,10 +56,6 @@ classdef Simulation
             obj.sim_dir = fullfile(obj.Params.results_path, num2str(sim_id));
             obj.Params.logFileName = num2str(obj.sim_id);
             obj.Params.paramsName = fullfile(obj.sim_dir, 'params.mat');
-            % copy config file to simulation folder
-            if exist(obj.sim_dir, 'file')
-                system(['cp ', fullfile(obj.Params.base_path, 'config_bt.m'), ' ', obj.sim_dir]);
-            end
         end
         
         function obj = set_up_results_dir(obj, sim_id)
