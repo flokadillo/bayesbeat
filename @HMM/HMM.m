@@ -60,8 +60,8 @@ classdef HMM
             meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
 
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+                obj.minN = floor(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
