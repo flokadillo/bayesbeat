@@ -21,7 +21,9 @@ for iPattern=1:nPatterns % all clusters
         
         featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
         
-        if isempty(featureValues), break; end
+        if isempty(featureValues), 
+            break; 
+        end
         
         switch obj.dist_type
             case 'gamma'

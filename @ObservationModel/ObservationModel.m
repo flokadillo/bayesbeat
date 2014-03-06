@@ -109,10 +109,11 @@ classdef ObservationModel
                     data = data - min(data);
                     data = data / max(data);
                     data = data + fdim;
-                    plot(data, 'Color', col(fdim, :));
+                    stairs([data, data(end)], 'Color', col(fdim, :));
+%                     stairs([means(:, nDim-iDim+1); means(end, nDim-iDim+1)], 'k', 'LineWidth', 2)
                 end
                 title(sprintf('cluster %i', c));
-                xlim([1 length(data)])
+                xlim([1 length(data)+1])
             end 
         end
     end
