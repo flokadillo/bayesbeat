@@ -46,7 +46,7 @@ Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 1;
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.base_path, 'results/831/hmm-ballroom_train_5-5.mat');
+Params.model_fln = fullfile(Params.base_path, 'results/1132/hmm-hainsworth_train_9-1.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -59,7 +59,7 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 3;
+Params.R = 8;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4, 2; 4, 4, 4];
 % Number of position grid points per whole note. This is important for the
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'hainsworth_train_1';
+Params.train_set = 'hainsworth_train_9';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,13 +156,13 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), '-kmeans-songs.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'hainsworth_test_1';
+Params.test_set = 'hainsworth_test_9';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 
