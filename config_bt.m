@@ -39,7 +39,7 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'PF';
@@ -59,9 +59,9 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 4;
+Params.R = 3;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [3, 4; 4, 4];
+Params.meters = [2, 3, 4; 4, 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -148,15 +148,15 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_train_1';
+Params.train_set = 'hainsworth_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+ Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-kmeans.txt']);
 
 % Test data
 % ----------
@@ -164,7 +164,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Test dataset
 Params.test_set = 'ballroom';
 % Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
+ Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+%Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
 
 end
