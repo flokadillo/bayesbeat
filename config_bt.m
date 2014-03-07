@@ -59,7 +59,7 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 4;
+Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
@@ -94,12 +94,12 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 2000;
+Params.nParticles = 5000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
 % If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
-Params.ratio_Neff = 0.02;
+Params.ratio_Neff = 0.006;
 % Type of resampling scheme to be used:
 %   0) Standard SISR (systematic resampling)
 %   1) APF
@@ -117,7 +117,7 @@ Params.warp_fun = '@(x)x.^(1/4)';
 % Mixture PF parameters
 % .....................
 % Factors to adjust distance function for k-means [l_m, l_n, l_r]
-Params.state_distance_coefficients = [30, 1, 10];
+Params.state_distance_coefficients = [30, 1, 100];
 % If distance < cluster_merging_thr: merge clusters
 Params.cluster_merging_thr = 20; 
 % If spread > cluster_splitting_thr: split clusters
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_train_1';
+Params.train_set = 'boeck_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,7 +156,7 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-meter.txt']);
 
 % Test data
 % ----------

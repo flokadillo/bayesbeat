@@ -20,6 +20,7 @@ function [Output] = extract_bars_from_feature(source, feature_type, whole_note_d
 %                       be plotted by plot(mean(cellfun(@mean, Output.dataPerBar)))
 % Output.bar2file   : [1 x nBars] vector
 % Output.fileNames  : [nFiles x 1] vector
+% Output.file2meter : [nFiles x 2]
 %
 % 26.7.2012 by Florian Krebs
 % ----------------------------------------------------------------------
@@ -40,6 +41,7 @@ end
 % bar grid for triple and duple meter
 Output.dataPerBar = []; idLastBar = 0;
 Output.fileNames = cell(nFiles, 1);
+Output.file2meter = zeros(nFiles, 2);
 fprintf('    Organize feature values (%s) into bars ...\n', feature_type);
 
 % whole_note_div is loop over all files to find maximum bargrid
@@ -50,9 +52,14 @@ if strcmp(pattern_size, 'bar')
         [ annots, error ] = loadAnnotations( dataPath, fname, 'm', dooutput );
         if length(annots.meter) == 1
            bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
+           Output.file2meter(iFile, 1) = annots.meter;
+           Output.file2meter(iFile, 2) = 4;
+           fprintf('    Warning: meter file has only one value, assuming quarter note beats\n');
         else
            bar_grid_max = max([bar_grid_max; ceil(whole_note_div * annots.meter(1) / annots.meter(2))]);
+           Output.file2meter(iFile, :) = annots.meter;
         end
+        
     end
 else
     bar_grid_max = round(whole_note_div / 4);
