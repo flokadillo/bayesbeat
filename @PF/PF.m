@@ -144,7 +144,8 @@ classdef PF
         end
         
         function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
-            
+            profile on
+            tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             obj = obj.pf(obs_lik, fname);
@@ -165,11 +166,13 @@ classdef PF
                 end
 %             else
 %                 error('PF.m: unknown inferenceMethod');
+                
             end
+            profile viewer
+                fprintf('Hallo\n')
+                toc
             % meter path
             t_path = obj.rhythm2meter(r_path);
-            
-            
             
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
@@ -437,7 +440,14 @@ classdef PF
 %             profile on
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
-                obj = obj.propagate_particles_pf(iFrame, 'm');
+%                 obj = obj.propagate_particles_pf(iFrame, 'm');
+                
+                obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
+                obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
+                    obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
+                
+                % update r
+                obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
                 
                 if obj.do_viterbi_filtering
                     % compute tempo matrix: rows are particles at iFrame-1,
@@ -524,7 +534,11 @@ classdef PF
                 end
                 
                 % transition from iFrame-1 to iFrame
-                obj = obj.propagate_particles_pf(iFrame, 'n');
+%                 obj = obj.propagate_particles_pf(iFrame, 'n');
+                
+                obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+                obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
+                obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
                 
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
@@ -661,7 +675,8 @@ classdef PF
             % state_dim: [nStates x 1]
             % groups_old: [nParticles x 1] group labels of the particles
             %               after last resampling step (used for initialisation)
-            
+            addpath('/home/florian/diss/src/matlab/libs/fast_kmeans')
+            addpath('/home/florian/diss/src/matlab/libs/litekmeans')
             warning('off');
             group_ids = unique(groups_old);
             k = length(group_ids); % number of clusters
@@ -689,8 +704,13 @@ classdef PF
             
             % do k-means clustering
             options = statset('MaxIter', 100);
-            [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
-                'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
+%             [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
+%                 'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
+            
+            [groups, centroids, total_dist_per_cluster] = fast_kmeans(points', centroids', 1);
+            
+            centroids = litekmeans(X, centroids);
+            
             % remove empty clusters
             total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
             centroids = centroids(~isnan(centroids(:, 1)), :);
@@ -756,8 +776,11 @@ classdef PF
             end
             
             if split || merged
-                [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
-                    'Distance', 'sqEuclidean', 'options', options);
+%                 [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
+%                     'Distance', 'sqEuclidean', 'options', options);
+                
+                [groups, ~, ~] = fast_kmeans(points, centroids, 1);
+                
                 [group_ids, ~, j] = unique(groups);
                 group_ids = 1:length(group_ids);
                 groups = group_ids(j)';

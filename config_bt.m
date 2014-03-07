@@ -39,12 +39,12 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 1;
+Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.base_path, 'results/1132/hmm-hainsworth_train_9-1.mat');
 
@@ -59,9 +59,9 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 3;
+Params.R = 4;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [3, 4, 2; 4, 4, 4];
+Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -94,7 +94,7 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 4000;
+Params.nParticles = 2000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'hainsworth_train_1';
+Params.train_set = 'ballroom_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -162,8 +162,9 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % ----------
 
 % Test dataset
-Params.test_set = 'hainsworth_test_1';
+Params.test_set = 'ballroom';
 % Path to lab file (.lab) or to test song (.wav)
-Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
 
 end

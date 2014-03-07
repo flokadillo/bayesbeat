@@ -85,6 +85,7 @@ for iFile=1:nFiles
         if strcmp(pattern_size, 'bar')
             if length(annots.meter) == 1
                 bar_grid_eff = whole_note_div * annots.meter / 4;
+                annots.meter(2) = 4;
             else
                 bar_grid_eff = ceil(whole_note_div * annots.meter(1) / annots.meter(2));
             end
