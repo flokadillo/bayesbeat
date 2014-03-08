@@ -204,6 +204,10 @@ classdef HMM
                     continue;
                 end
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
+                if min(n_path) < 5
+                   fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path)); 
+                   continue;
+                end
 % %                 % compute beat times and bar positions of beats
 %                 t_path = obj.rhythm2meter(r_path);
 %                 beats = obj.find_beat_times(m_path, t_path, n_path);
