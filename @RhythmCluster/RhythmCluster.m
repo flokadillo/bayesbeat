@@ -21,6 +21,8 @@ classdef RhythmCluster < handle
         bar2file            % [1 x nBars] vector
         bar_2_cluster
         file_2_cluster
+        bar_2_meter         % [nBars x 2]
+        file_2_meter        % [nFiles x 2]
         cluster_transition_matrix
         cluster_transitions_fln
     end
@@ -92,7 +94,8 @@ classdef RhythmCluster < handle
                 end
                 obj.bar2file = Output.bar2file;
                 obj.data_per_bar = dataPerBar;
-                
+                obj.file_2_meter = Output.file2meter;
+                obj.bar_2_meter = Output.file2meter(obj.bar2file, :);
                 % save bars to file
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
                     num2str(obj.feature.feat_dim), 'd_', obj.dataset, '.txt']);
@@ -109,6 +112,12 @@ classdef RhythmCluster < handle
             obj.data_per_bar = dlmread(obj.feat_matrix_fln, '\t');
         end
         
+        function load_feats_per_song(obj)
+            obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat-', ...
+                num2str(obj.feature.feat_dim), 'd-', obj.dataset, '-songs.txt']);
+            obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
+        end
+        
         function do_clustering(obj, n_clusters, type)
             % type = 'bars' : cluster data_per_bar
             % type = 'songs': cluster data_per_song
@@ -118,15 +127,50 @@ classdef RhythmCluster < handle
             fprintf('WARNING: so far only 2 different meters supported!\n');
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
+                meter_per_item = obj.bar_2_meter;
             else
                 S = obj.data_per_song;
+                meter_per_item = obj.file_2_meter;
             end
-            S(isnan(S)) = -999;
-            opts = statset('MaxIter', 200);
-            [cidx, ctrs] = kmeans(S, n_clusters, 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
-            ctrs(ctrs==-999) = nan;
+            meters = unique(meter_per_item, 'rows');
+            n_items_per_meter = hist(meter_per_item(:, 1), sort(meters(:, 1), 'ascend'));
+            n_items_per_cluster = ceil(n_items_per_meter * n_clusters / sum(n_items_per_meter));
+            if sum(n_items_per_cluster) > n_clusters
+               [~, idx] = max(n_items_per_cluster);
+               n_items_per_cluster(idx) = n_items_per_cluster(idx) - sum(n_items_per_cluster) + n_clusters;
+            end
             
-            [~, bar_grid] = size(ctrs);
+            % normalise data
+            bar_pos = size(S, 2) / obj.feature.feat_dim;
+            for i_dim = 1:obj.feature.feat_dim
+                vals = S(:, (i_dim-1)*bar_pos+1:bar_pos*i_dim);
+                vals = vals - nanmean(vals(:));
+                vals = vals / nanstd(vals(:));
+                S(:, (i_dim-1)*bar_pos+1:bar_pos*i_dim) = vals;
+            end
+            opts = statset('MaxIter', 200);
+            % cluster different meter separately
+            ctrs = zeros(n_clusters, size(S, 2));
+            cidx = zeros(size(S, 1), 1);
+            p = 1; 
+            S(isnan(S)) = -99;
+            for iMeter=1:size(meters, 1)
+                idx_i = (meter_per_item(:, 1) == meters(iMeter, 1)) & (meter_per_item(:, 2) == meters(iMeter, 2));
+                if n_items_per_cluster(iMeter) > 1
+                    [cidx(idx_i), ctrs(p:p+n_items_per_cluster(iMeter)-1, :)] = kmeans(S(idx_i, :), n_items_per_cluster(iMeter), 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
+                    cidx(idx_i) = cidx(idx_i) + p - 1;
+                    p=p+n_items_per_cluster(iMeter);
+                else
+                    ctrs(p, :) = mean(S(idx_i, :));
+                    cidx(idx_i) = p;
+                    p=p+1;
+                end
+            end
+%             S(isnan(S)) = -999;
+            
+%             [cidx, ctrs] = kmeans(S, n_clusters, 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
+            ctrs(ctrs==-99) = nan;
+            
             plot_cols = ceil(sqrt(n_clusters));
             
             h = figure( 'Visible','off');
@@ -138,7 +182,7 @@ classdef RhythmCluster < handle
                 subplot(ceil(n_clusters/plot_cols), plot_cols, c)
                 hold on
                 for fdim = 1:obj.feature.feat_dim
-                    data = ctrs(c, (fdim-1)*bar_grid/obj.feature.feat_dim+1:fdim*bar_grid/obj.feature.feat_dim);
+                    data = ctrs(c, (fdim-1)*bar_pos+1:fdim*bar_pos);
                     data = data - min(data);
                     data = data / max(data);
                     data = data + fdim;
@@ -147,7 +191,7 @@ classdef RhythmCluster < handle
                 title(sprintf('cluster %i (%i items)', c, items_per_cluster(c)));
                 xlim([1 length(data)])
             end
-            outfile = '/tmp/out.png';
+            outfile = ['/tmp/out-',type, '-', num2str(n_clusters), '.png'];
             fprintf('writing patterns to %s\n', outfile);
             % save to png
             print(h, outfile, '-dpng');
