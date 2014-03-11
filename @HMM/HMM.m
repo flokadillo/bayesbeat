@@ -78,10 +78,10 @@ classdef HMM
             end
             
             % Create transition model
-            if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
-                obj.minN = ones(1, obj.R);
-                obj.maxN = ones(1, obj.R) * obj.N;
-            end
+%            if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
+ %               obj.minN = ones(1, obj.R);
+ %               obj.maxN = ones(1, obj.R) * obj.N;
+ %           end
 
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter, obj.minN, obj.maxN);
@@ -199,10 +199,17 @@ classdef HMM
                 % load observations
                 observations = features.load_feature(train_data.file_list{i_file});
                 obs_lik = obj.obs_model.compute_obs_lik(observations);
+                first_frame = max([belief_func{1}(1), 1]);
+%                 save(['results/2040/obslik-', fname, '.mat'], 'obs_lik', 'first_frame');
+%                 continue;
                 best_path = obj.viterbi_iteration(obs_lik, belief_func);
                 if isempty(best_path)
                     continue;
                 end
+                
+                save(['results/2040/best_states-', fname, '.mat'], 'best_path', 'obs_lik', 'first_frame');
+                log_prob = compute_posterior(best_path, obs_lik, first_frame, obj);
+                fprintf('    log_prob=%.2f\n', log_prob);
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
                 if min(n_path) < 5
                    fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path)); 
@@ -296,6 +303,7 @@ classdef HMM
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
         end
+        
         
     end
     

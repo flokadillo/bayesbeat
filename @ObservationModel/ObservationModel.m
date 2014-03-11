@@ -64,7 +64,7 @@ classdef ObservationModel
             % ------------------------------------------------------------------------
             %INPUT parameters:
             % o1            : parameter of observation model
-            % observations  : observations
+            % observations  : observations [nFrames x nDim]
             %
             %OUTPUT parameters:
             % obslik        : observation likelihood [R x barPos x nFrames]

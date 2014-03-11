@@ -44,9 +44,9 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 0;
+Params.viterbi_learning_iterations = 1;
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.base_path, 'results/2012/hmm-hainsworth_train_1-0.mat');
+%Params.model_fln = fullfile(Params.base_path, 'results/2022/hmm-hainsworth_train_1-2.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -148,23 +148,23 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'hainsworth_train_1';
+Params.train_set = 'hainsworth_train_7';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-% Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
- %     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+ Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans-songs.txt']);
+    num2str(Params.R), '-kmeans.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'hainsworth_test_1';
+Params.test_set = 'hainsworth_test_7';
 % Path to lab file (.lab) or to test song (.wav)
- Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-%Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
+  Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+%Params.testLab = ['~/diss/data/beats/hainsworth/sh_184.wav'];
 
 end

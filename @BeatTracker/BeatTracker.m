@@ -99,6 +99,9 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
             end
             
+             hmm = obj.model;
+             save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+                      
             if obj.viterbi_learning_iterations > 0
                 obj.refine_model(obj.viterbi_learning_iterations);
             end
@@ -126,8 +129,8 @@ classdef BeatTracker < handle
                 dash = strfind(obj.init_model_fln, '-');
                 iter_start = str2double(obj.init_model_fln(dash(end)+1:end-4)) + 1;
             else
-                hmm = obj.model;
-                save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+%                 hmm = obj.model;
+%                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                 iter_start = 1;
             end
             
