@@ -94,7 +94,7 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 1000;
+Params.nParticles = 3000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 

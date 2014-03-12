@@ -25,11 +25,12 @@ classdef HMM
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
         viterbi_learning_iterations 
         n_depends_on_r      % no dependency between n and r
-        
+        rhythm_names                % cell array of rhythmic pattern names
+        train_dataset       % dataset, which HMM was trained on
     end
     
     methods
-        function obj = HMM(Params, rhythm2meter)
+        function obj = HMM(Params, rhythm2meter, rhythm_names)
             
             obj.M = Params.M;
             obj.Meff = Params.Meff;
@@ -53,6 +54,7 @@ classdef HMM
             obj.tempo_tying = Params.tempo_tying;
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             obj.n_depends_on_r = Params.n_depends_on_r;
+            obj.rhythm_names = rhythm_names;
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
@@ -93,7 +95,7 @@ classdef HMM
             
         end
         
-        function obj = make_observation_model(obj, data_file_pattern_barpos_dim)
+        function obj = make_observation_model(obj, data_file_pattern_barpos_dim, train_dataset)
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
@@ -101,6 +103,8 @@ classdef HMM
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
+            
+            obj.train_dataset = train_dataset;
             
         end
         

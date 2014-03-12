@@ -16,7 +16,7 @@ function [] = BT_Simulation(sim_id)
 % 03.01.2013 modularize code into subfunctions
 % ------------------------------------------------------------------------
 addpath('~/diss/src/matlab/beat_tracking/SilverBeat/utils')
-% profile on
+profile on
 
 % output hash of current git revision
 [~, cmdout] = system('git rev-parse HEAD');
@@ -42,6 +42,6 @@ sim = sim.set_comp_time(toc/60);
 sim.save_params();
 
 fprintf('Simulation finished\n');
-% profile viewer
+profile viewer
 
 end % end BT_Simulation

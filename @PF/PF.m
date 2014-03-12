@@ -37,10 +37,12 @@ classdef PF
         inferenceMethod
         n_max_clusters              % If number of clusters > n_max_clusters, kill cluster with lowest weight
         n_initial_clusters          % Number of cluster to start with
+        rhythm_names                % cell array of rhythmic pattern names
+        train_dataset                % dataset, which PF was trained on
     end
     
     methods
-        function obj = PF(Params, rhythm2meter)
+        function obj = PF(Params, rhythm2meter, rhythm_names)
             addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
             addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
@@ -67,6 +69,7 @@ classdef PF
             obj.cluster_splitting_thr = Params.cluster_splitting_thr;
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
+            obj.rhythm_names = rhythm_names;
 %             rng('shuffle');
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
@@ -118,7 +121,7 @@ classdef PF
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
         
-        function obj = make_observation_model(obj, data_file_pattern_barpos_dim)
+        function obj = make_observation_model(obj, data_file_pattern_barpos_dim, train_dataset)
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
@@ -126,6 +129,8 @@ classdef PF
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
+            
+            obj.train_dataset = train_dataset;
             
         end
         
@@ -394,6 +399,8 @@ classdef PF
         end
         
         function obj = pf(obj, obs_lik, fname)
+            addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
+            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             
             nFrames = size(obs_lik, 3);
             % bin2dec conversion vector
@@ -403,9 +410,17 @@ classdef PF
             obj.particles = Particles(obj.nParticles, nFrames);
             
             iFrame = 1;
+            m = zeros(obj.nParticles, nFrames, 'single');
+            n = zeros(obj.nParticles, nFrames, 'single');
+            r = zeros(obj.nParticles, nFrames, 'single');
+            
             obj.particles.m(:, iFrame) = obj.initial_m;
             obj.particles.n(:, iFrame) = obj.initial_n;
             obj.particles.r(:, iFrame) = obj.initial_r;
+            m(:, iFrame) = obj.initial_m;
+            n(:, iFrame) = obj.initial_n;
+            r(:, iFrame) = obj.initial_r;
+            
             if strcmp(obj.inferenceMethod, 'PF_viterbi')
                 obj.particles_grid = Particles(obj.nParticles, nFrames);
                 obj.particles_grid.m(:, iFrame) = obj.initial_m;
@@ -414,8 +429,10 @@ classdef PF
             end
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
-            obj.particles.weight = log(obs / sum(obs));
-            states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+            weight = log(obs / sum(obs));
+%             obj.particles.weight = log(obs / sum(obs));
+%             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+            states = [m(:, iFrame), n(:, iFrame), r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
             if obj.resampling_scheme > 1
                 % divide particles into clusters by kmeans
@@ -442,13 +459,14 @@ classdef PF
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 %                 obj = obj.propagate_particles_pf(iFrame, 'm');
-                
-                obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
-                obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
-                    obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
-                
+                m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
+                m(:, iFrame) = mod(m(:, iFrame) - 1, obj.Meff(obj.rhythm2meter(r(:, iFrame-1)))') + 1;
+%                 obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
+%                 obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
+%                     obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
+                r(:, iFrame) = r(:, iFrame-1);
                 % update r
-                obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
+%                 obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
                 
                 if obj.do_viterbi_filtering
                     % compute tempo matrix: rows are particles at iFrame-1,
@@ -476,15 +494,19 @@ classdef PF
                 end
                 
                 % evaluate particle at iFrame-1
-                obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
+                obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
+%                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
                 
-                obj.particles.weight = obj.particles.weight(:) + log(obs);
+                weight = weight(:) + log(obs);
+%                 obj.particles.weight = obj.particles.weight(:) + log(obs);
                 
                 % Normalise importance weights
                 % ------------------------------------------------------------
-                [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
-                %                 obj.particles.weight = obj.particles.weight / sum(obj.particles.weight);
-                Neff = 1/sum(exp(obj.particles.weight).^2);
+                [weight, ~] = normalizeLogspace(weight');
+                Neff = 1/sum(exp(weight).^2);
+%                 [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
+%                 Neff = 1/sum(exp(obj.particles.weight).^2);
+                
                 % Resampling
                 % ------------------------------------------------------------
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
@@ -520,14 +542,20 @@ classdef PF
                         
                     elseif obj.resampling_scheme == 3 % APF + K-MEANS
                         % apf and k-means
-                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
+                        states = [m(:, iFrame), n(:, iFrame-1), r(:, iFrame)];
+%                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters, f);
+                        [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, f);
+%                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters, f);
                         n_clusters(iFrame) = length(unique(groups));
-                        obj.particles.copyParticles(newIdx);
-                        obj.particles.weight = outWeights';
+                        m = m(newIdx, :);
+                        r = r(newIdx, :);
+                        n = n(newIdx, :);
+%                         obj.particles.copyParticles(newIdx);
+                        weight = outWeights';
+%                         obj.particles.weight = outWeights';
                         
                     else
                         fprintf('WARNING: Unknown resampling scheme!\n');
@@ -536,10 +564,14 @@ classdef PF
                 
                 % transition from iFrame-1 to iFrame
                 %                 obj = obj.propagate_particles_pf(iFrame, 'n');
+                n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+                n((n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
+                n((n(:, iFrame) < obj.minN), iFrame) = obj.minN;
                 
-                obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-                obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
-                obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
+                
+%                 obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+%                 obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
+%                 obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
                 
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
@@ -562,6 +594,12 @@ classdef PF
                 end
                 
             end
+            
+            obj.particles.m = m;
+            obj.particles.n = n;
+            obj.particles.r = r;
+            obj.particles.weight = weight;
+            
             %             profile viewer
             fprintf('    Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
             if obj.resampling_scheme > 1
@@ -854,6 +892,8 @@ classdef PF
         end
         
         [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun);
+        
+        [outIndex, outWeights, groups] = resample_in_groups2(groups, weights, n_max_clusters, warp_fun);
         
     end
     

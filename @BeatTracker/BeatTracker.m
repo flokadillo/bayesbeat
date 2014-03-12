@@ -45,9 +45,9 @@ classdef BeatTracker < handle
             else
                 switch Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(Params, obj.train_data.rhythm2meter);
+                        obj.model = HMM(Params, obj.train_data.rhythm2meter, obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(Params, obj.train_data.rhythm2meter);
+                        obj.model = PF(Params, obj.train_data.rhythm2meter, obj.train_data.rhythm_names);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
                 end
@@ -94,13 +94,13 @@ classdef BeatTracker < handle
                
                 obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
                 
-                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim);
+                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
                 
                 obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
             end
             
-             hmm = obj.model;
-             save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+%              hmm = obj.model;
+%              save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                       
             if obj.viterbi_learning_iterations > 0
                 obj.refine_model(obj.viterbi_learning_iterations);
@@ -145,10 +145,6 @@ classdef BeatTracker < handle
             end
         end
         
-        %         function load_features(obj, input_fln)
-        %             obj.feature = obj.feature.load_feature(input_fln);
-        %         end
-        
         function compute_features(obj, input_fln)
             obj.input_fln = input_fln;
         end
@@ -192,7 +188,7 @@ classdef BeatTracker < handle
             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
-                obj.train_data.rhythm_names);
+                obj.model.rhythm_names);
         end
     end
     
