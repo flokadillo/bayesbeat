@@ -67,8 +67,8 @@ classdef PF
             obj.cluster_splitting_thr = Params.cluster_splitting_thr;
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
-            rng('shuffle');
-            %             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+%             rng('shuffle');
+            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj, init_n_gauss, tempo_per_cluster)
@@ -702,20 +702,20 @@ classdef PF
             % ----------------------------------------------------------
             %             c = centroids.^2; % k x d
             %             x = points.^2; % n x d
-            sq_diff = zeros(k, obj.nParticles);
-            for i_dim=1:size(points, 2)
-                sq_diff = sq_diff + bsxfun(@minus, centroids(:, i_dim), points(:, i_dim)').^2;
-            end
-            [vals, groups] = min(sq_diff);
-            [group_ids, ~, IC] = unique(groups);
-            valid_groups = ismember(1:k, group_ids);
-            mean_dist_per_cluster = accumarray(groups', vals, [], @mean);
-            mean_dist_per_cluster = mean_dist_per_cluster(valid_groups);
-            
-            centroids = zeros(length(group_ids), size(points, 2));
-            for i_dim=1:size(points, 2)
-                centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
-            end
+%             sq_diff = zeros(k, obj.nParticles);
+%             for i_dim=1:size(points, 2)
+%                 sq_diff = sq_diff + bsxfun(@minus, centroids(:, i_dim), points(:, i_dim)').^2;
+%             end
+%             [vals, groups] = min(sq_diff);
+%             [group_ids, ~, IC] = unique(groups);
+%             valid_groups = ismember(1:k, group_ids);
+%             mean_dist_per_cluster = accumarray(groups', vals, [], @mean);
+%             mean_dist_per_cluster = mean_dist_per_cluster(valid_groups);
+%             
+%             centroids = zeros(length(group_ids), size(points, 2));
+%             for i_dim=1:size(points, 2)
+%                 centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
+%             end
             % ----------------------------------------------------------
             %             col = hsv(64);
             %             rhyt_idx = states(:, 3)==2;
@@ -724,19 +724,19 @@ classdef PF
             
             % do k-means clustering
                         options = statset('MaxIter', 1);
-%                         [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
-%                             'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
+                        [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
+                            'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
 %             
             %             [groups, centroids, total_dist_per_cluster] = fast_kmeans(points', centroids', 1);
             
             %             centroids = litekmeans(X, centroids);
             
 %             remove empty clusters
-%                         total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
-%                         centroids = centroids(~isnan(centroids(:, 1)), :);
-%                         [group_ids, ~, j] = unique(groups);
-%                         group_ids = 1:length(group_ids);
-%                         groups = group_ids(j)';
+                        total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
+                        centroids = centroids(~isnan(centroids(:, 1)), :);
+                        [group_ids, ~, j] = unique(groups);
+                        group_ids = 1:length(group_ids);
+                        groups = group_ids(j)';
 %                         figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
             
             % check if centroids are too close
@@ -758,13 +758,13 @@ classdef PF
                     % new centroid
                     centroids(c1(1), :) = mean(points(groups==c1(1), :));
                     % squared Euclidean distance
-%                                         total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
-                    mean_dist_per_cluster(c1(1)) = mean(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
+                                        total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
+%                     mean_dist_per_cluster(c1(1)) = mean(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
                     if length(c1) == 1,  merging = 0;  end
                     % remove old centroid
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
-%                                         total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
-                    mean_dist_per_cluster = mean_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
+                                        total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
+%                     mean_dist_per_cluster = mean_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
                     merged = 1;
                 end
             end
@@ -779,9 +779,9 @@ classdef PF
             [group_ids, ~, j] = unique(groups);
             group_ids = 1:length(group_ids);
             groups = group_ids(j)';
-%                         n_parts_per_cluster = hist(groups, 1:length(group_ids));
-%                         separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
-            separate_cl_idx = find(mean_dist_per_cluster > obj.cluster_splitting_thr);
+                        n_parts_per_cluster = hist(groups, 1:length(group_ids));
+                        separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
+%             separate_cl_idx = find(mean_dist_per_cluster > obj.cluster_splitting_thr);
             for iCluster = 1:length(separate_cl_idx)
                 % find particles that belong to the cluster to split
                 parts_idx = find((groups == separate_cl_idx(iCluster)));

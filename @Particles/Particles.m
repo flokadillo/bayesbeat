@@ -30,10 +30,10 @@ classdef Particles < handle
                 obj.psi_mat = zeros(nParticles, nDiscreteStates, nFrames, 'uint8');
                 obj.nDiscreteStates = nDiscreteStates;
             else
-                obj.m = zeros(nParticles, nFrames, 'single');
-                obj.r = zeros(nParticles, nFrames, 'single');
+                obj.m = zeros(nParticles, nFrames, 'double');
+                obj.r = zeros(nParticles, nFrames, 'double');
             end
-            obj.n = zeros(nParticles, nFrames, 'single');
+            obj.n = zeros(nParticles, nFrames, 'double');
             obj.weight = zeros(nParticles, 1);
 %             obj.log_trans = zeros(nParticles, nFrames);
 %             obj.log_obs = zeros(nDiscreteStates, nParticles, nFrames, 'int8');

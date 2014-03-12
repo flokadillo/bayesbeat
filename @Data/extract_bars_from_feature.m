@@ -54,7 +54,7 @@ if strcmp(pattern_size, 'bar')
            bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
            Output.file2meter(iFile, 1) = annots.meter;
            Output.file2meter(iFile, 2) = 4;
-           fprintf('    Warning: meter file has only one value, assuming quarter note beats\n');
+           fprintf('\n    Warning: meter file has only one value, assuming quarter note beats\n');
         else
            bar_grid_max = max([bar_grid_max; ceil(whole_note_div * annots.meter(1) / annots.meter(2))]);
            Output.file2meter(iFile, :) = annots.meter;
@@ -155,7 +155,7 @@ function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, 
 if length(E)/fr < beats(end, 1), E = [E; E(end)]; end
 
 if beats(end, 1) > length(E) * frame_length;
-    fprintf('   Warning: beat annotations longer than audio file\n');
+    fprintf('\n   Warning: beat annotations longer than audio file\n');
     beats = beats(beats(:, 1) <= length(E) * frame_length, :);
 end
 

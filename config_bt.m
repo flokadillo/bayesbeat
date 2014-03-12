@@ -42,11 +42,11 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 1;
+Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
-%Params.model_fln = fullfile(Params.base_path, 'results/2022/hmm-hainsworth_train_1-2.mat');
+Params.model_fln = fullfile(Params.base_path, 'data/pf-ballroom-0.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -61,7 +61,7 @@ Params.N = 23;
 % Number of rhythmic pattern states
 Params.R = 8;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
-Params.meters = [2, 3, 4; 4, 4, 4];
+Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -94,7 +94,7 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 5000;
+Params.nParticles = 1000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
@@ -148,15 +148,15 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'hainsworth_train_7';
+Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
- Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-     Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+%  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-kmeans.txt']);
+    num2str(Params.R), '-dancestyle.txt']);
 
 % Test data
 % ----------
@@ -164,7 +164,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Test dataset
 Params.test_set = 'hainsworth_test_7';
 % Path to lab file (.lab) or to test song (.wav)
-  Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-%Params.testLab = ['~/diss/data/beats/hainsworth/sh_184.wav'];
+%   Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
 
 end
