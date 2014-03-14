@@ -70,8 +70,8 @@ classdef PF
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
             obj.rhythm_names = rhythm_names;
-%             rng('shuffle');
-            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            rng('shuffle');
+%             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj, init_n_gauss, tempo_per_cluster)
@@ -208,64 +208,7 @@ classdef PF
     
     methods (Access=protected)
         
-        function obj = createTransitionCPD(obj)
-            % create 2^T transition matrices for discrete states
-            % each matrix is of size [R x R]
-            % [meter x rhythmic patterns x 2]
-            % e.g. meter 1 barcrossing = 1, meter 2 barcrossing 0 -> 1 0 -> 2 1
             
-            temp = zeros(obj.R, obj.R, 2); % [i x j x barcrossings]
-            p_meter_constant = 1-(obj.pt /  (obj.T-1));
-            p_rhythm_constant = 1-obj.pr;
-            
-            for barCrossing = 1:2
-                for iCluster1 = 1:obj.R
-                    for iCluster2 = 1:obj.R
-                        % check if meter change
-                        if obj.rhythm2meter(iCluster1) == obj.rhythm2meter(iCluster2)
-                            % check if rhythm pattern change
-                            if iCluster1 == iCluster2 % rhyth pattern the same
-                                if barCrossing == 1 % no crossing, rhythm+meter stays constant
-                                    prob = 1;
-                                else % both stay constant despite crossing
-                                    prob = p_rhythm_constant * p_meter_constant;
-                                end
-                            else
-                                if barCrossing == 1 % no crossing, meter constant, rhythm change
-                                    prob = 0;
-                                else % crossing, meter constant, rhythm change
-                                    prob = p_meter_constant * obj.pr/obj.R;
-                                end
-                            end
-                            
-                        else % meter change
-                            if barCrossing == 1 % no crossing, meter change
-                                prob = 0;
-                            else % crossing, meter change
-                                prob = obj.pt;
-                            end
-                        end
-                        temp(iCluster1, iCluster2, barCrossing) = prob;
-                    end
-                    % renormalize
-                    temp(iCluster1, :, barCrossing) = ...
-                        temp(iCluster1, :, barCrossing) / sum(temp(iCluster1, :, barCrossing));
-                end
-            end
-            
-            obj.disc_trans_mat = cell(2^obj.R, 1);
-            obj.disc_trans_mat(:) = {zeros(obj.R, obj.R)};
-            
-            for iTransMat=1:length(obj.disc_trans_mat)
-                barCrossings = dec2bin(iTransMat - 1, obj.R) - '0';
-                for iCluster=1:obj.R
-                    obj.disc_trans_mat{iTransMat}(iCluster, :) = ...
-                        temp(iCluster, :, barCrossings(iCluster) + 1);
-                end
-            end
-            obj.bin2decVector = 2.^(obj.R-1:-1:0)';
-        end
-        
         function lik = compute_obs_lik(obj, states_m_r, iFrame, obslik, m_per_grid)
             % states_m_r:   is a [nParts x 2] matrix, where (:, 1) are the
             %               m-values and (:, 2) are the r-values
@@ -285,28 +228,7 @@ classdef PF
             end
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
         end
-        
-        function obj = update_delta_and_psi(obj, barCrossing, obslik, iFrame)
-            % probability of best state sequence that ends with state x(t) = j
-            %   delta(j) = max_i{ p( X(1:t)=[x(1:t-1), x(t)=j] | y(1:t) ) }
-            % best precursor state of j
-            %   psi(j) = arg max_i { p(X(t)=j | X(t-1)=i) * delta(i)}
-            deltaEnlarged = repmat(obj.particles.delta', obj.R , 1);
-            deltaEnlarged = reshape(deltaEnlarged, obj.R, []);
-            transMatVect = cell2mat(obj.disc_trans_mat(barCrossing + 1));
-            %   delta(i, t-1) * p( X(t)=j | X(t-1)=i )
-            prediction2ts = deltaEnlarged .* transMatVect';
-            %   max_i { delta(i, t-1) * p( X(t)=j | X(t-1)=i ) }
-            [obj.particles.delta, psi2] = max(prediction2ts);
-            obj.particles.delta = reshape(obj.particles.delta, obj.R, obj.nParticles )';
-            obj.particles.psi_mat(:, :, iFrame) = reshape(psi2, obj.R, obj.nParticles )';
-            %   delta(j, t) = p(y(t) | X(t) = j) * max_i { delta(i, t-1) * p( X(t)=j | X(t-1)=i ) }
-            obj.particles.delta = obj.particles.delta .* obslik';
-            % renormalize over discrete states
-            obj.particles.delta = obj.particles.delta ./ repmat(sum(obj.particles.delta, 2), 1, 2);
-            
-        end
-        
+               
         function [m_path, n_path, r_path] = path_via_best_weight(obj)
             % use particle with highest weight
             % ------------------------------------------------------------
@@ -548,7 +470,7 @@ classdef PF
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
                         [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, f);
-%                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters, f);
+%                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, weight, obj.n_max_clusters, f);
                         n_clusters(iFrame) = length(unique(groups));
                         m = m(newIdx, :);
                         r = r(newIdx, :);
@@ -863,6 +785,8 @@ classdef PF
     methods (Static)
         %         outIndex = systematicR(inIndex,wn);
         outIndex = resampleSystematic( w, n_samples );
+        
+        outIndex = resampleSystematic2( w, n_samples );
         
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
             % divide space into fixed cells

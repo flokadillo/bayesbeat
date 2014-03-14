@@ -60,7 +60,7 @@ for iG=valid_groups'
         outIndex_iG = PF.resampleSystematic( w_warped(:), parts_per_out_group );
         % do unwarping
         w_fac = w_i_norm ./ w_warped; 
-        outWeights(p:p+parts_per_out_group-1) = log(w_fac(outIndex_iG) * (exp(tot_w_i) / sum(w_fac(outIndex_iG))));
+        outWeights(p:p+parts_per_out_group-1) = log(w_fac(outIndex_iG)) + tot_w_i - log(sum(w_fac(outIndex_iG)));
     else
         outIndex_iG = PF.resampleSystematic( w_i_norm(:), parts_per_out_group );
         % divide total weight among new particles

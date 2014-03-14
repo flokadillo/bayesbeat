@@ -14,6 +14,7 @@ end
 Q = cumsum(w);
 
 T = linspace(0,1-1/N,N) + rand(1)/N;
+%  T = linspace(0,1-1/N,N);
 T(N+1) = 1;
 
 [~, indx] = histc(T, [0; Q]);
