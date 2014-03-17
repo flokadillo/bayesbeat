@@ -150,7 +150,7 @@ classdef PF
         end
         
         function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
-            %             profile on
+%                         profile on
 %             tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
@@ -174,7 +174,7 @@ classdef PF
                 %                 error('PF.m: unknown inferenceMethod');
                 
             end
-            %             profile viewer
+%                         profile viewer
             %                 fprintf('Hallo\n')
 %             fprintf('    Runtime: %.2f sec\n', toc);
             % meter path
@@ -439,18 +439,23 @@ classdef PF
                     resampling_frames = [resampling_frames; iFrame];
                     %                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
-                        newIdx = obj.resampleSystematic(exp(obj.particles.weight));
-                        obj.particles.copyParticles(newIdx);
+                        newIdx = obj.resampleSystematic(exp(weight));
+                        m = m(newIdx, :);
+                        r = r(newIdx, :);
+                        n = n(newIdx, :);
+                        weight = log(ones(obj.nParticles, 1) / obj.nParticles);
                         
                     elseif obj.resampling_scheme == 1 % APF
                         % warping:
-                        w = exp(obj.particles.weight);
+                        w = exp(weight);
                         f = str2func(obj.warp_fun);
                         w_warped = f(w);
                         newIdx = obj.resampleSystematic(w_warped);
-                        obj.particles.copyParticles(newIdx);
+                        m = m(newIdx, :);
+                        r = r(newIdx, :);
+                        n = n(newIdx, :);
                         w_fac = w ./ w_warped;
-                        obj.particles.weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
+                        weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
                         
                     elseif obj.resampling_scheme == 2 % K-MEANS
                         % k-means clustering

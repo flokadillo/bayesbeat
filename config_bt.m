@@ -42,7 +42,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'PF';
+Params.inferenceMethod = 'PFi';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
@@ -94,18 +94,18 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 3000;
+Params.nParticles = 2000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
 % If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
-Params.ratio_Neff = 0.006;
+Params.ratio_Neff = 0.02;
 % Type of resampling scheme to be used:
 %   0) Standard SISR (systematic resampling)
 %   1) APF
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 3;
+Params.resampling_scheme = 0;
 % On the fly Viterbi filtering (TODO: refactoring!)
 Params.do_viterbi_filtering = 0;
 
