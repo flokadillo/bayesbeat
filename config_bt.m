@@ -46,7 +46,7 @@ Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
-Params.model_fln = fullfile(Params.base_path, 'data/pf-ballroom-0.mat');
+% Params.model_fln = fullfile(Params.base_path, 'data/pf-ballroom-0.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -59,7 +59,7 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 8;
+Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
@@ -123,9 +123,9 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 64;
+Params.n_max_clusters = 100;
 % Number of cluster to start with
-Params.n_initial_clusters = 64;
+Params.n_initial_clusters = 32;
 
 % Observation model
 % -----------------
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom';
+Params.train_set = 'boeck_ballroom_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,15 +156,15 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-dancestyle.txt']);
+    num2str(Params.R), '-meter.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'hainsworth_test_7';
+Params.test_set = 'smc-mirex';
 % Path to lab file (.lab) or to test song (.wav)
-%   Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
+Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+%Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
 
 end

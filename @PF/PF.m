@@ -70,8 +70,8 @@ classdef PF
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
             obj.rhythm_names = rhythm_names;
-            rng('shuffle');
-%             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            %             rng('shuffle');
+            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj, init_n_gauss, tempo_per_cluster)
@@ -150,8 +150,8 @@ classdef PF
         end
         
         function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
-            profile on
-            tic;
+            %             profile on
+%             tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             obj = obj.pf(obs_lik, fname);
@@ -174,9 +174,9 @@ classdef PF
                 %                 error('PF.m: unknown inferenceMethod');
                 
             end
-            profile viewer
+            %             profile viewer
             %                 fprintf('Hallo\n')
-            toc
+%             fprintf('    Runtime: %.2f sec\n', toc);
             % meter path
             t_path = obj.rhythm2meter(r_path);
             
@@ -208,7 +208,7 @@ classdef PF
     
     methods (Access=protected)
         
-            
+        
         function lik = compute_obs_lik(obj, states_m_r, iFrame, obslik, m_per_grid)
             % states_m_r:   is a [nParts x 2] matrix, where (:, 1) are the
             %               m-values and (:, 2) are the r-values
@@ -228,7 +228,7 @@ classdef PF
             end
             %             lik = reshape(obslik(ind), obj.R, obj.nParticles);
         end
-               
+        
         function [m_path, n_path, r_path] = path_via_best_weight(obj)
             % use particle with highest weight
             % ------------------------------------------------------------
@@ -352,8 +352,8 @@ classdef PF
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
             weight = log(obs / sum(obs));
-%             obj.particles.weight = log(obs / sum(obs));
-%             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
+            %             obj.particles.weight = log(obs / sum(obs));
+            %             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
             states = [m(:, iFrame), n(:, iFrame), r(:, iFrame)];
             state_dims = [obj.M; obj.N; obj.R];
             if obj.resampling_scheme > 1
@@ -383,12 +383,12 @@ classdef PF
                 %                 obj = obj.propagate_particles_pf(iFrame, 'm');
                 m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
                 m(:, iFrame) = mod(m(:, iFrame) - 1, obj.Meff(obj.rhythm2meter(r(:, iFrame-1)))') + 1;
-%                 obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
-%                 obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
-%                     obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
+                %                 obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
+                %                 obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
+                %                     obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
                 r(:, iFrame) = r(:, iFrame-1);
                 % update r
-%                 obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
+                %                 obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
                 
                 if obj.do_viterbi_filtering
                     % compute tempo matrix: rows are particles at iFrame-1,
@@ -417,17 +417,17 @@ classdef PF
                 
                 % evaluate particle at iFrame-1
                 obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
-%                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
+                %                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
                 
                 weight = weight(:) + log(obs);
-%                 obj.particles.weight = obj.particles.weight(:) + log(obs);
+                %                 obj.particles.weight = obj.particles.weight(:) + log(obs);
                 
                 % Normalise importance weights
                 % ------------------------------------------------------------
                 [weight, ~] = normalizeLogspace(weight');
                 Neff = 1/sum(exp(weight).^2);
-%                 [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
-%                 Neff = 1/sum(exp(obj.particles.weight).^2);
+                %                 [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
+                %                 Neff = 1/sum(exp(obj.particles.weight).^2);
                 
                 % Resampling
                 % ------------------------------------------------------------
@@ -465,20 +465,20 @@ classdef PF
                     elseif obj.resampling_scheme == 3 % APF + K-MEANS
                         % apf and k-means
                         states = [m(:, iFrame), n(:, iFrame-1), r(:, iFrame)];
-%                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
+                        %                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
                         f = str2func(obj.warp_fun);
                         [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, f);
-%                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, weight, obj.n_max_clusters, f);
+                        %                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, weight, obj.n_max_clusters, f);
                         n_clusters(iFrame) = length(unique(groups));
                         m = m(newIdx, :);
                         r = r(newIdx, :);
                         n = n(newIdx, :);
-%                         obj.particles.copyParticles(newIdx);
+                        %                         obj.particles.copyParticles(newIdx);
                         weight = outWeights';
-%                         obj.particles.weight = outWeights';
-                        
+                        %                         obj.particles.weight = outWeights';
+%                         fprintf('      > %i groups\n', length(unique(groups)));
                     else
                         fprintf('WARNING: Unknown resampling scheme!\n');
                     end
@@ -491,9 +491,9 @@ classdef PF
                 n((n(:, iFrame) < obj.minN), iFrame) = obj.minN;
                 
                 
-%                 obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-%                 obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
-%                 obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
+                %                 obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+                %                 obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
+                %                 obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
                 
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
@@ -640,6 +640,7 @@ classdef PF
             %             addpath('/home/florian/diss/src/matlab/libs/litekmeans')
             warning('off');
             [group_ids, ~, IC] = unique(groups_old);
+%             fprintf('    %i groups >', length(group_ids));
             k = length(group_ids); % number of clusters
             
             % adjust the range of each state variable to make equally
@@ -662,20 +663,20 @@ classdef PF
             % ----------------------------------------------------------
             %             c = centroids.^2; % k x d
             %             x = points.^2; % n x d
-%             sq_diff = zeros(k, obj.nParticles);
-%             for i_dim=1:size(points, 2)
-%                 sq_diff = sq_diff + bsxfun(@minus, centroids(:, i_dim), points(:, i_dim)').^2;
-%             end
-%             [vals, groups] = min(sq_diff);
-%             [group_ids, ~, IC] = unique(groups);
-%             valid_groups = ismember(1:k, group_ids);
-%             mean_dist_per_cluster = accumarray(groups', vals, [], @mean);
-%             mean_dist_per_cluster = mean_dist_per_cluster(valid_groups);
-%             
-%             centroids = zeros(length(group_ids), size(points, 2));
-%             for i_dim=1:size(points, 2)
-%                 centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
-%             end
+            %             sq_diff = zeros(k, obj.nParticles);
+            %             for i_dim=1:size(points, 2)
+            %                 sq_diff = sq_diff + bsxfun(@minus, centroids(:, i_dim), points(:, i_dim)').^2;
+            %             end
+            %             [vals, groups] = min(sq_diff);
+            %             [group_ids, ~, IC] = unique(groups);
+            %             valid_groups = ismember(1:k, group_ids);
+            %             mean_dist_per_cluster = accumarray(groups', vals, [], @mean);
+            %             mean_dist_per_cluster = mean_dist_per_cluster(valid_groups);
+            %
+            %             centroids = zeros(length(group_ids), size(points, 2));
+            %             for i_dim=1:size(points, 2)
+            %                 centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
+            %             end
             % ----------------------------------------------------------
             %             col = hsv(64);
             %             rhyt_idx = states(:, 3)==2;
@@ -683,21 +684,21 @@ classdef PF
             %             figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups_old(rhyt_idx) * fac, :), 'filled');
             
             % do k-means clustering
-                        options = statset('MaxIter', 1);
-                        [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
-                            'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
-%             
+            options = statset('MaxIter', 1);
+            [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
+                'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
+            %
             %             [groups, centroids, total_dist_per_cluster] = fast_kmeans(points', centroids', 1);
             
             %             centroids = litekmeans(X, centroids);
             
-%             remove empty clusters
-                        total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
-                        centroids = centroids(~isnan(centroids(:, 1)), :);
-                        [group_ids, ~, j] = unique(groups);
-                        group_ids = 1:length(group_ids);
-                        groups = group_ids(j)';
-%                         figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
+            %             remove empty clusters
+            total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
+            centroids = centroids(~isnan(centroids(:, 1)), :);
+            [group_ids, ~, j] = unique(groups);
+            group_ids = 1:length(group_ids);
+            groups = group_ids(j)';
+            %                         figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
             
             % check if centroids are too close
             merging = 1;
@@ -718,13 +719,13 @@ classdef PF
                     % new centroid
                     centroids(c1(1), :) = mean(points(groups==c1(1), :));
                     % squared Euclidean distance
-                                        total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
-%                     mean_dist_per_cluster(c1(1)) = mean(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
+                    total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
+                    %                     mean_dist_per_cluster(c1(1)) = mean(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
                     if length(c1) == 1,  merging = 0;  end
                     % remove old centroid
                     centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
-                                        total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
-%                     mean_dist_per_cluster = mean_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
+                    total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
+                    %                     mean_dist_per_cluster = mean_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
                     merged = 1;
                 end
             end
@@ -739,9 +740,9 @@ classdef PF
             [group_ids, ~, j] = unique(groups);
             group_ids = 1:length(group_ids);
             groups = group_ids(j)';
-                        n_parts_per_cluster = hist(groups, 1:length(group_ids));
-                        separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
-%             separate_cl_idx = find(mean_dist_per_cluster > obj.cluster_splitting_thr);
+            n_parts_per_cluster = hist(groups, 1:length(group_ids));
+            separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
+            %             separate_cl_idx = find(mean_dist_per_cluster > obj.cluster_splitting_thr);
             for iCluster = 1:length(separate_cl_idx)
                 % find particles that belong to the cluster to split
                 parts_idx = find((groups == separate_cl_idx(iCluster)));
@@ -762,10 +763,15 @@ classdef PF
                 %                 end
                 split = 1;
             end
-            
+                       
             if split || merged
-                                [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
-                                    'Distance', 'sqEuclidean', 'options', options);
+                try
+                    [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
+                        'Distance', 'sqEuclidean', 'options', options);
+                catch exception
+                   centroids
+                   error('Problem\n');
+                end
                 
                 %                 [groups, ~, ~] = fast_kmeans(points, centroids, 1);
                 
@@ -777,7 +783,7 @@ classdef PF
                 %                 figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(round(groups(rhyt_idx) * fac), :), 'filled');
             end
             warning('on');
-            
+%             fprintf('    %i groups\n', length(unique(groups)));            
         end
         
     end

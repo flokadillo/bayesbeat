@@ -18,9 +18,9 @@ w_per_group = accumarray(groups, weights, [], @(x) {x});
 % sum weights of each group in the log domain
 tot_w = cellfun(@(x) logsumexp(x, 1), w_per_group);
 % check for groups with zero weights (log(w)=-inf) and remove those
-if sum(isinf(tot_w)) > 0
-    fprintf('Warning, group with zero weights detected!\n');
-    bad_groups = find(isinf(tot_w));
+if sum(isnan(tot_w)) > 0
+    bad_groups = find(isnan(tot_w));
+    fprintf('    Warning, group %i has only zero weights and is removed!\n', bad_groups);
 else
     bad_groups = [];
 end
@@ -28,9 +28,7 @@ end
 if length(tot_w) - length(bad_groups) > n_max_clusters
     [~, groups_sorted] = sort(tot_w, 'descend');
     bad_groups = unique([bad_groups; groups_sorted(n_max_clusters+1:end)]);
-%     bad_groups = unique([bad_groups; groups_sorted(end)]);
 end
-
 
 n_groups = length(tot_w) - length(bad_groups);
 parts_per_group = diff(round(linspace(0, length(weights), n_groups+1)));

@@ -154,7 +154,10 @@ classdef BeatTracker < handle
             % load feature
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
+            time1=toc;
             [beats, tempo, rhythm, meter] = obj.model.do_inference(observations, fname);
+            time2=toc;
+            fprintf('    Real time factor: %.2f\n', (time2-time1) / (size(observations, 1) * obj.feature.frame_length));
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
