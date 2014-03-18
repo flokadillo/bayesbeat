@@ -459,13 +459,15 @@ classdef PF
                         
                     elseif obj.resampling_scheme == 2 % K-MEANS
                         % k-means clustering
-                        states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
+                        states = [m(:, iFrame), n(:, iFrame-1), r(:, iFrame)];
                         state_dims = [obj.M; obj.N; obj.R];
                         groups = obj.divide_into_clusters(states, state_dims, groups);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups(groups, obj.particles.weight, obj.n_max_clusters);
+                        [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters);
                         n_clusters(iFrame) = length(unique(groups));
-                        obj.particles.copyParticles(newIdx);
-                        obj.particles.weight = outWeights';
+                        m = m(newIdx, :);
+                        r = r(newIdx, :);
+                        n = n(newIdx, :);
+                        weight = outWeights';
                         
                     elseif obj.resampling_scheme == 3 % APF + K-MEANS
                         % apf and k-means

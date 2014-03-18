@@ -59,7 +59,7 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 8;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
@@ -105,7 +105,7 @@ Params.ratio_Neff = 0.02;
 %   1) APF
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 0;
+Params.resampling_scheme = 2;
 % On the fly Viterbi filtering (TODO: refactoring!)
 Params.do_viterbi_filtering = 0;
 
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_ballroom_3_4';
+Params.train_set = 'ballroom_train';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,13 +156,13 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), '-dancestyle.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'smc-mirex';
+Params.test_set = 'ballroom_test';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 %Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];

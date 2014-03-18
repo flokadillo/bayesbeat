@@ -30,6 +30,10 @@ if length(tot_w) - length(bad_groups) > n_max_clusters
     bad_groups = unique([bad_groups; groups_sorted(n_max_clusters+1:end)]);
 end
 
+id_per_group = accumarray(groups, (1:length(weights))', [], @(x) {x});
+id_per_group(bad_groups) = [];
+id_per_group = cell2mat(id_per_group);
+
 n_groups = length(tot_w) - length(bad_groups);
 parts_per_group = diff(round(linspace(0, length(weights), n_groups+1)));
 parts_per_group(end) = length(weights) - sum(parts_per_group(1:end-1));
@@ -44,20 +48,20 @@ if exist('warp_fun', 'var')
     % resample
     w_warped_per_group(bad_groups) = [];
     outIndex = PF.resampleSystematic2( w_warped_per_group, parts_per_group);
-    id_per_group = accumarray(groups, (1:length(weights))', [], @(x) {x});
-    id_per_group(bad_groups) = [];
-    a = cell2mat(id_per_group);
-    outIndex = a(outIndex);
+    outIndex = id_per_group(outIndex);
     groups_new = groups(outIndex);
     % do unwarping
     w_fac = w_norm ./ w_warped;
     norm_fac = accumarray(groups_new, w_fac(outIndex));
     outWeights = log(w_fac(outIndex)) + tot_w(groups_new) - log(norm_fac(groups_new));
 else
-    error('todo...\n')
-    outIndex_iG = PF.resampleSystematic( w_i_norm(:), parts_per_out_group );
+    w_norm_per_group = accumarray(groups, w_norm, [], @(x) {x});
+    w_norm_per_group(bad_groups) = [];
+    outIndex = PF.resampleSystematic2(w_norm_per_group, parts_per_group);
+    outIndex = id_per_group(outIndex);
+    groups_new = groups(outIndex);
     % divide total weight among new particles
-    outWeights(p:p+parts_per_out_group-1) = tot_w_i - log(parts_per_out_group);
+    outWeights = tot_w(groups_new) - log(mean(parts_per_group));
 end
 
 end
