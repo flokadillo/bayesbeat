@@ -58,6 +58,7 @@ classdef BeatTracker < handle
         end
         
         function init_train_data(obj, Params)
+            fprintf('* Set up training data ...');
             % create train_data object
             obj.train_data = Data(Params.trainLab, 1);
             %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
@@ -74,6 +75,7 @@ classdef BeatTracker < handle
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
                 Params.barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
                 Params.frame_length, Params.reorganize_bars_into_cluster);
+            fprintf(' done\n');
         end
         
         function init_test_data(obj, Params)
@@ -98,7 +100,7 @@ classdef BeatTracker < handle
                 
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
                 
-                obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
+                obj.model = obj.model.make_initial_distribution;
             end
             
             switch obj.inferenceMethod(1:2)

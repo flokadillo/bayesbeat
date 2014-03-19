@@ -39,6 +39,7 @@ classdef PF
         n_initial_clusters          % Number of cluster to start with
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
+        pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
     end
     
     methods
@@ -70,11 +71,12 @@ classdef PF
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
             obj.rhythm_names = rhythm_names;
+            obj.pattern_size = Params.pattern_size;
             %             rng('shuffle');
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
-        function obj = make_initial_distribution(obj, init_n_gauss, tempo_per_cluster)
+        function obj = make_initial_distribution(obj)
             
             % TODO: Implement prior initial distribution for tempo
             obj.initial_m = zeros(obj.nParticles, 1);
@@ -82,9 +84,9 @@ classdef PF
             obj.initial_r = zeros(obj.nParticles, 1);
             
             % use pseudo random monte carlo
-            min_N = min(obj.minN);
-            max_N = max(obj.maxN);
-            n_grid = min_N:max_N;
+%             min_N = min(obj.minN);
+%             max_N = max(obj.maxN);
+            n_grid = min(obj.minN):max(obj.maxN);
             n_m_cells = floor(obj.nParticles / length(n_grid));
             m_grid_size = sum(obj.Meff(obj.rhythm2meter)) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
@@ -94,29 +96,34 @@ classdef PF
             for iR = 1:obj.R
                 % create positions between 1 and obj.Meff(obj.rhythm2meter(iR))
                 m_grid = 1+m_grid_size/2:m_grid_size:(obj.Meff(obj.rhythm2meter(iR))-m_grid_size/2);
-                nParts(iR) = length(m_grid) * length(n_grid);
-                temp = repmat(m_grid, length(n_grid), 1);
+                n_grid_iR = obj.minN(iR):obj.maxN(iR);
+                nParts(iR) = length(m_grid) * length(n_grid_iR);
+                temp = repmat(m_grid, length(n_grid_iR), 1);
                 obj.initial_m(c:c+nParts(iR)-1) = temp(:)+ r_m(c:c+nParts(iR)-1) * m_grid_size;
-                obj.initial_n(c:c+nParts(iR)-1) = repmat(n_grid, 1, length(m_grid))' + r_n(c:c+nParts(iR)-1);
+                obj.initial_n(c:c+nParts(iR)-1) = repmat(n_grid_iR, 1, length(m_grid))' + r_n(c:c+nParts(iR)-1);
                 obj.initial_r(c:c+nParts(iR)-1) = iR;
                 c = c + nParts(iR);
             end
             
             if sum(nParts) < obj.nParticles
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) * (obj.R-1) + 1;
-                obj.initial_n(c:end) = (r_n(c:end) + 0.5) * (max_N - min_N) + min_N;
+                obj.initial_n(c:end) = (r_n(c:end) + 0.5)' .* (obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end));
                 obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* (obj.Meff(obj.rhythm2meter(obj.initial_r(c:end)))-1)' + 1;
             end
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
             % convert from BPM into barpositions / audio frame
-            meter_denom = obj.meter_state2meter(2, :);
-            meter_denom = meter_denom(obj.rhythm2meter);
-            
-            %TODO for each cluster use different minN and maxN
-            obj.minN = min(round(obj.M * obj.frame_length * minTempo ./ (meter_denom * 60)));
-            obj.maxN = max(round(obj.M * obj.frame_length * maxTempo ./ (meter_denom * 60)));
+           % convert from BPM into barpositions / audio frame
+            meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
+
+            if strcmp(obj.pattern_size, 'bar')
+                obj.minN = floor(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+            else
+                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
+                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
+            end
             
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
@@ -366,14 +373,14 @@ classdef PF
             if obj.save_inference_data
                 % save particle data for visualizing
                 % position
-                logP_data_pf(:, 1, iFrame) = obj.particles.m(:, iFrame);
+                logP_data_pf(:, 1, iFrame) = m(:, iFrame);
                 % tempo
-                logP_data_pf(:, 2, iFrame) = obj.particles.n(:, iFrame);
+                logP_data_pf(:, 2, iFrame) = n(:, iFrame);
                 % rhythm
-                logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame);
+                logP_data_pf(:, 3, iFrame) = r(:, iFrame);
                 % weights
-                logP_data_pf(:, 4, iFrame) = obj.particles.weight;
-                logP_data_pf(:, 5, iFrame) = repmat(groups(:), 1, iFrame);
+                logP_data_pf(:, 4, iFrame) = weight;
+                logP_data_pf(:, 5, iFrame) = groups;
             end
             
             resampling_frames = [];
@@ -482,8 +489,10 @@ classdef PF
                         m(:, 1:iFrame) = m(newIdx, 1:iFrame);
                         r(:, 1:iFrame) = r(newIdx, 1:iFrame);
 %                         indx = accumarray(r(:, iFrame), groups, [obj.R, 1], @(x) length(unique(x)));
+%                         w = accumarray(r(:, iFrame),  weight, [obj.R, 1]);
 %                         for i=1:obj.R
 %                             fprintf('%i-', indx(i));
+%                             fprintf('%i\t', round(w(i)));
 %                         end
 %                         fprintf('\n');
                         n(:, 1:iFrame) = n(newIdx, 1:iFrame);
@@ -499,9 +508,10 @@ classdef PF
                 % transition from iFrame-1 to iFrame
                 %                 obj = obj.propagate_particles_pf(iFrame, 'n');
                 n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-                n((n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
-                n((n(:, iFrame) < obj.minN), iFrame) = obj.minN;
-                
+                out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
+                n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
+                out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
+                n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
                 
                 %                 obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
                 %                 obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
@@ -516,13 +526,13 @@ classdef PF
                 if obj.save_inference_data
                     % save particle data for visualizing
                     % position
-                    logP_data_pf(:, 1, iFrame) = obj.particles.m(:, iFrame);
+                    logP_data_pf(:, 1, iFrame) = m(:, iFrame);
                     % tempo
-                    logP_data_pf(:, 2, iFrame) = obj.particles.n(:, iFrame);
+                    logP_data_pf(:, 2, iFrame) = n(:, iFrame);
                     % rhythm
-                    logP_data_pf(:, 3, iFrame) = obj.particles.r(:, iFrame);
+                    logP_data_pf(:, 3, iFrame) = r(:, iFrame);
                     % weights
-                    logP_data_pf(:, 4, iFrame) = obj.particles.weight;
+                    logP_data_pf(:, 4, iFrame) = weight;
                     % groups
                     logP_data_pf(:, 5, iFrame) = groups;
                 end

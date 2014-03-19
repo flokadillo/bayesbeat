@@ -1,6 +1,7 @@
 function params = fit_distribution(obj, dataPerClusterAndPosition)
 
 fprintf('* Set up observation model .');
+warning('off');
 if strcmp(obj.dist_type,'histogram') || strcmp(obj.dist_type,'multivariateHistogram'),
     for  m=1:length(ClusterIdx)
         RhytPat.centerbins = (logspace(0, 1, nHistBins)-1) / 10;
@@ -59,4 +60,5 @@ for iPattern=1:nPatterns % all clusters
     end
 end
 fprintf(' done\n');
+warning('on');
 end

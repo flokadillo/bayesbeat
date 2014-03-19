@@ -35,7 +35,7 @@ Params.patternGiven = 0;
 Params.n_folds_for_cross_validation = 0;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
-Params.save_inference_data = 0;
+Params.save_inference_data = 1;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
@@ -123,9 +123,9 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 200;
+Params.n_max_clusters = 400;
 % Number of cluster to start with
-Params.n_initial_clusters = 64;
+Params.n_initial_clusters = 128;
 
 % Observation model
 % -----------------
