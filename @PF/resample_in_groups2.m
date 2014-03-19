@@ -20,13 +20,15 @@ tot_w = cellfun(@(x) logsumexp(x, 1), w_per_group);
 % check for groups with zero weights (log(w)=-inf) and remove those
 if sum(isnan(tot_w)) > 0
     bad_groups = find(isnan(tot_w));
-    fprintf('    Warning, group %i has only zero weights and is removed!\n', bad_groups);
+    fprintf('   %i groups have zero weights and are removed!\n', length(bad_groups));
 else
     bad_groups = [];
 end
 % kill cluster with lowest weight
 if length(tot_w) - length(bad_groups) > n_max_clusters
     [~, groups_sorted] = sort(tot_w, 'descend');
+    fprintf('    too many groups (%i)! -> removing %i\n', length(tot_w) - length(bad_groups), ...
+        length(tot_w) - length(bad_groups) - n_max_clusters);
     bad_groups = unique([bad_groups; groups_sorted(n_max_clusters+1:end)]);
 end
 
@@ -63,5 +65,4 @@ else
     % divide total weight among new particles
     outWeights = tot_w(groups_new) - log(mean(parts_per_group));
 end
-
 end

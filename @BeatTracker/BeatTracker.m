@@ -8,6 +8,7 @@ classdef BeatTracker < handle
         train_data
         test_data
         sim_dir                 % directory where results are save
+        temp_path
         viterbi_learning_iterations
         init_model_fln          % fln of initial model to start with
     end
@@ -29,6 +30,7 @@ classdef BeatTracker < handle
             obj.inferenceMethod = Params.inferenceMethod;
             obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
+            obj.temp_path = Params.temp_path;
         end
         
         function init_model(obj, Params)
@@ -99,6 +101,14 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
             end
             
+            switch obj.inferenceMethod(1:2)
+                    case 'HM'
+                        hmm = obj.model;
+                        save(fullfile(obj.temp_path, 'last_model.mat'), 'hmm');
+                    case 'PF'
+                        pf = obj.model;
+                        save(fullfile(obj.temp_path, 'last_model.mat'), 'pf');
+            end
 %              hmm = obj.model;
 %              save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                       

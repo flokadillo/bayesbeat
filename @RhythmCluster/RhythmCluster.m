@@ -406,7 +406,7 @@ classdef RhythmCluster < handle
             
             % write rhythm names to file
             fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-rhythm_labels.txt']);
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), '-', clusterType, '-rhythm_labels.txt']);
             % label the clusters with integer numbers
             if ~exist('rhythm_names', 'var')
                 rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.n_clusters)', 'UniformOutput',false);

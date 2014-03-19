@@ -103,7 +103,7 @@ classdef PF
             end
             
             if sum(nParts) < obj.nParticles
-                obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) + 1;
+                obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) * (obj.R-1) + 1;
                 obj.initial_n(c:end) = (r_n(c:end) + 0.5) * (max_N - min_N) + min_N;
                 obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* (obj.Meff(obj.rhythm2meter(obj.initial_r(c:end)))-1)' + 1;
             end
@@ -479,9 +479,14 @@ classdef PF
                         [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, f);
                         %                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, weight, obj.n_max_clusters, f);
                         n_clusters(iFrame) = length(unique(groups));
-                        m = m(newIdx, :);
-                        r = r(newIdx, :);
-                        n = n(newIdx, :);
+                        m(:, 1:iFrame) = m(newIdx, 1:iFrame);
+                        r(:, 1:iFrame) = r(newIdx, 1:iFrame);
+%                         indx = accumarray(r(:, iFrame), groups, [obj.R, 1], @(x) length(unique(x)));
+%                         for i=1:obj.R
+%                             fprintf('%i-', indx(i));
+%                         end
+%                         fprintf('\n');
+                        n(:, 1:iFrame) = n(newIdx, 1:iFrame);
                         %                         obj.particles.copyParticles(newIdx);
                         weight = outWeights';
                         %                         obj.particles.weight = outWeights';
@@ -708,6 +713,7 @@ classdef PF
             %                         figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
             
             % check if centroids are too close
+%             fprintf('    merging %i > ', size(centroids, 1));
             merging = 1;
             merged = 0;
             while merging
@@ -736,13 +742,14 @@ classdef PF
                     merged = 1;
                 end
             end
-            
+%             fprintf('%i\n', size(centroids, 1));
             %             if merged
             %                 [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
             %                     'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
             %             end
             
             % check if cluster spread is too high
+%             fprintf('    splitting %i > ', size(centroids, 1));
             split = 0;
             [group_ids, ~, j] = unique(groups);
             group_ids = 1:length(group_ids);
@@ -770,7 +777,8 @@ classdef PF
                 %                 end
                 split = 1;
             end
-                       
+%             fprintf('%i\n', size(centroids, 1));
+            
             if split || merged
                 try
                     [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...

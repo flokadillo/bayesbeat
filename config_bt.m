@@ -42,11 +42,11 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'PFi';
+Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.base_path, 'data/pf-ballroom-0.mat');
+% Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -94,18 +94,18 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 2000;
+Params.nParticles = 8000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
 % If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
-Params.ratio_Neff = 0.02;
+Params.ratio_Neff = 0.002;
 % Type of resampling scheme to be used:
 %   0) Standard SISR (systematic resampling)
 %   1) APF
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 2;
+Params.resampling_scheme = 3;
 % On the fly Viterbi filtering (TODO: refactoring!)
 Params.do_viterbi_filtering = 0;
 
@@ -123,9 +123,9 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 100;
+Params.n_max_clusters = 200;
 % Number of cluster to start with
-Params.n_initial_clusters = 32;
+Params.n_initial_clusters = 64;
 
 % Observation model
 % -----------------
@@ -164,7 +164,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Test dataset
 Params.test_set = 'ballroom_test';
 % Path to lab file (.lab) or to test song (.wav)
-Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-%Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-01.wav'];
+% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-11.wav'];
 
 end
