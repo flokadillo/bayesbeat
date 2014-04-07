@@ -20,8 +20,12 @@ classdef Simulation
                 fprintf('* Reading %s\n', fullfile(config_path, [config_fun, '.m']));
                 cd(old_path);
             else
-                obj.Params = eval(config_fun);
-                fprintf('* Reading %s\n', ['./', config_fun, '.m']);
+                if isstruct(config_fun)
+                    obj.Params = config_fun;
+                else
+                    obj.Params = eval(config_fun);
+                    fprintf('* Reading %s\n', ['./', config_fun, '.m']);
+                end
             end
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
@@ -31,6 +35,7 @@ classdef Simulation
                 obj.system.init_train_data(obj.Params);
             end
             % create test_data object
+
             obj.system.init_test_data(obj.Params);
             % initialize probabilistic model
             obj.system.init_model(obj.Params);

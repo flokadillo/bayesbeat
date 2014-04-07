@@ -141,9 +141,9 @@ for iR=1:R
     if hmm_data_ok
         plot_id = (iR-1)*R+1;
         h_sp(plot_id) = subplot(nPlots, 1, plot_id);
-        start_ind = sub2ind([M/x_fac, N, R], 1, 1, iR);
-        end_ind = sub2ind([M/x_fac, N, R], M/x_fac, N, iR);
-        frame = reshape(logP_data(start_ind:end_ind, iFrame), M/x_fac, N);
+        start_ind = sub2ind([round(M/x_fac), N, R], 1, 1, iR);
+        end_ind = sub2ind([round(M/x_fac), N, R], round(M/x_fac), N, iR);
+        frame = reshape(logP_data(start_ind:end_ind, iFrame), round(M/x_fac), N);
         if nnz(frame) > 0
             max_h = max(frame(:));
             min_h = max([min(frame(~isinf(frame(:)))), max_h - 50]);

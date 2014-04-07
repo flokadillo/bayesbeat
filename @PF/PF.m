@@ -40,6 +40,7 @@ classdef PF
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
+        resampling_interval
     end
     
     methods
@@ -47,7 +48,6 @@ classdef PF
             addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
             addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
-            obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.T = size(Params.meters, 2);
@@ -59,6 +59,7 @@ classdef PF
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
+            obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.ratio_Neff = Params.ratio_Neff;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
@@ -72,6 +73,7 @@ classdef PF
             obj.n_initial_clusters = Params.n_initial_clusters;
             obj.rhythm_names = rhythm_names;
             obj.pattern_size = Params.pattern_size;
+            obj.resampling_interval = Params.res_int;
             %             rng('shuffle');
             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
@@ -161,7 +163,10 @@ classdef PF
 %             tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            obj = obj.pf(obs_lik, fname);
+	    % prevent observation probabilities to be zero
+           % obs_lik(obs_lik < eps) = eps;
+	    
+	    obj = obj.pf(obs_lik, fname);
             %              if strcmp(obj.inferenceMethod, 'PF')
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
@@ -336,16 +341,16 @@ classdef PF
             if obj.save_inference_data
                 logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
             end
-            obj.particles = Particles(obj.nParticles, nFrames);
+%             obj.particles = Particles(obj.nParticles, nFrames);
             
             iFrame = 1;
             m = zeros(obj.nParticles, nFrames, 'single');
             n = zeros(obj.nParticles, nFrames, 'single');
             r = zeros(obj.nParticles, nFrames, 'single');
             
-            obj.particles.m(:, iFrame) = obj.initial_m;
-            obj.particles.n(:, iFrame) = obj.initial_n;
-            obj.particles.r(:, iFrame) = obj.initial_r;
+%             obj.particles.m(:, iFrame) = obj.initial_m;
+%             obj.particles.n(:, iFrame) = obj.initial_n;
+%             obj.particles.r(:, iFrame) = obj.initial_r;
             m(:, iFrame) = obj.initial_m;
             n(:, iFrame) = obj.initial_n;
             r(:, iFrame) = obj.initial_r;
@@ -439,10 +444,16 @@ classdef PF
                 % Resampling
                 % ------------------------------------------------------------
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                    n_last_step = obj.particles.n(:, iFrame-1);
+                    n_last_step = n(:, iFrame-1);
                 end
-                
-                if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
+		if obj.resampling_interval == 0
+			Neff = 1/sum(exp(weight).^2);
+			do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
+		else
+			do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
+		end
+	
+                if do_resampling && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
                     %                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
