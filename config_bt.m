@@ -46,7 +46,7 @@ Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
+Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -92,13 +92,13 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 1000;
+Params.nParticles = 10000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
 % If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
-Params.ratio_Neff = 0.002;
-Params.res_int = 5;
+Params.ratio_Neff = 0.1;
+Params.res_int = 30;
 % Type of resampling scheme to be used:
 %   0) Standard SISR (systematic resampling)
 %   1) APF
@@ -122,7 +122,7 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 50;
+Params.n_max_clusters = 100;
 % Number of cluster to start with
 Params.n_initial_clusters = 32;
 
@@ -147,7 +147,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_train_6';
+Params.train_set = 'boeck_ballroom_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -161,9 +161,9 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % ----------
 
 % Test dataset
-Params.test_set = 'boeck_3_4';
+Params.test_set = 'hainsworth';
 % Path to lab file (.lab) or to test song (.wav)
-Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-% Params.testLab = ['~/diss/data/beats/boeck/SoundCheck2_73_Instrumental_Tambourine.wav'];
+% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.testLab = ['~/diss/data/beats/boeck/lame_Fools.wav'];
 
 end

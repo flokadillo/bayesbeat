@@ -1,4 +1,4 @@
-function [] = BT_Simulation(sim_id, params)
+function [runtime] = BT_Simulation(sim_id, params)
 % computes beats, downbeats, meter and tempo from audio files
 % [] = Simulation()
 %
@@ -46,7 +46,7 @@ sim = sim.set_comp_time(toc/60);
 
 sim.save_params();
 
-fprintf('Simulation finished\n');
+fprintf('Simulation finished in %.3f minutes\n', sim.Params.compTime);
 % profile viewer
-
+runtime = sim.Params.compTime;
 end % end BT_Simulation

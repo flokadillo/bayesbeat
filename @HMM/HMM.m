@@ -33,7 +33,6 @@ classdef HMM
         function obj = HMM(Params, rhythm2meter, rhythm_names)
             
             obj.M = Params.M;
-            obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.pn = Params.pn;
@@ -48,6 +47,7 @@ classdef HMM
             obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
+            obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
             obj.inferenceMethod = Params.inferenceMethod;
@@ -70,8 +70,9 @@ classdef HMM
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
             end            
 
-            if max(obj.maxN) > obj.N
-                fprintf('N should be %i instead of %i\n', max(obj.maxN), obj.N); 
+            if max(obj.maxN) ~= obj.N
+                fprintf('N should be %i instead of %i -> corrected\n', max(obj.maxN), obj.N); 
+                obj.N = max(obj.maxN);
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r

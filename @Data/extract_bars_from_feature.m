@@ -49,7 +49,7 @@ if strcmp(pattern_size, 'bar')
     bar_grid_max = 0;
     for iFile=1:nFiles
         [dataPath, fname, ~] = fileparts(listing(iFile).name);
-        [ annots, error ] = loadAnnotations( dataPath, fname, 'm', dooutput );
+        [ annots, ~ ] = loadAnnotations( dataPath, fname, 'm', dooutput );
         if length(annots.meter) == 1
            bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
            Output.file2meter(iFile, 1) = annots.meter;
@@ -86,7 +86,11 @@ for iFile=1:nFiles
     b1 = annots.beats(round(rem(annots.beats(:,2),1)*10) == 1,1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
-        if dooutput, fprintf('    %s contains only one bar -> skip it\n', fname); end
+        if dooutput, 
+            fprintf(repmat('\b', 1, nchar));
+            fprintf('    %s contains only one bar -> skip it\n', fname); 
+            nchar = 0;
+        end
     else
         % effective number of bar positions (depending on meter)
         if strcmp(pattern_size, 'bar')
@@ -103,7 +107,7 @@ for iFile=1:nFiles
         
         % collect feature values and determine the corresponding position
         % in a bar
-        barData = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, annots.meter);
+        [barData, nchar] = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, annots.meter, nchar);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
@@ -145,7 +149,7 @@ end
 end
 
 
-function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter)
+function [barData, nchar] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter, nchar)
 % barData   [nBars x whole_note_div] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
@@ -155,14 +159,14 @@ function [barData] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, 
 if length(E)/fr < beats(end, 1), E = [E; E(end)]; end
 
 if beats(end, 1) > length(E) * frame_length;
-    fprintf('\n   Warning: beat annotations longer than audio file\n');
+    fprintf(repmat('\b', 1, nchar));
+    fprintf('     Warning: beat annotations longer than audio file\n');
+    nchar = 0;
     beats = beats(beats(:, 1) <= length(E) * frame_length, :);
 end
 
 if strcmp(pattern_size, 'bar')
     [nBars, ~, barStartIdx] = Data.get_full_bars(beats);
-    btype = round(rem(beats(:,2),1)*10);
-%     meter = max(btype);
 else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
@@ -170,37 +174,24 @@ else
     meter = 1;
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
-% if ismember(meter(2), 4)
-%     beatsBarPos = ((0:meter) * whole_note_div / 4) + 1;
-% elseif ismember(meter, [8, 9])
-%     beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
-% elseif ismember(meter, 2)
-%     beatsBarPos = ((0:meter) * whole_note_div / 8) + 1;
-% else 
-%     error('meter %i unknown\n', meter);
-% end
-
 barData = cell(nBars, bar_grid_eff);
-
-
-
 for iBar=1:nBars
 	% compute start and end frame of bar using fr
-	startFrame = floor(beats(barStartIdx(iBar), 1) * fr) + 1; % first frame of bar
-	endFrame = floor(beats(barStartIdx(iBar)+meter, 1) * fr) + 1; % first frame of next bar
+	startFrame = max([floor(beats(barStartIdx(iBar), 1) * fr), 1]);  % first frame of bar
+	nextFrame = floor(beats(barStartIdx(iBar)+meter(1), 1) * fr); % first frame of next bar
 
 	% extract feature for this bar
-	featBar = E(startFrame:endFrame);
+	featBar = E(startFrame:nextFrame);
 
 	% set up time frames of bar
-	t = (startFrame:endFrame) / fr - 1/(2*fr); % subtract half frame (1/(2*fr)) to yield center of frame
+	t = (startFrame:nextFrame) / fr - 1/(2*fr); % subtract half frame (1/(2*fr)) to yield center of frame
 
 	% interpolate to find bar position of each audio frame
-	barPosLin = round(interp1(beats(barStartIdx(iBar):barStartIdx(iBar)+meter, 1), beatsBarPos, t,'linear','extrap'));
+	barPosLin = round(interp1(beats(barStartIdx(iBar):barStartIdx(iBar)+meter(1), 1), beatsBarPos, t,'linear','extrap'));
     barPosLin(barPosLin < 1) = 1;
     
 	% group all feature values that belong to the same barPos
-	currBarData = accumarray(barPosLin', featBar(:), [], @(x) {x});
+	currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+1, 1], @(x) {x});
     
 	% add to bar cell array	
 	barData(iBar, :) = currBarData(1:bar_grid_eff); % last element belongs to next bar -> remove it

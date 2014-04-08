@@ -175,19 +175,19 @@ classdef BeatTracker < handle
             results{3} = meter;
             results{4} = rhythm;
             
-            %             % save state sequence of annotations to file
-            %             annot_fln = strrep(obj.feature.input_fln, 'wav', 'beats');
-            %             if exist(annot_fln, 'file')
-            %                 annots = load(annot_fln);
-            %                 r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
-            %                 if isempty(r)
-            %                     fprintf('    Cannot compute true path, file not in test_data included ...\n');
-            %                 else
-            %                     [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
-            %                     anns = [m, n, ones(length(m), 1) * r];
-            %                     save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
-            %                 end
-            %             end
+%                         % save state sequence of annotations to file
+%                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
+%                         if exist(annot_fln, 'file')
+%                             annots = load(annot_fln);
+%                             r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
+%                             if isempty(r)
+%                                 fprintf('    Cannot compute true path, file not in test_data included ...\n');
+%                             else
+%                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
+%                                 anns = [m, n, ones(length(m), 1) * r];
+%                                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+%                             end
+%                         end
             %
             
         end
