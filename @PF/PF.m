@@ -1,4 +1,4 @@
-classdef PF
+classdef PF < handle
     % Hidden Markov Model Class
     properties (SetAccess=private)
         M                           % number of positions in a 4/4 bar
@@ -21,12 +21,13 @@ classdef PF
         initial_m                   % initial value of m for each particle
         initial_n                   % initial value of n for each particle
         initial_r                   % initial value of r for each particle
-        nParticles
+        nParticles                  % number of particles
         particles
         particles_grid              % particle grid for viterbi
-        sigma_N
+        sigma_N                     % standard deviation of tempo transition
         bin2decVector               % vector to compute indices for disc_trans_mat quickly
-        ratio_Neff
+        ratio_Neff                  % reample if NESS < ratio_Neff * nParticles
+        resampling_interval         % fixed resampling interval [samples]
         resampling_scheme           % type of resampling employed
         warp_fun                    % function that warps the weights w to a compressed space
         do_viterbi_filtering
@@ -34,13 +35,13 @@ classdef PF
         state_distance_coefficients % distance factors for k-means clustering [1 x nDims]
         cluster_merging_thr         % if distance < thr: merge
         cluster_splitting_thr       % if spread > thr: split
-        inferenceMethod
+        inferenceMethod             % 'PF'
         n_max_clusters              % If number of clusters > n_max_clusters, kill cluster with lowest weight
         n_initial_clusters          % Number of cluster to start with
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
-        resampling_interval
+        
     end
     
     methods
@@ -74,8 +75,9 @@ classdef PF
             obj.rhythm_names = rhythm_names;
             obj.pattern_size = Params.pattern_size;
             obj.resampling_interval = Params.res_int;
-            %             rng('shuffle');
-            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            rng('shuffle');
+            %             % Matlab 2010
+            %             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj)
@@ -86,8 +88,6 @@ classdef PF
             obj.initial_r = zeros(obj.nParticles, 1);
             
             % use pseudo random monte carlo
-%             min_N = min(obj.minN);
-%             max_N = max(obj.maxN);
             n_grid = min(obj.minN):max(obj.maxN);
             n_m_cells = floor(obj.nParticles / length(n_grid));
             m_grid_size = sum(obj.Meff(obj.rhythm2meter)) / n_m_cells;
@@ -106,7 +106,6 @@ classdef PF
                 obj.initial_r(c:c+nParts(iR)-1) = iR;
                 c = c + nParts(iR);
             end
-            
             if sum(nParts) < obj.nParticles
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) * (obj.R-1) + 1;
                 obj.initial_n(c:end) = (r_n(c:end) + 0.5)' .* (obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end));
@@ -116,9 +115,8 @@ classdef PF
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
             % convert from BPM into barpositions / audio frame
-           % convert from BPM into barpositions / audio frame
             meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
-
+            
             if strcmp(obj.pattern_size, 'bar')
                 obj.minN = floor(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* minTempo ./ (meter_num * 60));
                 obj.maxN = ceil(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
@@ -159,14 +157,14 @@ classdef PF
         end
         
         function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
-%                         profile on
-%             tic;
+            %                         profile on
+            %             tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-	    % prevent observation probabilities to be zero
-           % obs_lik(obs_lik < eps) = eps;
-	    
-	    obj = obj.pf(obs_lik, fname);
+            % prevent observation probabilities to be zero
+            % obs_lik(obs_lik < eps) = eps;
+            
+            obj = obj.pf(obs_lik, fname);
             %              if strcmp(obj.inferenceMethod, 'PF')
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
@@ -186,9 +184,9 @@ classdef PF
                 %                 error('PF.m: unknown inferenceMethod');
                 
             end
-%                         profile viewer
+            %                         profile viewer
             %                 fprintf('Hallo\n')
-%             fprintf('    Runtime: %.2f sec\n', toc);
+            %             fprintf('    Runtime: %.2f sec\n', toc);
             % meter path
             t_path = obj.rhythm2meter(r_path);
             
@@ -337,20 +335,14 @@ classdef PF
             addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             
             nFrames = size(obs_lik, 3);
-            % bin2dec conversion vector
             if obj.save_inference_data
                 logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
             end
-%             obj.particles = Particles(obj.nParticles, nFrames);
-            
+            % initialize particles
             iFrame = 1;
             m = zeros(obj.nParticles, nFrames, 'single');
             n = zeros(obj.nParticles, nFrames, 'single');
             r = zeros(obj.nParticles, nFrames, 'single');
-            
-%             obj.particles.m(:, iFrame) = obj.initial_m;
-%             obj.particles.n(:, iFrame) = obj.initial_n;
-%             obj.particles.r(:, iFrame) = obj.initial_r;
             m(:, iFrame) = obj.initial_m;
             n(:, iFrame) = obj.initial_n;
             r(:, iFrame) = obj.initial_r;
@@ -361,159 +353,70 @@ classdef PF
                 obj.particles_grid.n(:, iFrame) = obj.initial_n;
                 obj.particles_grid.r(:, iFrame) = obj.initial_r;
             end
+            % observation probability
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
             weight = log(obs / sum(obs));
-            %             obj.particles.weight = log(obs / sum(obs));
-            %             states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame), obj.particles.r(:, iFrame)];
-            states = [m(:, iFrame), n(:, iFrame), r(:, iFrame)];
-            state_dims = [obj.M; obj.N; obj.R];
             if obj.resampling_scheme > 1
                 % divide particles into clusters by kmeans
-                groups = obj.divide_into_fixed_cells(states, state_dims, obj.n_initial_clusters);
+                groups = obj.divide_into_fixed_cells([m(:, iFrame), n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; obj.R], obj.n_initial_clusters);
                 n_clusters = zeros(nFrames, 1);
             else
                 groups = ones(obj.nParticles, 1);
             end
             if obj.save_inference_data
                 % save particle data for visualizing
-                % position
                 logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-                % tempo
                 logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-                % rhythm
                 logP_data_pf(:, 3, iFrame) = r(:, iFrame);
-                % weights
                 logP_data_pf(:, 4, iFrame) = weight;
                 logP_data_pf(:, 5, iFrame) = groups;
             end
             
-            resampling_frames = [];
-            %             profile on
+            resampling_frames = zeros(nFrames, 1);
+
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 %                 obj = obj.propagate_particles_pf(iFrame, 'm');
                 m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
                 m(:, iFrame) = mod(m(:, iFrame) - 1, obj.Meff(obj.rhythm2meter(r(:, iFrame-1)))') + 1;
-                %                 obj.particles.m(:, iFrame) = obj.particles.m(:, iFrame-1) + obj.particles.n(:, iFrame-1);
-                %                 obj.particles.m(:, iFrame) = mod(obj.particles.m(:, iFrame) - 1, ...
-                %                     obj.Meff(obj.rhythm2meter(obj.particles.r(:, iFrame-1)))') + 1;
                 r(:, iFrame) = r(:, iFrame-1);
-                % update r
-                %                 obj.particles.r(:, iFrame) = obj.particles.r(:, iFrame-1);
                 
                 if obj.do_viterbi_filtering
-                    % compute tempo matrix: rows are particles at iFrame-1,
-                    % cols are particles at iFrame
-                    tempo_current = bsxfun(@minus, obj.particles.m(:, iFrame), obj.particles.m(:, iFrame-1)')';
-                    rhythm_constant = bsxfun(@eq, obj.particles.r(:, iFrame), obj.particles.r(:, iFrame-1)')';
-                    % add Meff to negative tempi
-                    for iR=1:obj.R
-                        rhythm_iR = bsxfun(@eq, obj.particles.r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
-                        idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
-                        tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
-                    end
-                    tempo_prev = obj.particles.n(:, iFrame-1);
-                    tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
-                    logTransProbCont = log(zeros(size(tempoChange)));
-                    transition_ok = tempoChange < (10 * obj.sigma_N);
-                    logTransProbCont(rhythm_constant & transition_ok) = ...
-                        log(normpdf(tempoChange(rhythm_constant & transition_ok) , 0, obj.sigma_N));
-                    
-                    % find best precursor particle
-                    [obj.particles.weight, i_part] = max(bsxfun(@plus, logTransProbCont, obj.particles.weight(:)));
-                    obj.particles.m(:, 1:iFrame-1) = obj.particles.m(i_part, 1:iFrame-1);
-                    obj.particles.n(:, 1:iFrame-1) = obj.particles.n(i_part, 1:iFrame-1);
-                    %                     obj.particles.n(:, iFrame-1) = obj.particles.n(:, iFrame-2) + tempoChange(i_part, :);
+                    [m, n, r, weight] = obj.viterbi_filtering(m, n, r, weight);
                 end
                 
                 % evaluate particle at iFrame-1
                 obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
-                %                 obs = eval_lik([obj.particles.m(:, iFrame), obj.particles.r(:, iFrame)], iFrame);
-                
                 weight = weight(:) + log(obs);
-                %                 obj.particles.weight = obj.particles.weight(:) + log(obs);
                 
                 % Normalise importance weights
                 % ------------------------------------------------------------
                 [weight, ~] = normalizeLogspace(weight');
-                Neff = 1/sum(exp(weight).^2);
-                %                 [obj.particles.weight, ~] = normalizeLogspace(obj.particles.weight');
-                %                 Neff = 1/sum(exp(obj.particles.weight).^2);
                 
                 % Resampling
                 % ------------------------------------------------------------
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     n_last_step = n(:, iFrame-1);
                 end
-		if obj.resampling_interval == 0
-			Neff = 1/sum(exp(weight).^2);
-			do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
-		else
-			do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
-		end
-	
+                if obj.resampling_interval == 0
+                    Neff = 1/sum(exp(weight).^2);
+                    do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
+                else
+                    do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
+                end
+                
                 if do_resampling && (iFrame < nFrames)
-                    resampling_frames = [resampling_frames; iFrame];
-                    %                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
-                    if obj.resampling_scheme == 0
-                        newIdx = obj.resampleSystematic(exp(weight));
-                        m = m(newIdx, :);
-                        r = r(newIdx, :);
-                        n = n(newIdx, :);
-                        weight = log(ones(obj.nParticles, 1) / obj.nParticles);
-                        
-                    elseif obj.resampling_scheme == 1 % APF
-                        % warping:
-                        w = exp(weight);
-                        f = str2func(obj.warp_fun);
-                        w_warped = f(w);
-                        newIdx = obj.resampleSystematic(w_warped);
-                        m = m(newIdx, :);
-                        r = r(newIdx, :);
-                        n = n(newIdx, :);
-                        w_fac = w ./ w_warped;
-                        weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
-                        
-                    elseif obj.resampling_scheme == 2 % K-MEANS
-                        % k-means clustering
-                        states = [m(:, iFrame), n(:, iFrame-1), r(:, iFrame)];
-                        state_dims = [obj.M; obj.N; obj.R];
-                        groups = obj.divide_into_clusters(states, state_dims, groups);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters);
+%                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
+                    resampling_frames(iFrame) = iFrame;
+                    if obj.resampling_scheme == 2 || obj.resampling_scheme == 3 % MPF or AMPF
+                        groups = obj.divide_into_clusters([m(:, iFrame), n(:, iFrame-1), r(:, iFrame)], [obj.M; obj.N; obj.R], groups);
                         n_clusters(iFrame) = length(unique(groups));
-                        m = m(newIdx, :);
-                        r = r(newIdx, :);
-                        n = n(newIdx, :);
-                        weight = outWeights';
-                        
-                    elseif obj.resampling_scheme == 3 % APF + K-MEANS
-                        % apf and k-means
-                        states = [m(:, iFrame), n(:, iFrame-1), r(:, iFrame)];
-                        %                         states = [obj.particles.m(:, iFrame), obj.particles.n(:, iFrame-1), obj.particles.r(:, iFrame)];
-                        state_dims = [obj.M; obj.N; obj.R];
-                        groups = obj.divide_into_clusters(states, state_dims, groups);
-                        f = str2func(obj.warp_fun);
-                        [newIdx, outWeights, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, f);
-                        %                         [newIdx, outWeights, groups] = obj.resample_in_groups(groups, weight, obj.n_max_clusters, f);
-                        n_clusters(iFrame) = length(unique(groups));
-                        m(:, 1:iFrame) = m(newIdx, 1:iFrame);
-                        r(:, 1:iFrame) = r(newIdx, 1:iFrame);
-%                         indx = accumarray(r(:, iFrame), groups, [obj.R, 1], @(x) length(unique(x)));
-%                         w = accumarray(r(:, iFrame),  weight, [obj.R, 1]);
-%                         for i=1:obj.R
-%                             fprintf('%i-', indx(i));
-%                             fprintf('%i\t', round(w(i)));
-%                         end
-%                         fprintf('\n');
-                        n(:, 1:iFrame) = n(newIdx, 1:iFrame);
-                        %                         obj.particles.copyParticles(newIdx);
-                        weight = outWeights';
-                        %                         obj.particles.weight = outWeights';
-%                         fprintf('      > %i groups\n', length(unique(groups)));
-                    else
-                        fprintf('WARNING: Unknown resampling scheme!\n');
                     end
+                    [weight, groups, newIdx] = obj.resample(weight, groups);
+                    m(:, 1:iFrame) = m(newIdx, 1:iFrame);
+                    r(:, 1:iFrame) = r(newIdx, 1:iFrame);
+                    n(:, 1:iFrame) = n(newIdx, 1:iFrame);
                 end
                 
                 % transition from iFrame-1 to iFrame
@@ -523,11 +426,7 @@ classdef PF
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
                 out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-                
-                %                 obj.particles.n(:, iFrame) = obj.particles.n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-                %                 obj.particles.n((obj.particles.n(:, iFrame) > obj.maxN), iFrame) = obj.maxN;
-                %                 obj.particles.n((obj.particles.n(:, iFrame) < obj.minN), iFrame) = obj.minN;
-                
+               
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
                     obj.particles_grid.n(:, iFrame) =  obj.particles.n(:, iFrame);
@@ -536,15 +435,10 @@ classdef PF
                 
                 if obj.save_inference_data
                     % save particle data for visualizing
-                    % position
                     logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-                    % tempo
                     logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-                    % rhythm
                     logP_data_pf(:, 3, iFrame) = r(:, iFrame);
-                    % weights
                     logP_data_pf(:, 4, iFrame) = weight;
-                    % groups
                     logP_data_pf(:, 5, iFrame) = groups;
                 end
                 
@@ -554,9 +448,8 @@ classdef PF
             obj.particles.n = n;
             obj.particles.r = r;
             obj.particles.weight = weight;
-            
-            %             profile viewer
-            fprintf('    Average resampling interval: %.2f frames\n', mean(diff(resampling_frames)));
+
+            fprintf('    Average resampling interval: %.2f frames\n', mean(diff(resampling_frames(resampling_frames>0))));
             if obj.resampling_scheme > 1
                 fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters(n_clusters>0)));
             end
@@ -564,7 +457,6 @@ classdef PF
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
                     'logP_data_pf');
             end
-            %             profile viewer
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath)
@@ -673,7 +565,7 @@ classdef PF
             %             addpath('/home/florian/diss/src/matlab/libs/litekmeans')
             warning('off');
             [group_ids, ~, IC] = unique(groups_old);
-%             fprintf('    %i groups >', length(group_ids));
+            %             fprintf('    %i groups >', length(group_ids));
             k = length(group_ids); % number of clusters
             
             % adjust the range of each state variable to make equally
@@ -734,7 +626,7 @@ classdef PF
             %                         figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(groups(rhyt_idx) * fac), 'filled');
             
             % check if centroids are too close
-%             fprintf('    merging %i > ', size(centroids, 1));
+            %             fprintf('    merging %i > ', size(centroids, 1));
             merging = 1;
             merged = 0;
             while merging
@@ -763,14 +655,14 @@ classdef PF
                     merged = 1;
                 end
             end
-%             fprintf('%i\n', size(centroids, 1));
+            %             fprintf('%i\n', size(centroids, 1));
             %             if merged
             %                 [groups, centroids, total_dist_per_cluster] = kmeans(states, [], 'replicates', 1, ...
             %                     'start', centroids, 'emptyaction', 'drop', 'Distance', 'cityblock', 'options', options);
             %             end
             
             % check if cluster spread is too high
-%             fprintf('    splitting %i > ', size(centroids, 1));
+            %             fprintf('    splitting %i > ', size(centroids, 1));
             split = 0;
             [group_ids, ~, j] = unique(groups);
             group_ids = 1:length(group_ids);
@@ -798,15 +690,15 @@ classdef PF
                 %                 end
                 split = 1;
             end
-%             fprintf('%i\n', size(centroids, 1));
+            %             fprintf('%i\n', size(centroids, 1));
             
             if split || merged
                 try
                     [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
                         'Distance', 'sqEuclidean', 'options', options);
                 catch exception
-                   centroids
-                   error('Problem\n');
+                    centroids
+                    error('Problem\n');
                 end
                 
                 %                 [groups, ~, ~] = fast_kmeans(points, centroids, 1);
@@ -819,7 +711,55 @@ classdef PF
                 %                 figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(round(groups(rhyt_idx) * fac), :), 'filled');
             end
             warning('on');
-%             fprintf('    %i groups\n', length(unique(groups)));            
+            %             fprintf('    %i groups\n', length(unique(groups)));
+        end
+        
+        function  [m, n, r, weight] = viterbi_filtering(obj, m, n, r, weight)
+            % compute tempo matrix: rows are particles at iFrame-1,
+            % cols are particles at iFrame
+            tempo_current = bsxfun(@minus, m(:, iFrame), m(:, iFrame-1)')';
+            rhythm_constant = bsxfun(@eq, r(:, iFrame), r(:, iFrame-1)')';
+            % add Meff to negative tempi
+            for iR=1:obj.R
+                rhythm_iR = bsxfun(@eq, r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
+                idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
+                tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter(iR));
+            end
+            tempo_prev = n(:, iFrame-1);
+            tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
+            logTransProbCont = log(zeros(size(tempoChange)));
+            transition_ok = tempoChange < (10 * obj.sigma_N);
+            logTransProbCont(rhythm_constant & transition_ok) = ...
+                log(normpdf(tempoChange(rhythm_constant & transition_ok) , 0, obj.sigma_N));
+            % find best precursor particle
+            [weight, i_part] = max(bsxfun(@plus, logTransProbCont, weight(:)));
+            m(:, 1:iFrame-1) = m(i_part, 1:iFrame-1);
+            n(:, 1:iFrame-1) = n(i_part, 1:iFrame-1);
+        end
+        
+        function [weight, groups, newIdx] = resample(obj, weight, groups)
+            if obj.resampling_scheme == 0
+                newIdx = obj.resampleSystematic(exp(weight));
+                weight = log(ones(obj.nParticles, 1) / obj.nParticles);  
+            elseif obj.resampling_scheme == 1 % APF
+                % warping:
+                w = exp(weight);
+                f = str2func(obj.warp_fun);
+                w_warped = f(w);
+                newIdx = obj.resampleSystematic(w_warped);
+                w_fac = w ./ w_warped;
+                weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );  
+            elseif obj.resampling_scheme == 2 % K-MEANS
+                % k-means clustering
+                [newIdx, weight, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters);
+                weight = weight';
+            elseif obj.resampling_scheme == 3 % APF + K-MEANS
+                % apf and k-means
+                [newIdx, weight, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, str2func(obj.warp_fun));
+                weight = weight';
+            else
+                fprintf('WARNING: Unknown resampling scheme!\n');
+            end
         end
         
     end
