@@ -40,6 +40,7 @@ classdef PF
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
+        resampling_interval
     end
     
     methods
@@ -47,7 +48,6 @@ classdef PF
             addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
             addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
-            obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.T = size(Params.meters, 2);
@@ -59,6 +59,7 @@ classdef PF
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter = rhythm2meter;
             obj.meter_state2meter = Params.meters;
+            obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.ratio_Neff = Params.ratio_Neff;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
@@ -72,8 +73,9 @@ classdef PF
             obj.n_initial_clusters = Params.n_initial_clusters;
             obj.rhythm_names = rhythm_names;
             obj.pattern_size = Params.pattern_size;
-            %             rng('shuffle');
-            RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+	    obj.resampling_interval = Params.res_int;
+                        rng('shuffle');
+%             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
         function obj = make_initial_distribution(obj)
@@ -161,6 +163,8 @@ classdef PF
 %             tic;
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
+%             obs_lik(obs_lik < eps) = eps;
+            fprintf('    Obs_lik %e-%e\n', min(obs_lik(:)), max(obs_lik(:)));
             obj = obj.pf(obs_lik, fname);
             %              if strcmp(obj.inferenceMethod, 'PF')
             [m_path, n_path, r_path] = obj.path_via_best_weight();
@@ -428,7 +432,9 @@ classdef PF
                 
                 weight = weight(:) + log(obs);
                 %                 obj.particles.weight = obj.particles.weight(:) + log(obs);
-                
+                if sum(isinf(weight)) > 0
+                    lkj=987;
+                end
                 % Normalise importance weights
                 % ------------------------------------------------------------
                 [weight, ~] = normalizeLogspace(weight');
@@ -441,8 +447,14 @@ classdef PF
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     n_last_step = obj.particles.n(:, iFrame-1);
                 end
-                
-                if (Neff < obj.ratio_Neff * obj.nParticles) && (iFrame < nFrames)
+		if obj.resampling_interval == 0
+			Neff = 1/sum(exp(weight).^2);
+			do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
+		else
+			do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
+		end
+	
+                if do_resampling && (iFrame < nFrames)
                     resampling_frames = [resampling_frames; iFrame];
                     %                     fprintf('    Resampling at Neff=%.3f (frame %i)\n', Neff, iFrame);
                     if obj.resampling_scheme == 0
@@ -660,7 +672,7 @@ classdef PF
             %               after last resampling step (used for initialisation)
             %             addpath('/home/florian/diss/src/matlab/libs/fast_kmeans')
             %             addpath('/home/florian/diss/src/matlab/libs/litekmeans')
-            warning('off');
+           warning('off');
             [group_ids, ~, IC] = unique(groups_old);
 %             fprintf('    %i groups >', length(group_ids));
             k = length(group_ids); % number of clusters
@@ -807,7 +819,7 @@ classdef PF
                 %                 fac*max(groups(rhyt_idx))
                 %                 figure(1); scatter(states(rhyt_idx, 1), states(rhyt_idx, 2), [], col(round(groups(rhyt_idx) * fac), :), 'filled');
             end
-            warning('on');
+           warning('on');
 %             fprintf('    %i groups\n', length(unique(groups)));            
         end
         

@@ -35,7 +35,7 @@ Params.patternGiven = 0;
 Params.n_folds_for_cross_validation = 0;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
-Params.save_inference_data = 1;
+Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
@@ -59,14 +59,12 @@ Params.M = 1216;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 8;
+Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4]
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
-% Maximum position state per meter
-Params.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
 % Number of grid points of one pattern per meter
 Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
@@ -94,12 +92,13 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 8000;
+Params.nParticles = 1000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
 % If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
 Params.ratio_Neff = 0.002;
+Params.res_int = 5;
 % Type of resampling scheme to be used:
 %   0) Standard SISR (systematic resampling)
 %   1) APF
@@ -123,9 +122,9 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 400;
+Params.n_max_clusters = 50;
 % Number of cluster to start with
-Params.n_initial_clusters = 128;
+Params.n_initial_clusters = 32;
 
 % Observation model
 % -----------------
@@ -148,7 +147,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_train';
+Params.train_set = 'ballroom_train_6';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,15 +155,15 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-dancestyle.txt']);
+    num2str(Params.R), '-meter.txt']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'ballroom_test';
+Params.test_set = 'boeck_3_4';
 % Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.testLab = ['~/diss/data/beats/ballroom/all/Albums-AnaBelen_Veneo-11.wav'];
+Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.testLab = ['~/diss/data/beats/boeck/SoundCheck2_73_Instrumental_Tambourine.wav'];
 
 end

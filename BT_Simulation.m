@@ -1,4 +1,4 @@
-function [] = BT_Simulation(sim_id)
+function [] = BT_Simulation(sim_id, params)
 % computes beats, downbeats, meter and tempo from audio files
 % [] = Simulation()
 %
@@ -23,12 +23,17 @@ addpath('~/diss/src/matlab/beat_tracking/SilverBeat/utils')
 fprintf('Git SHA-1: %s\n', cmdout);
 fprintf('Process ID: %i\n', feature('getpid'));
 
-if exist(['./results/', num2str(sim_id)], 'file')
+if ~exist(['./results/', num2str(sim_id)], 'dir')
+    system(['mkdir ./results/', num2str(sim_id)]);
+end
+    
+if exist('params', 'var')
+   sim = Simulation(params, sim_id);   
+else
    fprintf('* Copy config_bt.m to %s\n', num2str(sim_id));
    system(['cp ./config_bt.m ./results/', num2str(sim_id)]);
+   sim = Simulation('config_bt', sim_id, ['./results/', num2str(sim_id)]);
 end
-
-sim = Simulation('config_bt', sim_id, ['./results/', num2str(sim_id)]);
 
 sim = sim.train_system();
 

@@ -77,6 +77,8 @@ classdef ObservationModel
                 barPos = obj.barGrid_eff(obj.rhythm2meter(iR));
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...
                     obj.learned_params(iR, 1:barPos));
+%                 fprintf('    obslik: %e-%e\n', min(obsLik(iR, 1:barPos, :)), max(obsLik(iR, 1:barPos, :)));
+                
             end
         end
         

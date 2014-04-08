@@ -20,7 +20,7 @@ tot_w = cellfun(@(x) logsumexp(x, 1), w_per_group);
 % check for groups with zero weights (log(w)=-inf) and remove those
 if sum(isnan(tot_w)) > 0
     bad_groups = find(isnan(tot_w));
-    fprintf('   %i groups have zero weights and are removed!\n', length(bad_groups));
+    fprintf('   %i of %i groups have zero weights and are removed!\n', length(bad_groups), length(tot_w));
 else
     bad_groups = [];
 end
