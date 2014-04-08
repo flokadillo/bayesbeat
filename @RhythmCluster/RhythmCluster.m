@@ -199,7 +199,7 @@ classdef RhythmCluster < handle
             % save cluster assignments
             if strcmpi(type, 'bars')
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.txt']);
+                    num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans.mat']);
             else
                 % read index of  valid songs
                 if exist(obj.exclude_songs_fln, 'f')
@@ -230,15 +230,24 @@ classdef RhythmCluster < handle
                         patternId = cidx(fileCounter);
                         bar2pattern = [bar2pattern; ones(nBars(iFile), 1) * patternId];
                     end
-                    obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                        num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans-songs.txt']);
+                    
                 end
                 cidx = bar2pattern;
-
+                obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+                        num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans-songs.mat']);
             end
+            
             obj.bar_2_cluster = cidx;
-            dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
+            
             fprintf('writing %i bar-cluster assignments to %s\n', length(obj.bar_2_cluster), obj.clusters_fln);
+            bar2rhythm = obj.bar_2_cluster;
+            bar2file = obj.bar2file;
+            file2nBars = nBars;
+            for i = 1:n_clusters
+                rhythm_names{i} = ['kmeans', num2str(i)];
+            end
+            save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', 'file2nBars', 'rhythm_names');
+%             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
             obj.n_clusters = n_clusters;
         end
         
@@ -329,6 +338,7 @@ classdef RhythmCluster < handle
             end
             
             bar2pattern = [];
+            bar2file = [];
 %             dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz'};
 %             dancestyles = {'ChaCha', 'Jive', 'Rumba', 'Waltz'};
             
@@ -388,6 +398,7 @@ classdef RhythmCluster < handle
                     [nBars(iFile), ~] = Data.get_full_bars(beats);
                 end
                 bar2pattern = [bar2pattern; ones(nBars(iFile), 1) * patternId];
+                bar2file = [bar2file; ones(nBars(iFile), 1) * ok_songs(iFile)];
             end
             
             if strcmp(clusterType, 'meter')
@@ -400,23 +411,31 @@ classdef RhythmCluster < handle
             obj.n_clusters = max(bar2pattern);
             obj.bar_2_cluster = bar2pattern;
             ca_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'-', clusterType, '.txt']);
-            dlmwrite(ca_fln, bar2pattern);
+                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters),'R-', clusterType, '.mat']);
+%             dlmwrite(ca_fln, bar2pattern);
+            bar2rhythm = bar2pattern;
+            obj.bar2file = bar2file;
+            file2nBars = nBars;
+            if ~exist('rhythm_names', 'var')
+                for i = unique(bar2pattern(:))'
+                    rhythm_names{i} = [clusterType, num2str(i)];
+                end
+            end
+            save(ca_fln, '-v7.3', 'bar2rhythm', 'bar2file', 'file2nBars', 'rhythm_names');
+            
             fprintf('writing %s\n', ca_fln);
             
             % write rhythm names to file
-            fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), '-', clusterType, '-rhythm_labels.txt']);
+%             fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+%                 num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), '-', clusterType, '-rhythm_labels.txt']);
             % label the clusters with integer numbers
-            if ~exist('rhythm_names', 'var')
-                rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.n_clusters)', 'UniformOutput',false);
-            end
-            fid = fopen(fln, 'w');
-            for i=1:length(rhythm_names)
-                fprintf(fid, '%s\n', rhythm_names{i});
-            end
-            fclose(fid);
-            fprintf('writing %s\n', fln);
+            
+%             fid = fopen(fln, 'w');
+%             for i=1:length(rhythm_names)
+%                 fprintf(fid, '%s\n', rhythm_names{i});
+%             end
+%             fclose(fid);
+%             fprintf('writing %s\n', fln);
         end
     end
 end

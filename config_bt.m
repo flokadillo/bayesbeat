@@ -46,7 +46,7 @@ Params.inferenceMethod = 'PF';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
-Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
+% Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -155,7 +155,7 @@ Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------

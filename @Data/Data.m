@@ -61,7 +61,11 @@ classdef Data
             % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
             % TODO: bar2file, obj.n_bars should be loaded not computed!
             if exist(cluster_fln, 'file')
-                obj.bar2cluster = load(cluster_fln, '-ascii');
+                C = load(cluster_fln);
+                obj.bar2cluster = C.bar2rhythm;
+                obj.n_bars = C.file2nBars;
+                obj.rhythm_names = C.rhythm_names;
+                obj.bar2cluster = C.bar2rhythm;
             else
                 error('Cluster file %s not found\n', cluster_fln);
             end
