@@ -3,10 +3,10 @@ classdef Feature
     
     properties
         feat_type       % cell array with one cell per feature dimension,
-        % containing the extension of the feature file
-        % e.g., feat_type{1} = lo230-superflux.mvavg.normz
+                        % containing the extension of the feature file
+                        % e.g., feat_type{1} = lo230-superflux.mvavg.normz
         feat_dim        % feature dimension
-        frame_length      % frame rate in frames per second
+        frame_length    % frame rate in frames per second
         input_fln
         feature
         
@@ -14,35 +14,32 @@ classdef Feature
     
     methods
         function obj = Feature(feat_type, frame_length)
-            obj.feat_type = feat_type;
+            if nargin == 0
+                obj.feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
+                obj.frame_length = 0.02;
+            else
+                obj.feat_type = feat_type;
+                obj.frame_length = frame_length;
+            end
             obj.feat_dim = length(feat_type);
-            obj.frame_length = frame_length;
         end
-        
-        
+            
         function observations = load_feature(obj, input_fln)
             % parse input_data
             obj.input_fln = input_fln;
-            [fpath, ~, ~] = fileparts(input_fln);
-            fname = strrep(input_fln, [fpath, '/'], '');
-            if isempty(strfind(fname, 'wav'))
-                error('feature.load_feature: please supply WAV file instead of %s', fname);
-            end
+            [fpath, fname, ~] = fileparts(input_fln);
             % compute feature from wav
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
-                fln = fullfile(fpath, 'beat_activations', strrep(fname, 'wav', obj.feat_type{iDim}));
+                fln = fullfile(fpath, 'beat_activations', [fname, '.', obj.feat_type{iDim}]);
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
                     fprintf('    Extracting features from %s\n', fname);
-                    param.compress = 0;
-                    param.norm_each_file = 2; % 2 for z-score computation
-                    param.doMvavg = 1;
-                    param.offline = 1;
-%                     param.logThresh = 30;           % Mean + 1.7 * Variance of all feature values
-%                     param.normalizingConst = 35;
+                    param.save_it = 1; % save feature to folder ./beat_activations
+                    param.frame_length = obj.frame_length;
+                    param.feat_type = obj.feat_type{iDim};
                     if strfind(obj.feat_type{iDim}, 'lo230')
                         param.min_f = 0;
                         param.max_f = 230;
@@ -53,11 +50,6 @@ classdef Feature
                         error('Feature %s invalid' ,obj.feat_type{iDim});
                     end
                     [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
-                end
-                
-                % adjust framerate of features
-                if abs(1/fr{iDim} - obj.frame_length) > 0.001
-                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
                 end
             end
             observations = cell2mat(detfunc');
@@ -72,13 +64,7 @@ classdef Feature
         end
     end
     
-    methods(Access=protected)
-        function obj = compute_bt_feature(obj, input_fln)
-            
-        end
-        
-    end
-    
+   
     methods(Static)
         
         function activations_resampled = change_frame_rate(activations, fr_source, fr_target)
@@ -146,14 +132,15 @@ classdef Feature
             
         end
         
-        [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
+%         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
         
         [DetFunc, fr] = Compute_Bt_LogFiltSpecFlux(wavFileName, param);
         
         [S, t, f] = STFT(x, winsize, hopsize, fftsize, fs, type, online, plots, norm);
         
         [ out ] = mvavg( signal, winsize, type );
-
+        
+%         [DetFunc, fr] = compute_LogFiltSpecFlux2(fln, save_it, param);
     end
     
 end

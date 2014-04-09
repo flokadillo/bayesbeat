@@ -8,7 +8,7 @@ classdef HMM
         T                   % number of different meter
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
-        rhythm2meter        % assigns each rhythmic pattern to a meter state (1, 2, ...)
+        rhythm2meter_state        % assigns each rhythmic pattern to a meter state (1, 2, ...)
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
         barGrid             % number of different observation model params per bar (e.g., 64)
         minN                % min tempo (n_min) for each rhythmic pattern
@@ -30,7 +30,7 @@ classdef HMM
     end
     
     methods
-        function obj = HMM(Params, rhythm2meter, rhythm_names)
+        function obj = HMM(Params, rhythm2meter_state, rhythm_names)
             
             obj.M = Params.M;
             obj.N = Params.N;
@@ -45,7 +45,7 @@ classdef HMM
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.init_n_gauss = Params.init_n_gauss;
-            obj.rhythm2meter = rhythm2meter;
+            obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = Params.meters;
             obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.pattern_size = Params.pattern_size;
@@ -60,11 +60,11 @@ classdef HMM
         function obj = make_transition_model(obj, minTempo, maxTempo)
             
             % convert from BPM into barpositions / audio frame
-            meter_num = obj.meter_state2meter(1, obj.rhythm2meter);
+            meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
 
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff(obj.rhythm2meter) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+                obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
@@ -87,7 +87,7 @@ classdef HMM
  %           end
 
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.rhythm2meter, obj.minN, obj.maxN);
+                obj.rhythm2meter_state, obj.minN, obj.maxN);
 
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
@@ -99,7 +99,7 @@ classdef HMM
         function obj = make_observation_model(obj, data_file_pattern_barpos_dim, train_dataset)
             
             % Create observation model
-            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
+            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
                 obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff);
             
             % Train model
@@ -114,7 +114,7 @@ classdef HMM
             if obj.init_n_gauss > 0
                 obj.initial_prob = zeros(n_states, 1);
                 for iCluster = 1:size(tempo_per_cluster, 2)
-                    meter = obj.meter_state2meter(:, obj.rhythm2meter(iCluster));
+                    meter = obj.meter_state2meter(:, obj.rhythm2meter_state(iCluster));
                     tempi = tempo_per_cluster(:, iCluster) * obj.M * obj.frame_length ...
                         / (60 * meter(2));
                     gmm = gmdistribution.fit(tempi(~isnan(tempi)), obj.init_n_gauss);
@@ -178,7 +178,7 @@ classdef HMM
             %             mean_params = mean_params(ind);
             %             save(['./temp/', fname, '_map.mat'], 'dets', 'y', 'mean_params');
             % meter path
-            t_path = obj.rhythm2meter(r_path);
+            t_path = obj.rhythm2meter_state(r_path);
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
             beats = obj.find_beat_times(m_path, t_path, n_path);
@@ -221,7 +221,7 @@ classdef HMM
                    continue;
                 end
 % %                 % compute beat times and bar positions of beats
-%                 t_path = obj.rhythm2meter(r_path);
+%                 t_path = obj.rhythm2meter_state(r_path);
 %                 beats = obj.find_beat_times(m_path, t_path, n_path);
 %                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
 %                 BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
@@ -304,7 +304,7 @@ classdef HMM
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.rhythm2meter, obj.minN, obj.maxN);          
+                obj.rhythm2meter_state, obj.minN, obj.maxN);          
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
         end

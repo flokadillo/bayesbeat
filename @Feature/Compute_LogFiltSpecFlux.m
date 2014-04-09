@@ -24,7 +24,7 @@ end
 
 % Load audio file
 % ----------------------------------------------------------------------
-[x, fs] = wavread(fln);
+[x, fs] = audioread(fln);
 if fs ~= 44100
     x = resample(x, 44100, fs);
     fs = 44100;

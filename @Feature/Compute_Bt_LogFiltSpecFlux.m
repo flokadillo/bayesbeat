@@ -1,12 +1,13 @@
-function [ DetFunc, fr ] = Compute_Bt_LogFiltSpecFlux( wavFileName, param )
-%[ DetFunc, fr ] = compute_Bt_Log_Filt_Spec( wavFileName )
+function [ DetFunc, fr ] = Compute_Bt_LogFiltSpecFlux( fln, param )
+%[ DetFunc, fr ] = compute_Bt_Log_Filt_Spec( fln )
 %  computes beat detection function based on:
 %    Böck, S., Krebs, F. and Schedl, M. (2012). Evaluating the Online Capabilities of Onset Detection Methods.
 %    (ISMIR 2012)
 %
 % ------------------------------------------------------------------------
 %INPUT parameters:
-% wavFileName           : input WAV file
+% fln           : input WAV file
+% param
 %
 %OUTPUT parameters:
 % DetFunc               : beat detection function
@@ -23,28 +24,80 @@ function [ DetFunc, fr ] = Compute_Bt_LogFiltSpecFlux( wavFileName, param )
 % ===========
 
 param.offline = 1;
-param.logThresh = 30;           % Mean + 1.7 * Variance of all feature values
-param.normalizingConst = 35;    % Mean + 2.0 * Variance of all feature values
+param.norm_each_file = 2; % 2 for z-score computation
+param.doMvavg = 1;
+param.offline = 1;
 
-save_it = 0;
+% [DetFunc, fr] = Feature.Compute_LogFiltSpecFlux(fln, param.save_it, param); % compute and save
 
-[DetFunc, fr] = Feature.Compute_LogFiltSpecFlux(wavFileName, save_it, param); % compute and save
+if ~exist(fln,'file')
+    fprintf('%s not found\n',fln);
+    DetFunc = []; fr = [];
+    return
+end
 
+% Load audio file
+% ----------------------------------------------------------------------
+[x, fs] = audioread(fln);
+if fs ~= 44100
+    x = resample(x, 44100, fs);
+    fs = 44100;
+end
+if size(x, 2) == 2
+   % convert to mono
+   x = mean(x, 2); 
+end
+% STFT parameter
+% ----------------------------------------------------------------------
+param.fftsize = 2048;
+param.hopsize = 441; % 10 ms -> fr = 100
+winsize = param.fftsize - 1;
+param.norm = 1; 
+type = 0; % 1=complex, use smaller windows at beginning and end
+online = 0; % 1=time frame corresponds to right part of window
+[S, t, f] = Feature.STFT(x, winsize, param.hopsize, param.fftsize, fs, type, online, 0, param.norm);
+S = S'; % make S = [N x K]
+fr = 1 / mean(diff(t));
+magnitude = abs(S);
+
+% reduce to 82 bands
+load('filterbank82_sb.mat'); % load fb [1024x82]
+magnitude = magnitude * fb;
+
+% extract specified frequency bands
+if isfield(param, 'min_f')
+    
+    % find corresponding frequency bin in Hz
+    [~, min_ind] = min(abs(f - param.min_f));
+    [~, max_ind] = min(abs(f - param.max_f));
+    
+    % find corresponding frequency band of the filterbank
+    min_ind = find(fb(max([min_ind, 2]), :));
+    % fb only uses frequencies up to 16.75 kHz (bin 778)
+    [~, max_ind] = max(fb(min([778, max_ind]), :));
+    
+    magnitude = magnitude(:, min_ind:max_ind);
+end
+
+% logarithmic amplitude
+param.lambda = 10221;
+magnitude = log10(param.lambda * magnitude + 1);
+
+% compute flux
+difforder = 1;
+Sdif = magnitude - [magnitude(1:difforder,:); magnitude(1:end-difforder,:)]; % Sdif(n) = S(n) - S(n-difforder);
+
+% halfway rectifying
+Sdif = (Sdif+abs(Sdif)) / 2;    
+% sum over frequency bands
+DetFunc = sum(Sdif,2);
 
 if param.doMvavg
     % moving average
     dm = Feature.mvavg(DetFunc, 100, 'normal');
     if ~isempty(dm)
         DetFunc = DetFunc-[0; dm(1:end-1)];
-%         DetFunc(DetFunc<0) = 0;
     end
-end
-
-if param.compress
-    % compress
-    DetFunc(DetFunc>param.logThresh) = param.logThresh + log(DetFunc(DetFunc>param.logThresh) - param.logThresh + 1);
-    % make it [0..1]
-    DetFunc = DetFunc / param.normalizingConst;
 end
 
 if param.norm_each_file == 2
@@ -55,6 +108,25 @@ elseif param.norm_each_file == 1
     DetFunc = DetFunc / max(DetFunc);
 end
 
+% adjust framerate of features
+if abs(1/fr - param.frame_length) > 0.001
+   DetFunc = Feature.change_frame_rate(DetFunc, round(1000*fr)/1000, 1/param.frame_length );
+   fr = 1/param.frame_length;
+end
+
+if param.save_it
+    [pathstr,fname,~] = fileparts(fln);
+    if isfield(param,'save_path')
+        save_fln = fullfile(param.save_path,[fname,'.',oss_type]);
+    else
+        save_fln = fullfile(pathstr, 'beat_activations', [fname,'.',param.feat_type]);
+    end
+    fid=fopen(save_fln,'w');
+    fprintf(fid,'FRAMERATE: %.4f\nDIMENSION: %i\n', fr, length(DetFunc));
+    fprintf(fid,'%d ',DetFunc');
+    fclose(fid);
+    fprintf('    Feature saved to %s\n', save_fln);
+end
 
 end
 

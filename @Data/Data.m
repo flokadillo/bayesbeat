@@ -1,4 +1,4 @@
-classdef Data
+classdef Data < handle
     % Data Class (represents training and test data)
     properties (SetAccess=private)
         file_list                       % list of files in the dataset
@@ -29,13 +29,13 @@ classdef Data
         function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
             if exist(lab_fln, 'file')
-                [~, dataset, ext] = fileparts(lab_fln);
+                [~, obj.dataset, ext] = fileparts(lab_fln);
                 if strcmpi(ext, '.lab')
                     fid = fopen(lab_fln, 'r');
                     obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
                     fclose(fid);
                     fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
-                        [dataset, '-exclude.txt']);
+                        [obj.dataset, '-exclude.txt']);
                     if train && exist(fln, 'file')
                         fid = fopen(fln, 'r');
                         exclude_songs = textscan(fid, '%s');
@@ -44,14 +44,15 @@ classdef Data
                         fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);
                         obj.file_list = obj.file_list(~ismember(obj.file_list, exclude_songs));
                     end
-                elseif strcmpi(ext, '.wav')
+                elseif strcmpi(ext, '.wav') || strcmpi(ext, '.flac')
                     obj.file_list{1} = lab_fln;
+                else
+                    error('Data: please supply LAB, WAV, or FLAC file instead of %s', lab_fln);
                 end
             else
                 error('Lab file %s not found\n', lab_fln);
             end
             obj.lab_fln = lab_fln;
-            obj.dataset = dataset;
         end
         
         function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
@@ -233,17 +234,23 @@ classdef Data
             counter = 1;    
 %             for i_file = 1:length(obj.file_list)
             for i_file = file_ids(:)'
-                t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
-                    (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
+                [fpath, fname, ~] = fileparts(obj.file_list{i_file});
+                beats_fln = fullfile(fpath, [fname, '.beats']);
+                if exist(beats_fln, 'file')
+                    obj.beats{i_file} = load(fullfile(fpath, [fname, '.beats']));
+                else
+                    error('Beats file %s not found\n', beats_fln);
+                end
+                
+                rhythm_id = obj.bar2cluster(find(obj.bar2file==i_file, 1));
+                t_state = find((obj.meter_state2meter(1, :) == obj.rhythm2meter(rhythm_id, 1)) &...
+                    (obj.meter_state2meter(2, :) == obj.rhythm2meter(rhythm_id, 2)));
                 r_state = find(model.rhythm2meter_state == t_state);
                 M_i = model.Meff(t_state);
-                tol_win = floor(0.0875 * model.M / obj.meter(i_file, 2));
-                
+                tol_win = floor(0.0875 * model.M / obj.rhythm2meter(rhythm_id, 2)); 
                 btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
                 beats_m = (M_i * (btype-1) / max(btype)) + 1;
                 % beat frames
-                
-                
                 n_beats_i = size(obj.beats{i_file}, 1);
                 i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
                 j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
