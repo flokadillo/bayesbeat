@@ -15,10 +15,9 @@ classdef Simulation
         function obj = Simulation(config_fun, sim_id, config_path)
 
             if exist('config_path', 'var')
-                old_path = cd(config_path);
+                addpath(config_path);
                 obj.Params = eval(config_fun);
                 fprintf('* Reading %s\n', fullfile(config_path, [config_fun, '.m']));
-                cd(old_path);
             else
                 if isstruct(config_fun)
                     obj.Params = config_fun;

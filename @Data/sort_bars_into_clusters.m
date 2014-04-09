@@ -17,8 +17,10 @@ nFiles = max(bar2file);
 nClusters = max(clusterIdx);
 [~, barGrid] = size(dataPerBar);
 dataPerFile = cell(nFiles, nClusters, barGrid);
+nchar=0;
 for iFile=1:nFiles
-    fprintf('      %i/%i\n',iFile, nFiles );
+    fprintf(repmat('\b', 1, nchar));
+    nchar = fprintf('      %i/%i\n',iFile, nFiles );
     barIds = find(bar2file == iFile); 
         for iBar = 1:length(barIds)  
             for iPos = 1:barGrid

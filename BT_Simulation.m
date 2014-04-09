@@ -30,9 +30,9 @@ end
 if exist('params', 'var')
    sim = Simulation(params, sim_id);   
 else
-   fprintf('* Copy config_bt.m to %s\n', num2str(sim_id));
-   system(['cp ./config_bt.m ./results/', num2str(sim_id)]);
-   sim = Simulation('config_bt', sim_id, ['./results/', num2str(sim_id)]);
+   fprintf('* Copy config_bt.m to %s\n', [num2str(sim_id), '/config_bt_dir.m']);
+   system(['cp ./config_bt.m ./results/', num2str(sim_id), '/config_bt_dir.m']);
+   sim = Simulation('config_bt_dir', sim_id, ['./results/', num2str(sim_id)]);
 end
 
 sim = sim.train_system();

@@ -28,7 +28,24 @@ classdef RhythmCluster < handle
     end
     
     methods
-        function obj = RhythmCluster(feat_type, frame_length, dataset, data_save_path, pattern_size)
+        function obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)
+            %  obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)
+            %  Construct Rhythmcluster object
+            % ----------------------------------------------------------------------
+            %INPUT parameter:
+            % dataset                   :
+            %
+            %OUTPUT parameter:
+            % obj
+            %
+            % 09.04.2013 by Florian Krebs
+            % ----------------------------------------------------------------------
+            if nargin == 1
+                feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
+                frame_length = 0.02;
+                data_save_path = './data';
+                pattern_size = 'bar';
+            end
             obj.feature = Feature(feat_type, frame_length);
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
             obj.dataset = dataset;
@@ -422,9 +439,7 @@ classdef RhythmCluster < handle
                 end
             end
             save(ca_fln, '-v7.3', 'bar2rhythm', 'bar2file', 'file2nBars', 'rhythm_names');
-            
             fprintf('writing %s\n', ca_fln);
-            
             % write rhythm names to file
 %             fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
 %                 num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), '-', clusterType, '-rhythm_labels.txt']);

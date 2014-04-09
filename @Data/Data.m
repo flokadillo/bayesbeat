@@ -22,10 +22,7 @@ classdef Data
         dataset                         % name of the dataset
     end
     
-    methods(Static)
-        
-    end
-    
+  
     methods
         
         function obj = Data(lab_fln, train)

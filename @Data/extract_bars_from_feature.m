@@ -159,7 +159,6 @@ function [barData, nchar] = get_feature_at_bar_grid(featureFln, beats, whole_not
 if length(E)/fr < beats(end, 1), E = [E; E(end)]; end
 
 if beats(end, 1) > length(E) * frame_length;
-    fprintf(repmat('\b', 1, nchar));
     fprintf('     Warning: beat annotations longer than audio file\n');
     nchar = 0;
     beats = beats(beats(:, 1) <= length(E) * frame_length, :);
