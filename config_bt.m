@@ -60,7 +60,7 @@ Params.M = 1216;
 Params.N = 23;
 % Number of rhythmic pattern states
 Params.R = 2;
-% Meters that are modelled by the system, e.g., [9, 3; 8 4]
+% Meters that are modelled by the system, e.g., [9, 3; 8 4] 
 Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.

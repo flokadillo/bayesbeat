@@ -14,8 +14,9 @@ classdef Data
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
-        rhythm2meter                    % specifies for each bar the corresponding meter state
-        meter_state2meter               % specifies meter for each meter state
+        rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
+        rhythm2meter_state              % specifies for each bar the corresponding meter state [R x 1]
+        meter_state2meter               % specifies meter for each meter state [2 x nMeters]
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
@@ -59,10 +60,11 @@ classdef Data
             % TODO: bar2file, obj.n_bars should be loaded not computed!
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
-                obj.bar2cluster = C.bar2rhythm;
+                obj.bar2file = C.bar2file;
                 obj.n_bars = C.file2nBars;
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
+                obj.rhythm2meter = C.rhythm2meter;
             else
                 error('Cluster file %s not found\n', cluster_fln);
             end
@@ -77,67 +79,62 @@ classdef Data
                 obj.pattern_size = 'bar';
             end
             
-            % read pattern_labels
-            fln = strrep(cluster_fln, '.txt', '-rhythm_labels.txt');
-            if exist(fln, 'file')
-                fid = fopen(fln, 'r');
-                obj.rhythm_names = textscan(fid, '%s', 'delimiter', '\n'); obj.rhythm_names = obj.rhythm_names{1};
-                fclose(fid);
-            else
-                % just call the rhythms by their ids
-                obj.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.n_clusters)', 'UniformOutput',false);
-            end
-            % read annotations
-            obj.n_bars = zeros(length(obj.file_list), 1);
-            obj.bar2file = zeros(length(obj.bar2cluster), 1);
-            barCounter = 0;
-            for iFile = 1:length(obj.file_list)
-                [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                beats_fln = fullfile(fpath, [fname, '.beats']);
-                if exist(beats_fln, 'file')
-                    obj.beats{iFile} = load(fullfile(fpath, [fname, '.beats']));
-                else
-                    error('Beats file %s not found\n', beats_fln);
-                end
-                % determine number of bars
-                if strcmp(obj.pattern_size, 'bar')
-                    [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
-                else
-                    obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
-                end
-                obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
-                barCounter = barCounter + obj.n_bars(iFile);
-                if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile) 
-                    error('%s: Number of bars not consistent !', fname);
-                end
-            end
-                
-            % Check consistency cluster_fln - train_lab
-            if length(obj.bar2cluster) ~= length(obj.bar2file)
-                fprintf('    %s: %i bars\n', cluster_fln, length(obj.bar2cluster));
-                fprintf('    computed from beat files: %i bars\n', length(obj.bar2file));
-                error('Number of bars not consistent !');
-            end
-            % find meter of each rhythmic pattern
-            if isempty(obj.meter)
-                obj = obj.read_meter();
-            end
+%             % read annotations
+%             barCounter = 0;
+%             for iFile = 1:length(obj.file_list)
+%                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
+%                 beats_fln = fullfile(fpath, [fname, '.beats']);
+%                 if exist(beats_fln, 'file')
+%                     obj.beats{iFile} = load(fullfile(fpath, [fname, '.beats']));
+%                 else
+%                     error('Beats file %s not found\n', beats_fln);
+%                 end
+%                 % determine number of bars
+%                 if strcmp(obj.pattern_size, 'bar')
+%                     [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
+%                 else
+%                     obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
+%                 end
+%                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
+%                 barCounter = barCounter + obj.n_bars(iFile);
+%                 if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile) 
+%                     error('%s: Number of bars not consistent !', fname);
+%                 end
+%             end
+%                 
+%             % Check consistency cluster_fln - train_lab
+%             if length(obj.bar2cluster) ~= length(obj.bar2file)
+%                 fprintf('    %s: %i bars\n', cluster_fln, length(obj.bar2cluster));
+%                 fprintf('    computed from beat files: %i bars\n', length(obj.bar2file));
+%                 error('Number of bars not consistent !');
+%             end
+%             % find meter of each rhythmic pattern
+%             if isempty(obj.meter)
+%                 obj = obj.read_meter();
+%             end
             obj.meter_state2meter = meters;
             for iR=1:obj.n_clusters
+                for iM=1:size(obj.meter_state2meter, 2)
+                    if (obj.meter_state2meter(1, iM) == obj.rhythm2meter(iR, 1)) && (obj.meter_state2meter(2, iM) == obj.rhythm2meter(iR, 2))
+                        obj.rhythm2meter_state(iR) = iM;
+                        break;
+                    end
+                end
+            end
                 % find the first bar in data that belongs to cluster iR and
                 % look up its meter
-                m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
-                % TODO: what to do if meter of training data does not match
-                % meter of system ?
-                if strcmp(obj.pattern_size, 'bar')
-                    obj.rhythm2meter(iR) = find(obj.meter_state2meter(1, :) == m(1));
-                elseif strcmp(obj.pattern_size, 'beat')
-                    obj.rhythm2meter(iR) = 1;
-                else
-                    error('Meter of training data is not supported by the system')
-                end
-                
-            end
+%                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
+%                 % TODO: what to do if meter of training data does not match
+%                 % meter of system ?
+%                 if strcmp(obj.pattern_size, 'bar')
+%                     obj.rhythm2meter_state(iR) = find(obj.meter_state2meter(1, :) == m(1));
+%                 elseif strcmp(obj.pattern_size, 'beat')
+%                     obj.rhythm2meter_state(iR) = 1;
+%                 else
+%                     error('Meter of training data is not supported by the system')
+%                 end
+%                 
+%             end
         end
         
         function obj = read_meter(obj)
@@ -238,7 +235,7 @@ classdef Data
             for i_file = file_ids(:)'
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
-                r_state = find(model.rhythm2meter == t_state);
+                r_state = find(model.rhythm2meter_state == t_state);
                 M_i = model.Meff(t_state);
                 tol_win = floor(0.0875 * model.M / obj.meter(i_file, 2));
                 

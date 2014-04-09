@@ -47,9 +47,9 @@ classdef BeatTracker < handle
             else
                 switch Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(Params, obj.train_data.rhythm2meter, obj.train_data.rhythm_names);
+                        obj.model = HMM(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(Params, obj.train_data.rhythm2meter, obj.train_data.rhythm_names);
+                        obj.model = PF(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
                 end
@@ -183,7 +183,7 @@ classdef BeatTracker < handle
 %                             if isempty(r)
 %                                 fprintf('    Cannot compute true path, file not in test_data included ...\n');
 %                             else
-%                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter(r)), annots, obj.model.frame_length, size(observations, 1));
+%                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter_state(r)), annots, obj.model.frame_length, size(observations, 1));
 %                                 anns = [m, n, ones(length(m), 1) * r];
 %                                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
 %                             end

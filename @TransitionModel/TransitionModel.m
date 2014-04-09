@@ -12,7 +12,7 @@ classdef TransitionModel
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
-        rhythm2meter    % assigns each rhythmic pattern to a meter
+        rhythm2meter_state    % assigns each rhythmic pattern to a meter state
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
         state_type      % 'discrete' or 'continuous'
@@ -25,14 +25,14 @@ classdef TransitionModel
     
     
     methods
-        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter, minN, maxN)
+        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter_state, minN, maxN)
             obj.M = M;
             obj.Meff = Meff;
             obj.N = N;
             obj.R = R;
             obj.pn = pn;
             obj.pr = pr;
-            obj.rhythm2meter = rhythm2meter;
+            obj.rhythm2meter_state = rhythm2meter_state;
             obj.minN = minN;
             obj.maxN = maxN;
             if max(maxN) > N
@@ -83,16 +83,16 @@ classdef TransitionModel
             fprintf('* Set up transition model .');
             for rhi = 1:R
                 fprintf('.');
-                mi=1:obj.Meff(rhythm2meter(rhi));
-                ti = rhythm2meter(rhi);
+                mi=1:obj.Meff(rhythm2meter_state(rhi));
+                ti = rhythm2meter_state(rhi);
                 for ni = 1:N
                     %             for i = start_i:numstates     % at time k
 %                     if rem(i, perc) == 0
 %                         fprintf('.');
 %                     end
                     % decode state number to m and n
-                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter(rhi))), ...
-                        repmat(rhi, 1, obj.Meff(rhythm2meter(rhi))));
+                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter_state(rhi))), ...
+                        repmat(rhi, 1, obj.Meff(rhythm2meter_state(rhi))));
                     %                     [mi, ni, rhi] = ind2sub([M, N, R], i);
                     
                     % filter out states violating the tempo ...
@@ -182,7 +182,7 @@ classdef TransitionModel
                 % only 2 possible transitions
                 % 1) tempo constant
                 nj = ni;
-                mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
+                mj = mod(mi + ni - 1, obj.Meff(rhythm2meter_state(rhi))) + 1; % new position
                 i = j_r(rhi) + (ni-1)*M + mi;
                 j = j_r(rhi) + (nj-1)*M + mj;
                 %                     i = sub2ind([M N R], mi, ni, rhi); % state i
@@ -200,7 +200,7 @@ classdef TransitionModel
                 % only 2 possible transitions
                 % 1) tempo constant
                 nj = ni;
-                mj = mod(mi + ni - 1, obj.Meff(rhythm2meter(rhi))) + 1; % new position
+                mj = mod(mi + ni - 1, obj.Meff(rhythm2meter_state(rhi))) + 1; % new position
                 i = j_r(rhi) + (ni-1)*M + mi;
                 j = j_r(rhi) + (nj-1)*M + mj;
                 %                     i = sub2ind([M N R], mi, ni, rhi);
