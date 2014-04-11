@@ -1,6 +1,6 @@
 classdef HMM
     % Hidden Markov Model Class
-    properties (SetAccess=private)
+    properties 
         M                   % number of (max) positions
         Meff                % number of positions per meter
         N                   % number of tempo states
@@ -81,10 +81,10 @@ classdef HMM
             end
             
             % Create transition model
-%            if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
- %               obj.minN = ones(1, obj.R);
- %               obj.maxN = ones(1, obj.R) * obj.N;
- %           end
+           if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
+               obj.minN = ones(1, obj.R);
+               obj.maxN = ones(1, obj.R) * obj.N;
+           end
 
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter_state, obj.minN, obj.maxN);
@@ -315,8 +315,6 @@ classdef HMM
     end
     
     methods (Access=protected)
-        
-        
         
         function bestpath = viterbi_decode(obj, obs_lik, fname)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
@@ -578,6 +576,9 @@ classdef HMM
             fprintf('    Decoding (viterbi training) .');
 
             for iFrame = 1:nFrames
+                if iFrame == 868
+                    lkj=45;
+                end
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
 %                 if sum(belief_func{1} == iFrame+start_frame-1)
@@ -585,7 +586,7 @@ classdef HMM
                     delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+start_frame-1, minState:maxState);
                     delta_max = delta_max / sum(delta_max);
                     if sum(isnan(delta_max)) > 0
-                        fprintf(' Viterbi path could not be determined (error at beat %i)\n', find(belief_func{1} == iFrame));
+                        fprintf(' Viterbi path could not be determined (error at beat %i)\n', iFrame);
                         bestpath = [];
                         return
                     end
@@ -826,8 +827,11 @@ classdef HMM
                 file_ids = 1:length(train_data.file_list);
             end
             tol_beats = 0.0875; % size of tolerance window in percentage of one beat period
+            tol_bpm = 20; % tolerance in +/- bpm for tempo variable 
+            
             % compute tol_win in [frames]
-            tol_win = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1)); 
+            tol_win_m = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1)); 
+            tol_win_n = floor(obj.Meff(1) .* obj.frame_length * tol_bpm ./ (obj.meter_state2meter(1, 1) .* 60));  
             % belief_func: 
             % col1: frames where annotation is available,
             % col2: sparse vector that is one for possible states
@@ -845,15 +849,16 @@ classdef HMM
                 else
                     possible_meter_states = find((obj.meter_state2meter(1, :) == train_data.meter(i_file, 1)) &...
                         (obj.meter_state2meter(2, :) == train_data.meter(i_file, 2)));
-                end
-                
-%                 t_state = find((train_data.meter_state2meter(1, :) == train_data.rhythm2meter(rhythm_id, 1)) &...
-%                     (train_data.meter_state2meter(2, :) == train_data.rhythm2meter(rhythm_id, 2)));               
+                end 
+                % tempo trajectory
+                n_traj = round(obj.Meff(1) .* obj.frame_length ./ (obj.meter_state2meter(1, 1) .* diff(train_data.beats{i_file}(:, 1))));
+                n_traj = [n_traj; n_traj(end)];
+%                 floor(obj.Meff(1) .* obj.frame_length .* bpm ./ (meter_num * 60));
                 % beat frames
                 n_beats_i = size(train_data.beats{i_file}, 1);
-                i_rows = zeros((tol_win*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
-                j_cols = zeros((tol_win*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
-                s_vals = ones((tol_win*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
+                i_rows = zeros((tol_win_m*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
+                j_cols = zeros((tol_win_m*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
+                s_vals = ones((tol_win_m*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
                 p=1;
                 for iMeter=possible_meter_states
                     % check if downbeat is annotated
@@ -870,12 +875,15 @@ classdef HMM
                     
                     for iM_beats=beats_m
                         for iBeat=1:n_beats_i
-                            m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
-                            m = repmat(m_support, 1, obj.N * length(r_states));
-                            n = repmat(1:obj.N, length(r_states) * length(m_support), 1);
-                            r = repmat(r_states(:), obj.N * length(m_support), 1);
+                            % tempo
+                            n_valid = (n_traj(iBeat)-tol_win_n):(n_traj(iBeat)+tol_win_n);
+                            n_valid(n_valid>obj.N) = obj.N;
+                            m_support = mod((iM_beats(iBeat)-tol_win_m:iM_beats(iBeat)+tol_win_m) - 1, M_i) + 1;
+                            m = repmat(m_support, 1, length(n_valid) * length(r_states));
+                            n = repmat(n_valid, length(r_states) * length(m_support), 1);
+                            r = repmat(r_states(:), length(n_valid) * length(m_support), 1);
                             states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-%                             idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_states)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_states);
+%                             idx = (iBeat-1)*(tol_win_m*2+1)*obj.N*length(r_states)+1:(iBeat)*(tol_win_m*2+1)*obj.N*length(r_states);
                             i_rows(p:p+length(m)-1) = iBeat;
                             j_cols(p:p+length(m)-1) = states;
                             p = p + length(m);

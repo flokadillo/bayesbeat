@@ -22,6 +22,7 @@ classdef BeatTracker < handle
                     c = load(model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
+                    obj.init_model_fln = model_fln;
                 else
                     error('Model file %s not found', model_fln);
                 end
@@ -98,22 +99,25 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
                 
                 obj.model = obj.model.make_initial_distribution;
-            end
-            
-            fln = fullfile(obj.temp_path, 'last_model.mat');
-            switch obj.inferenceMethod(1:2)
+                
+                fln = fullfile(obj.temp_path, 'last_model.mat');
+                switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
                         save(fln, 'hmm');
                     case 'PF'
                         pf = obj.model;
                         save(fln, 'pf');
+                end
+                fprintf('* Saved model to %s\n', fln)
             end
-            fprintf('* Saved model to %s\n', fln)
+
 %              hmm = obj.model;
 %              save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                       
             if obj.viterbi_learning_iterations > 0
+                obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
+                    obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
                 obj.refine_model(obj.viterbi_learning_iterations);
             end
         end
