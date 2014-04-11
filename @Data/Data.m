@@ -6,7 +6,7 @@ classdef Data < handle
         %         annots_path                     % path to annotations
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
-        meter                           % meter of each file [nFiles x 1]
+        meter                           % meter of each file [nFiles x 2]
         beats                           % beats of each file {nFiles x 1}[n_beats 2]
         n_bars                          % number of bars of each file [nFiles x 1]
         bar_start_id                    % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
@@ -122,6 +122,9 @@ classdef Data < handle
                     end
                 end
             end
+            if ismember(obj.rhythm2meter_state, 0)
+               error('Data.read_pattern_bars: could not assign meter state to rhythm\n'); 
+            end
                 % find the first bar in data that belongs to cluster iR and
                 % look up its meter
 %                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
@@ -140,19 +143,25 @@ classdef Data < handle
         
         function obj = read_meter(obj)
             obj.meter = zeros(length(obj.file_list), 2);
+            meter_files_available = 1;
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 meter_fln = fullfile(fpath, [fname, '.meter']);
                 if exist(meter_fln, 'file')
-                    m = load(meter_fln);
-                    if length(m) == 1
-                        obj.meter(iFile, 1) = m;
+                    annots = loadAnnotations(fpath, fname, 'm', 0);
+                    if length(annots.meter) == 1
+                        obj.meter(iFile, 1) = annots.meter;
                         obj.meter(iFile, 2) = 4;
+                        fprintf('Data.read_meter: No denominator in meter file %s found -> adding 4\n', [fname, '.meter']);
                     else
-                        obj.meter(iFile, :) = m;
+                        obj.meter(iFile, :) = annots.meter;
                     end
                 else
-                    error('Meter file %s not found\n', meter_fln);
+                    meter_files_available = 0;
+                    fname = meter_fln;
+                end
+                if ~meter_files_available
+                    fprintf('Data.read_meter: One or several meter files not available for this dataset (e.g., %s)\n', fname);
                 end
             end
         end
@@ -225,55 +234,26 @@ classdef Data < handle
             obj.feats_file_pattern_barPos_dim = dataPerFile;
         end
         
-        function belief_func = make_belief_functions(obj, model, file_ids)
-            if nargin < 3
-                file_ids = 1:length(obj.file_list);
-            end
-            belief_func = cell(length(file_ids), 2);
-            n_states = model.M * model.N * model.R;
-            counter = 1;    
-%             for i_file = 1:length(obj.file_list)
-            for i_file = file_ids(:)'
-                [fpath, fname, ~] = fileparts(obj.file_list{i_file});
+        
+        
+        function obj = read_beats(obj)
+            % reads beats and downbeats from file and stores them in the
+            % data object
+            for iFile = 1:length(obj.file_list)
+                [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 beats_fln = fullfile(fpath, [fname, '.beats']);
                 if exist(beats_fln, 'file')
-                    obj.beats{i_file} = load(fullfile(fpath, [fname, '.beats']));
+                    obj.beats{iFile} = load(beats_fln);
                 else
                     error('Beats file %s not found\n', beats_fln);
                 end
-                
-                rhythm_id = obj.bar2cluster(find(obj.bar2file==i_file, 1));
-                t_state = find((obj.meter_state2meter(1, :) == obj.rhythm2meter(rhythm_id, 1)) &...
-                    (obj.meter_state2meter(2, :) == obj.rhythm2meter(rhythm_id, 2)));
-                r_state = find(model.rhythm2meter_state == t_state);
-                M_i = model.Meff(t_state);
-                tol_win = floor(0.0875 * model.M / obj.rhythm2meter(rhythm_id, 2)); 
-                btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
-                beats_m = (M_i * (btype-1) / max(btype)) + 1;
-                % beat frames
-                n_beats_i = size(obj.beats{i_file}, 1);
-                i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
-                j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
-                s_vals = ones((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
-                for iBeat=1:n_beats_i
-                    m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
-                    m = repmat(m_support, 1, model.N * length(r_state));
-                    n = repmat(1:model.N, length(r_state) * length(m_support), 1);
-                    r = repmat(r_state(:), model.N * length(m_support), 1);
-                    states = sub2ind([model.M, model.N, model.R], m(:), n(:), r(:));
-                    idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
-                    i_rows(idx) = iBeat;
-                    j_cols(idx) = states;
+                if strcmp(obj.pattern_size, 'bar')
+                    [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
+                else
+                    obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
                 end
-%                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
-                belief_func{counter, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
-                belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
-                belief_func{counter, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
-                counter = counter + 1;
             end
         end
-        
-    
         
     end
     

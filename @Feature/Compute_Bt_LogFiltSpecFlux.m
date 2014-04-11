@@ -116,11 +116,16 @@ end
 
 if param.save_it
     [pathstr,fname,~] = fileparts(fln);
+    fname = [fname, '.', param.feat_type];
     if isfield(param,'save_path')
-        save_fln = fullfile(param.save_path,[fname,'.',oss_type]);
+        pathstr = param.save_path;
     else
-        save_fln = fullfile(pathstr, 'beat_activations', [fname,'.',param.feat_type]);
+        pathstr = fullfile(pathstr, 'beat_activations');
     end
+    if ~exist(pathstr, 'dir')
+       system(['mkdir ', pathstr]); 
+    end
+    save_fln = fullfile(pathstr, fname);
     fid=fopen(save_fln,'w');
     fprintf(fid,'FRAMERATE: %.4f\nDIMENSION: %i\n', fr, length(DetFunc));
     fprintf(fid,'%d ',DetFunc');

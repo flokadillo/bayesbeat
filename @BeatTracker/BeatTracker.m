@@ -59,11 +59,9 @@ classdef BeatTracker < handle
         
         function init_train_data(obj, Params)
             fprintf('* Set up training data ...');
-            % create train_data object
             obj.train_data = Data(Params.trainLab, 1);
-            %             obj.train_data = obj.train_data.set_annots_path(Params.train_annots_folder);
+            if ~isfield(Params, 'clusterIdFln'), return;  end
             obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
-            %             obj.train_data = obj.train_data.filter_out_meter([3, 4]);
             % make filename of features
             [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
             featStr = '';
@@ -83,11 +81,10 @@ classdef BeatTracker < handle
             obj.test_data = Data(Params.testLab, 0);
             if isfield(Params, 'test_annots_folder')
                 obj.test_data = obj.test_data.set_annots_path(Params.test_annots_folder);
-                obj.test_data = obj.test_data.filter_out_meter([3, 4]);
             end
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
-            if strcmp(Params.train_set, Params.test_set)
+            if strcmp(Params.train_set, Params.test_set) && isfield(Params, 'clusterIdFln')
                 obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
             end
         end
@@ -103,14 +100,16 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution;
             end
             
+            fln = fullfile(obj.temp_path, 'last_model.mat');
             switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
-                        save(fullfile(obj.temp_path, 'last_model.mat'), 'hmm');
+                        save(fln, 'hmm');
                     case 'PF'
                         pf = obj.model;
-                        save(fullfile(obj.temp_path, 'last_model.mat'), 'pf');
+                        save(fln, 'pf');
             end
+            fprintf('* Saved model to %s\n', fln)
 %              hmm = obj.model;
 %              save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                       
@@ -137,7 +136,7 @@ classdef BeatTracker < handle
             %             fprintf('* Load features');
             %             observations = obj.feature.load_all_features(obj.train_data.file_list);
             %             fprintf(' ... done\n');
-            if ~isempty(obj.init_model_fln)
+            if ~isempty(obj.init_model_fln) && ~isempty(strfind(obj.init_model_fln, '-'))
                 dash = strfind(obj.init_model_fln, '-');
                 iter_start = str2double(obj.init_model_fln(dash(end)+1:end-4)) + 1;
             else
@@ -146,11 +145,13 @@ classdef BeatTracker < handle
                 iter_start = 1;
             end
             
+            % read annotations and add them to train_data object:
+            obj.train_data.read_beats;
+            obj.train_data.read_meter;
+            
             for i = iter_start:iter_start+iterations-1
                 fprintf('* Viterbi training: iteration %i\n', i);
-                %                 profile on
                 [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
-                %                 profile viewer
                 hmm = obj.model;
                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
                 save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');

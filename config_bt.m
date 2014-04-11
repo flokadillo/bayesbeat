@@ -46,7 +46,7 @@ Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 1;
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
+Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -147,23 +147,23 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_3_4';
+Params.train_set = 'test';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
 %  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
-Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+% Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
+%     num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'hainsworth';
+Params.test_set = 'test';
 % Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/RWC/audio/RWC_Popular_CD5_09.flac';
+Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.testLab = '~/diss/data/beats/RWC/audio/RWC_Popular_CD3_02.flac';
 
 end
