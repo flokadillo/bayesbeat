@@ -213,15 +213,17 @@ classdef HMM
                 log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
 %                 fprintf('    log_prob=%.2f\n', log_prob(i_file));
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-                if min(n_path) < 5
-                   fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path)); 
-                   continue;
-                end
+                
 % %                 % compute beat times and bar positions of beats
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
                 BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
+                
+                if min(n_path) < 5
+                   fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path)); 
+                   continue;
+                end
                 
                 % save pattern id per bar
                 if isempty(train_data.bar_start_id) % no downbeats annotations available
@@ -826,7 +828,8 @@ classdef HMM
             if nargin < 3
                 file_ids = 1:length(train_data.file_list);
             end
-            tol_beats = 0.0875; % size of tolerance window in percentage of one beat period
+%             tol_beats = 0.0875; % size of tolerance window in percentage of one beat period
+            tol_beats = 0.0875;
             tol_bpm = 20; % tolerance in +/- bpm for tempo variable 
             
             % compute tol_win in [frames]
