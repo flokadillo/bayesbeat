@@ -51,6 +51,11 @@ classdef Feature
                     end
                     [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
                 end
+                % adjust framerate of features
+                if abs(1/fr{iDim} - obj.frame_length) > 0.001
+                   detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
+                   fr{iDim} = 1/obj.frame_length;
+                end
             end
             observations = cell2mat(detfunc');
         end

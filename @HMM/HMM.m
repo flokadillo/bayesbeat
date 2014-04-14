@@ -168,7 +168,8 @@ classdef HMM
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
-            obj.visualise_hidden_states(hidden_state_sequence, m_path, n_path, r_path, y);
+%             obj.visualise_hidden_states(y, obj.train_data);
+            obj.visualise_hidden_states(y, hidden_state_sequence);
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
@@ -199,6 +200,8 @@ classdef HMM
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
             log_prob = zeros(n_files);
+            
+            
             for i_file=1:n_files
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('  %i/%i) %s', i_file, n_files, fname);
@@ -208,10 +211,19 @@ classdef HMM
                 observations = features.load_feature(train_data.file_list{i_file});
                 obs_lik = obj.obs_model.compute_obs_lik(observations);
                 first_frame = max([belief_func{1}(1), 1]);
+%                 end_frame = min([belief_func{1}(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames
+                % plot assignment from hiden states to observations before
+                % training iteration
+%                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), train_data.barpos_per_frame{i_file}(first_frame:end_frame), ...
+%                     train_data.pattern_per_frame{i_file}(first_frame:end_frame));
+ 
                 best_path = obj.viterbi_iteration(obs_lik, belief_func);
                 if isempty(best_path)
                     continue;
                 end
+                % plot assignment from hidden states to observations after
+                % training iteration
+%                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), best_path);
                 log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
 %                 fprintf('    log_prob=%.2f\n', log_prob(i_file));
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
@@ -315,26 +327,46 @@ classdef HMM
             fprintf('  Total log_prob=%.2f\n', sum(log_prob));
         end
         
-        function [] = visualise_hidden_states(obj, map_sequence, m, n, r, y)
+        function [] = visualise_hidden_states(obj, y, map_sequence, pattern_per_frame)
+            if nargin < 4
+                pattern_per_frame =  obj.obs_model.state2obs_idx(map_sequence, 1);
+                bar_pos_per_frame =  obj.obs_model.state2obs_idx(map_sequence, 2);
+            else
+                bar_pos_per_frame = map_sequence;
+            end
+            mean_params = obj.obs_model.comp_mean_params();
+            pattern = nan(size(y));
+            for i=1:size(y, 1)
+                if ~isnan(pattern_per_frame(i))
+                   pattern(i, 1) =  mean_params(pattern_per_frame(i), ...
+                       bar_pos_per_frame(i), 1);
+                   pattern(i, 2) =  mean_params(pattern_per_frame(i), ...
+                       bar_pos_per_frame(i), 2);
+                end
+            end
+            temp = diff(bar_pos_per_frame);
+            temp(abs(temp)>0) = 1;
+            temp = [temp(1); temp];
             figure;
-            hAxes1=subplot(4, 1, 1);
+            hAxes1=subplot(3, 1, 1);
             stairs(y(:, 2))
+            hold on
+            stairs(pattern(:, 2), 'r')
+            stem(temp*max(y(:, 2)), ':k', 'marker', 'none');
             ylim([min(y(:, 2)), max(y(:, 2))])
             title('Onset feature hi')
-            hAxes2=subplot(4, 1, 2);
+            hAxes2=subplot(3, 1, 2);
             stairs(y(:, 1))
+            hold on
+            stairs(pattern(:, 1), 'r')
+            stem(temp*max(y(:, 1)), ':k', 'marker', 'none');
             ylim([min(y(:, 1)), max(y(:, 1))])
             title('Onset feature lo')
-            hAxes3=subplot(4, 1, 3);
-            temp = diff(obj.obs_model.state2obs_idx(map_sequence, 2));
-            temp(temp~=0) = 1;
-            temp = [temp(1); temp];
+            hAxes3=subplot(3, 1, 3);
             stem(temp, 'marker', 'none');
-            text(find(temp), ones(length(find(temp)), 1)*0.5, strread(num2str(obj.obs_model.state2obs_idx(map_sequence(find(temp)), 2)'),'%s'));
-%             stairs(obj.obs_model.state2obs_idx(map_sequence, 2));
+            text(find(temp==1), ones(length(find(temp==1)), 1)*0.5, cellstr(num2str(bar_pos_per_frame(logical(temp==1)))));
             title('Position 64th grid')
             linkaxes([hAxes1,hAxes2,hAxes3], 'x');
-            
         end
         
         
@@ -602,9 +634,6 @@ classdef HMM
             fprintf('    Decoding (viterbi training) .');
 
             for iFrame = 1:nFrames
-                if iFrame == 868
-                    lkj=45;
-                end
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
 %                 if sum(belief_func{1} == iFrame+start_frame-1)

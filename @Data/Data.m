@@ -21,6 +21,8 @@ classdef Data < handle
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
+        barpos_per_frame                % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
+        pattern_per_frame               % cell array [nFiles x 1] of rhythm of each frame
     end
     
   
@@ -231,6 +233,12 @@ classdef Data < handle
                 save(featuresFln, 'dataPerFile');
             end
             obj.feats_file_pattern_barPos_dim = dataPerFile;
+            obj.barpos_per_frame = TrainData.bar_pos_per_frame;
+            for i=1:length(TrainData.pattern_per_frame)
+                obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
+                obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})) = obj.bar2cluster(obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})));
+%             obj.pattern_per_frame = cellfun(@(x) obj.bar2cluster(x(~isnan(x))), TrainData.pattern_per_frame, 'UniformOutput', false);
+            end
         end
         
         

@@ -86,6 +86,7 @@ classdef ObservationModel
         lik_func_handle = set_lik_func_handle(obj)
         
         function mean_params = comp_mean_params(obj)
+            % mean_params: [R x barGrid x featDim]
 %             [R, barpos] = size(obj.learned_params);
             feat_dims = obj.learned_params{1, 1}.NDimensions;
             mean_params = zeros(obj.R, obj.barGrid, feat_dims);

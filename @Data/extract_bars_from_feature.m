@@ -107,7 +107,9 @@ for iFile=1:nFiles
         
         % collect feature values and determine the corresponding position
         % in a bar
-        [barData, nchar] = get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, annots.meter, nchar);
+        [barData, nchar, Output.bar_pos_per_frame{iFile}, Output.pattern_per_frame{iFile}] = ...
+            get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, ...
+            frame_length, pattern_size, annots.meter, nchar);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
@@ -118,9 +120,9 @@ for iFile=1:nFiles
             end
             Output.dataPerBar = [Output.dataPerBar; barData];          
             Output.bar2file((idLastBar + 1):(idLastBar + nNewBars)) = iFile;
+            Output.pattern_per_frame{iFile} = Output.pattern_per_frame{iFile} + idLastBar;
             idLastBar = idLastBar + nNewBars;
         end
-        
     end
 end
 fprintf('\n');
@@ -149,7 +151,7 @@ end
 end
 
 
-function [barData, nchar] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter, nchar)
+function [barData, nchar, bar_pos_per_frame, pattern_per_frame] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter, nchar)
 % barData   [nBars x whole_note_div] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
@@ -174,6 +176,8 @@ else
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
 barData = cell(nBars, bar_grid_eff);
+bar_pos_per_frame = nan(size(E), 'single');
+pattern_per_frame = nan(size(E), 'single');
 for iBar=1:nBars
 	% compute start and end frame of bar using fr
 	startFrame = max([floor(beats(barStartIdx(iBar), 1) * fr), 1]);  % first frame of bar
@@ -188,7 +192,9 @@ for iBar=1:nBars
 	% interpolate to find bar position of each audio frame
 	barPosLin = round(interp1(beats(barStartIdx(iBar):barStartIdx(iBar)+meter(1), 1), beatsBarPos, t,'linear','extrap'));
     barPosLin(barPosLin < 1) = 1;
-    
+    % bar position 64th grid per frame
+    bar_pos_per_frame(startFrame:nextFrame-1) = barPosLin(1:end-1);
+    pattern_per_frame(startFrame:nextFrame-1) = ones(nextFrame-startFrame, 1) * iBar;
 	% group all feature values that belong to the same barPos
 	currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+1, 1], @(x) {x});
     

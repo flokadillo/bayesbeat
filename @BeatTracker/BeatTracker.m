@@ -97,7 +97,7 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
                 
                 obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
-                
+                               
                 obj.model = obj.model.make_initial_distribution;
                 
                 fln = fullfile(obj.temp_path, 'last_model.mat');
