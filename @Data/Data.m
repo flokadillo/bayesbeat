@@ -202,7 +202,6 @@ classdef Data < handle
                 % so far, only the first bar of each file is used and assigned the style to the whole file
                 styleId = obj.bar2cluster(obj.bar2file == iFile);
                 
-                % convert to n
                 if ~isempty(styleId)
                     tempo_per_cluster(iFile, styleId(1)) = tempo;
                 end

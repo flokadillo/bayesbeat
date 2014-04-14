@@ -168,6 +168,8 @@ classdef HMM
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             
+            obj.visualise_hidden_states(hidden_state_sequence, m_path, n_path, r_path, y);
+            
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
             end
@@ -311,6 +313,28 @@ classdef HMM
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
             fprintf('  Total log_prob=%.2f\n', sum(log_prob));
+        end
+        
+        function [] = visualise_hidden_states(obj, map_sequence, m, n, r, y)
+            figure;
+            hAxes1=subplot(4, 1, 1);
+            stairs(y(:, 2))
+            ylim([min(y(:, 2)), max(y(:, 2))])
+            title('Onset feature hi')
+            hAxes2=subplot(4, 1, 2);
+            stairs(y(:, 1))
+            ylim([min(y(:, 1)), max(y(:, 1))])
+            title('Onset feature lo')
+            hAxes3=subplot(4, 1, 3);
+            temp = diff(obj.obs_model.state2obs_idx(map_sequence, 2));
+            temp(temp~=0) = 1;
+            temp = [temp(1); temp];
+            stem(temp, 'marker', 'none');
+            text(find(temp), ones(length(find(temp)), 1)*0.5, strread(num2str(obj.obs_model.state2obs_idx(map_sequence(find(temp)), 2)'),'%s'));
+%             stairs(obj.obs_model.state2obs_idx(map_sequence, 2));
+            title('Position 64th grid')
+            linkaxes([hAxes1,hAxes2,hAxes3], 'x');
+            
         end
         
         

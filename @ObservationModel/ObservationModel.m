@@ -77,9 +77,9 @@ classdef ObservationModel
                 barPos = obj.barGrid_eff(obj.rhythm2meter_state(iR));
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...
                     obj.learned_params(iR, 1:barPos));
-		temp = obsLik(iR, 1:barPos, :);
-		temp(temp < eps) = eps;
-		obsLik(iR, 1:barPos, :) = temp;
+% 		temp = obsLik(iR, 1:barPos, :);
+% 		temp(temp < eps) = eps;
+% 		obsLik(iR, 1:barPos, :) = temp;
             end
         end
         
