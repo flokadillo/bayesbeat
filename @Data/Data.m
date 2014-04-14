@@ -230,15 +230,17 @@ classdef Data < handle
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
-                save(featuresFln, 'dataPerFile');
+                obj.barpos_per_frame = TrainData.bar_pos_per_frame;
+                for i=1:length(TrainData.pattern_per_frame)
+                    obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
+                    obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})) = obj.bar2cluster(obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})));
+                end
+                barpos_per_frame = obj.barpos_per_frame;
+                pattern_per_frame = obj.pattern_per_frame;
+                save(featuresFln, 'dataPerFile', 'barpos_per_frame', 'pattern_per_frame');
             end
             obj.feats_file_pattern_barPos_dim = dataPerFile;
-            obj.barpos_per_frame = TrainData.bar_pos_per_frame;
-            for i=1:length(TrainData.pattern_per_frame)
-                obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
-                obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})) = obj.bar2cluster(obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})));
-%             obj.pattern_per_frame = cellfun(@(x) obj.bar2cluster(x(~isnan(x))), TrainData.pattern_per_frame, 'UniformOutput', false);
-            end
+            
         end
         
         

@@ -167,10 +167,7 @@ classdef HMM
             
             % factorial HMM: mega states -> substates
             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
-            
-%             obj.visualise_hidden_states(y, obj.train_data);
-            obj.visualise_hidden_states(y, hidden_state_sequence);
-            
+                       
             if strcmp(obj.inferenceMethod, 'HMM_forward')
                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
             end

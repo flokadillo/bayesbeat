@@ -39,12 +39,12 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 1;
+Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 
@@ -79,7 +79,7 @@ Params.init_n_gauss = 0;
 % --------------
 
 % Probability of tempo acceleration (and deceleration)
-Params.pn = 0.1;  
+Params.pn = 0.01;  
 % Settings for Viterbi learning: tempo_tying
 %   0) p_n tied across position states (different p_n for each n)
 %   1) Global p_n for all changes (only one p_n)
@@ -147,7 +147,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_3_4';
+Params.train_set = 'boeck_ballroom_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -161,7 +161,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % ----------
 
 % Test dataset
-Params.test_set = 'test';
+Params.test_set = 'cuidado_hainsworth_klapuri_simac';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/RWC/audio/RWC_Popular_CD3_02.flac';
