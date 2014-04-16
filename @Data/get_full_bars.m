@@ -3,7 +3,7 @@ function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
 %  returns complete bars within a sequence of beat numbers
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% beats                     : [nBeats x 2] 
+% beats                     : [nBeats x 3] 
 %                               first col: beat times, second col metrical position 
 % tolInt                    : pauses are detected if the interval between
 %                               two beats is bigger than tolInt times the last beat period
@@ -23,7 +23,7 @@ if nargin==1
     verbose = 0;
 end
 
-btype = round(rem(beats(:,2),1)*10);
+btype = beats(:, 3);
 nBeats = length(btype);
 meter = max(btype);
 

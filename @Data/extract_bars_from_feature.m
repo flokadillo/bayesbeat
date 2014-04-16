@@ -49,7 +49,7 @@ if strcmp(pattern_size, 'bar')
     bar_grid_max = 0;
     for iFile=1:nFiles
         [dataPath, fname, ~] = fileparts(listing(iFile).name);
-        [ annots, ~ ] = loadAnnotations( dataPath, fname, 'm', dooutput );
+        [ annots, ~ ] = loadAnnotations( strrep(dataPath, 'audio', 'annotations'), fname, 'm', dooutput );
         if length(annots.meter) == 1
            bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
            Output.file2meter(iFile, 1) = annots.meter;
@@ -67,23 +67,24 @@ end
 nchar = 0;
 %main loop over all files
 for iFile=1:nFiles
-    [dataPath, fname, ~] = fileparts(listing(iFile).name);
+    [dataPath, fname, ext] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
-    [ annots, error ] = loadAnnotations( dataPath, fname, 'wmb', dooutput );
+    [ annots, error ] = loadAnnotations(strrep(dataPath, 'audio', 'annotations'), fname, 'mb', dooutput );
     if error,
-        if dooutput, fprintf('Error loading annotations, skipping %s\n',fname); end
+        if dooutput, fprintf('Error loading annotations, skipping %s\n', fname); end
         continue;
 %     elseif ~ismember(annots.meter, [3; 4])
 %         if dooutput, fprintf('Skipping %s because of meter (%i)\n',fname, annots.meter); end
 %         continue;
     end
     Output.fileNames{iFile} = listing(iFile).name;
-    featureFln = fullfile(dataPath, 'beat_activations', [fname, '.', feature_type]);
+    wav_fln = listing(iFile).name;
+%     featureFln = fullfile(dataPath, 'beat_activations', [fname, '.', feature_type]);
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = annots.beats(round(rem(annots.beats(:,2),1)*10) == 1,1);
+    b1 = annots.beats(annots.beats(:, 3) == 1, 1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
@@ -108,7 +109,7 @@ for iFile=1:nFiles
         % collect feature values and determine the corresponding position
         % in a bar
         [barData, nchar, Output.bar_pos_per_frame{iFile}, Output.pattern_per_frame{iFile}] = ...
-            get_feature_at_bar_grid(featureFln, annots.beats, whole_note_div, bar_grid_eff, ...
+            get_feature_at_bar_grid(wav_fln, feature_type, annots.beats, whole_note_div, bar_grid_eff, ...
             frame_length, pattern_size, annots.meter, nchar);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
@@ -130,33 +131,23 @@ end % FUNCTION end
 
 
 % load feature values from file and up/downsample to frame_length
-function [DetFunc, fr] = load_features(featureFln, frame_length)
-
-if exist(featureFln,'file')
-    [DetFunc, fr] = readActivations(featureFln);
-else
-    error('Analyze_Bars: don''t know how to compute %s\n', featureFln);
-    return
-end
-
+function [DetFunc, fr] = load_features(wav_fln, feature_type, frame_length)
+% points = strfind(wav_fln, '.');
+Feat = Feature({feature_type}, frame_length);
+DetFunc = Feat.load_feature(wav_fln);
 %make column vector
 DetFunc = DetFunc(:);
-
-if ~isempty(frame_length) && (abs(1/fr - frame_length) > 0.001)
-    % adjusting framerate:
-    DetFunc = Feature.change_frame_rate( DetFunc, fr, 1/frame_length );
-    fr = 1/frame_length;
-end
-
+fr = 1/Feat.frame_length;
 end
 
 
-function [barData, nchar, bar_pos_per_frame, pattern_per_frame] = get_feature_at_bar_grid(featureFln, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter, nchar)
+function [barData, nchar, bar_pos_per_frame, pattern_per_frame] = get_feature_at_bar_grid(wav_fln, ...
+    feature_type, beats, whole_note_div, bar_grid_eff, frame_length, pattern_size, meter, nchar)
 % barData   [nBars x whole_note_div] cell array features values per bar and bargrid
 
 % load feature values from file and up/downsample to frame_length
-[E, fr] = load_features(featureFln, frame_length);
-
+[E, fr] = load_features(wav_fln, feature_type, frame_length);
+nchar = 0;
 % if feature vector to short for annotations, copy last value
 if length(E)/fr < beats(end, 1), E = [E; E(end)]; end
 
@@ -219,70 +210,7 @@ end
 
 end
 
-function barData = add2BarMatrix(E, barpos)
-% barData: for each bar find mean of odf for each bar postition
 
-num_complete_bars = 0;
-nPos = max(barpos);
-
-% only use complete bars:
-start_id = find(barpos(1:nPos) == 1, 1);
-if isempty(start_id)
-    start_id = find(diff(barpos) < 0, 1, 'first') + 1;
-end
-end_id = length(barpos)-1;
-firstDownbeatHasPassed = 1;
-
-if end_id > start_id
-    groupid = start_id(1);
-    for i=start_id(1):end_id
-        % two features at the same bar position form a group
-        if barpos(i) == barpos(i+1)
-            groupid = [groupid i+1];
-        else
-            
-            % save old position
-            % barData(num_complete_bars+1, barpos(i)) = mean(E( groupid));
-            barData{num_complete_bars+1, barpos(i)} = E( groupid);
-            groupid = i+1;
-            
-            
-            if barpos(i+1) > barpos(i)
-                steps = barpos(i):barpos(i+1);
-            else
-                steps = [barpos(i):nPos, 1:barpos(i+1)];
-            end
-            
-            % jumps in barposition -> interpolate
-            if length(steps) > 2
-                for iStep=1:length(steps)-2
-                    indPos = find(steps==nPos);
-                    if isempty(indPos)
-                        barData{num_complete_bars+1, steps(iStep+1)} = mean(E(groupid-1:groupid));
-                    else
-                        if iStep+1 <= indPos
-                            barData{num_complete_bars+1, steps(iStep+1)} = mean(E(groupid-1:groupid));
-                        else
-                            barData{num_complete_bars+2, steps(iStep+1)} = mean(E(groupid-1:groupid));
-                        end
-                        
-                    end
-                end
-            end
-            
-            if (barpos(i+1) < barpos(i)) && firstDownbeatHasPassed % new bar
-                num_complete_bars = num_complete_bars + 1;
-            end
-        end
-    end
-    if isempty(barData{1, 1})
-        barData{1} = barData{1, 2};
-    end
-else % no complete bar in the signal
-    barData = [];
-end
-barData = barData(1:num_complete_bars, :);
-end
 
 function [listing, nFiles] = parseSource(source, feature_type)
 

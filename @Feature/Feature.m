@@ -40,14 +40,27 @@ classdef Feature
                     param.save_it = 1; % save feature to folder ./beat_activations
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
-                    if strfind(obj.feat_type{iDim}, 'lo230')
+                    if strfind(obj.feat_type{iDim}, 'lo230_superflux')
                         param.min_f = 0;
                         param.max_f = 230;
-                    elseif strfind(obj.feat_type{iDim}, 'hi250')
+                    elseif strfind(obj.feat_type{iDim}, 'hi250_superflux')
                         param.min_f = 250;
+                        param.max_f = 44100;
+                    elseif strfind(obj.feat_type{iDim}, 'superflux')
+                        param.min_f = 0;
                         param.max_f = 44100;
                     else
                         error('Feature %s invalid' ,obj.feat_type{iDim});
+                    end
+                    if strfind(obj.feat_type{iDim}, 'mvavg')
+                        param.doMvavg = 1;
+                    else
+                        param.doMvavg = 0;
+                    end
+                    if strfind(obj.feat_type{iDim}, 'normZ')
+                        param.norm_each_file = 2; % 2 for z-score computation
+                    else
+                        param.norm_each_file = 0;
                     end
                     [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
                 end

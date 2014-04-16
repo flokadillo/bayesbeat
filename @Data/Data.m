@@ -7,7 +7,7 @@ classdef Data < handle
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
         meter                           % meter of each file [nFiles x 2]
-        beats                           % beats of each file {nFiles x 1}[n_beats 2]
+        beats                           % beats of each file {nFiles x 1}[n_beats 3]
         n_bars                          % number of bars of each file [nFiles x 1]
         bar_start_id                    % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats                  % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
@@ -195,7 +195,7 @@ classdef Data < handle
             tempo_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                tempo_fln = fullfile(fpath, [fname, '.bpm']);
+                tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations'), [fname, '.bpm']);
                 if exist(tempo_fln, 'file')
                     tempo = load(tempo_fln, '-ascii');
                 else
@@ -252,7 +252,8 @@ classdef Data < handle
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 beats_fln = fullfile(fpath, [fname, '.beats']);
                 if exist(beats_fln, 'file')
-                    obj.beats{iFile} = load(beats_fln);
+                     [ data, ~ ] = loadAnnotations(strrep(fpath, 'audio', 'annotations'), fname, 'b', 0 );
+                    obj.beats{iFile} = data.beats;
                 else
                     error('Beats file %s not found\n', beats_fln);
                 end

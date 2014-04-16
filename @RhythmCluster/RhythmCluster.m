@@ -136,10 +136,11 @@ classdef RhythmCluster < handle
             obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
         end
         
-        function do_clustering(obj, n_clusters, type)
+        function do_clustering(obj, n_clusters, type, bad_meters)
             % type = 'bars' : cluster data_per_bar
             % type = 'songs': cluster data_per_song
-            
+            % bad_meters    : [1 x nMeters] numerator of meters to ignore
+            %                   (e.g. [3, 8, 9])
             %             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
             %                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
             fprintf('WARNING: so far only 2 different meters supported!\n');
@@ -151,11 +152,15 @@ classdef RhythmCluster < handle
                 meter_per_item = obj.file_2_meter;
             end
             meters = unique(meter_per_item, 'rows');
-            n_items_per_meter = hist(meter_per_item(:, 1), sort(meters(:, 1), 'ascend'));
-            n_items_per_cluster = ceil(n_items_per_meter * n_clusters / sum(n_items_per_meter));
-            if sum(n_items_per_cluster) > n_clusters
-               [~, idx] = max(n_items_per_cluster);
-               n_items_per_cluster(idx) = n_items_per_cluster(idx) - sum(n_items_per_cluster) + n_clusters;
+            if size(meters, 1) == 1 % only one meter
+                n_items_per_meter = size(meter_per_item, 1);
+            else % count items per meter
+                n_items_per_meter = hist(meter_per_item(:, 1), sort(meters(:, 1), 'ascend'));
+            end
+            n_clusters_per_meter = ceil(n_items_per_meter * n_clusters / sum(n_items_per_meter));
+            if sum(n_clusters_per_meter) > n_clusters % check because of ceil
+               [~, idx] = max(n_clusters_per_meter); % remove one cluster from meter that has most clusters
+               n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - sum(n_clusters_per_meter) + n_clusters;
             end
             
             % normalise data
@@ -172,15 +177,18 @@ classdef RhythmCluster < handle
             cidx = zeros(size(S, 1), 1);
             p = 1; 
             S(isnan(S)) = -99;
+            obj.rhythm2meter = zeros(n_clusters, 2);
             for iMeter=1:size(meters, 1)
                 idx_i = (meter_per_item(:, 1) == meters(iMeter, 1)) & (meter_per_item(:, 2) == meters(iMeter, 2));
-                if n_items_per_cluster(iMeter) > 1
-                    [cidx(idx_i), ctrs(p:p+n_items_per_cluster(iMeter)-1, :)] = kmeans(S(idx_i, :), n_items_per_cluster(iMeter), 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
+                if n_clusters_per_meter(iMeter) > 1 % more than one cluster per meter -> kmeans
+                    [cidx(idx_i), ctrs(p:p+n_clusters_per_meter(iMeter)-1, :)] = kmeans(S(idx_i, :), n_clusters_per_meter(iMeter), 'Distance', 'sqEuclidean', 'Replicates', 5, 'Options', opts);
                     cidx(idx_i) = cidx(idx_i) + p - 1;
-                    p=p+n_items_per_cluster(iMeter);
-                else
+                    obj.rhythm2meter(p:p+n_clusters_per_meter(iMeter)-1, :) = repmat(meters(iMeter, :), n_clusters_per_meter(iMeter), 1);
+                    p=p+n_clusters_per_meter(iMeter);
+                else % only one item per meter -> no kmeans necessary
                     ctrs(p, :) = mean(S(idx_i, :));
                     cidx(idx_i) = p;
+                    obj.rhythm2meter(p, :) = meters(iMeter, :);
                     p=p+1;
                 end
             end
@@ -233,13 +241,17 @@ classdef RhythmCluster < handle
                     if ismember(iFile, exclude_songs)
                         continue;
                     end
-                    beats = load(regexprep(obj.train_file_list{iFile}, '.wav.*', '.beats'));
-                    countTimes = round(rem(beats(:, 2), 1) * 10);
+                    [fpath, fname, ~] = fileparts(obj.train_file_list{iFile});
+                    [ data, ~ ] = loadAnnotations(strrep(fpath, 'audio', 'annotations'), fname, 'b', 0 );
+                    beats = data.beats;
+                    countTimes = beats(:, 3);
                     % filter out meters that are not 3 or 4
                     meter(fileCounter+1) = max(countTimes);
-                    if ~ismember(meter(fileCounter+1), [2, 3, 4])
-                        fprintf('    Warning: Skipping %s because of meter (%i)\n', obj.train_file_list{iFile}, meter(fileCounter+1));
-                        continue
+                    if exist('bad_meters', 'var')
+                        if ismember(meter(fileCounter+1), bad_meters)
+                            fprintf('    Warning: Skipping %s because of meter (%i)\n', obj.train_file_list{iFile}, meter(fileCounter+1));
+                            continue
+                        end
                     end
                     fileCounter = fileCounter + 1;
                     % determine number of bars
@@ -252,19 +264,21 @@ classdef RhythmCluster < handle
                 end
                 cidx = bar2rhythm;
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                        num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'-kmeans-songs.mat']);
+                        num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'R-kmeans-songs.mat']);
             end
             
             obj.bar_2_cluster = cidx;
             
             fprintf('writing %i bar-cluster assignments to %s\n', length(obj.bar_2_cluster), obj.clusters_fln);
+            rhythm2meter = obj.rhythm2meter;
             bar2rhythm = obj.bar_2_cluster;
             bar2file = obj.bar2file;
             file2nBars = nBars;
             for i = 1:n_clusters
                 rhythm_names{i} = ['kmeans', num2str(i)];
             end
-            save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', 'file2nBars', 'rhythm_names');
+            save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
+                'file2nBars', 'rhythm_names', 'rhythm2meter');
 %             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
             obj.n_clusters = n_clusters;
         end
@@ -285,45 +299,47 @@ classdef RhythmCluster < handle
             fprintf('Saved transition matrix to %s\n', obj.cluster_transitions_fln);
         end
         
-        function [] = copy_song_patterns_to_bars(obj)
-            % if whole songs are clustered, the cluster id is copied once
-            % for each bar to have the same format that is used when bars
-            % are clustered separately
-            songClusterIds= load(obj.clusters_fln, '-ascii');
-            bar2rhythm = [];
-            % read list of training files
-            fid = fopen(obj.train_lab_fln, 'r');
-            temp = textscan(fid, '%s');
-            fileNames = temp{1};
-            fclose(fid);
-            % read index of  valid songs
-            ok_songs = load(obj.ok_songs_fln, '-ascii');
-            
-            meter = zeros(length(fileNames), 1);
-            fileCounter = 0;
-            nBars = zeros(length(fileNames), 1);
-            for iFile = 1:length(fileNames)
-                if ~ismember(iFile, ok_songs)
-                    continue;
-                end
-                beats = load(regexprep(fileNames{iFile}, '.wav.*', '.beats'));
-                countTimes = round(rem(beats(:, 2), 1) * 10);
-                % filter out meters that are not 3 or 4
-                meter(fileCounter+1) = max(countTimes);
-                if ~ismember(meter(fileCounter+1), [3, 4])
-                    continue
-                end
-                fileCounter = fileCounter + 1;
-                % determine number of bars
-                [nBars(iFile), ~] = Data.get_full_bars(beats);
-                if nBars(iFile) > 0
-                    patternId = songClusterIds(fileCounter);
-                    bar2rhythm = [bar2rhythm; ones(nBars(iFile), 1) * patternId];
-                end
-            end
-            dlmwrite(fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', num2str(max(songClusterIds)+1),'-songs.txt']), bar2rhythm);
-        end
+%         function [] = copy_song_patterns_to_bars(obj)
+%             % if whole songs are clustered, the cluster id is copied once
+%             % for each bar to have the same format that is used when bars
+%             % are clustered separately
+%             songClusterIds= load(obj.clusters_fln, '-ascii');
+%             bar2rhythm = [];
+%             % read list of training files
+%             fid = fopen(obj.train_lab_fln, 'r');
+%             temp = textscan(fid, '%s');
+%             fileNames = temp{1};
+%             fclose(fid);
+%             % read index of  valid songs
+%             ok_songs = load(obj.ok_songs_fln, '-ascii');
+%             
+%             meter = zeros(length(fileNames), 1);
+%             fileCounter = 0;
+%             nBars = zeros(length(fileNames), 1);
+%             for iFile = 1:length(fileNames)
+%                 if ~ismember(iFile, ok_songs)
+%                     continue;
+%                 end
+%                 [fpath, fname, ~] = fileparts(obj.train_file_list{iFile});
+%                 [ data, ~ ] = loadAnnotations(strrep(fpath, 'audio', 'annotations'), fname, 'b', 0 );
+%                 beats = load(regexprep(fileNames{iFile}, '.wav.*', '.beats'));
+%                 countTimes = round(rem(beats(:, 2), 1) * 10);
+%                 % filter out meters that are not 3 or 4
+%                 meter(fileCounter+1) = max(countTimes);
+%                 if ~ismember(meter(fileCounter+1), [3, 4])
+%                     continue
+%                 end
+%                 fileCounter = fileCounter + 1;
+%                 % determine number of bars
+%                 [nBars(iFile), ~] = Data.get_full_bars(beats);
+%                 if nBars(iFile) > 0
+%                     patternId = songClusterIds(fileCounter);
+%                     bar2rhythm = [bar2rhythm; ones(nBars(iFile), 1) * patternId];
+%                 end
+%             end
+%             dlmwrite(fullfile(obj.data_save_path, ['ca-', obj.dataset, '-', ...
+%                 num2str(obj.feature.feat_dim), 'd-', num2str(max(songClusterIds)+1),'-songs.txt']), bar2rhythm);
+%         end
         
         function [] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
             % [bar2rhythm] = make_cluster_assignment_file(trainLab)
@@ -378,17 +394,20 @@ classdef RhythmCluster < handle
             nBars = zeros(length(ok_songs), 1);
             obj.file_2_cluster = zeros(length(ok_songs), 1);
             for iFile = 1:length(ok_songs)
-                beats = load(regexprep(fileNames{ok_songs(iFile)}, '.wav.*', '.beats'));
-                countTimes = round(rem(beats(:, 2), 1) * 10);
+                [annotsPath, fname, ~] = fileparts(fileNames{ok_songs(iFile)});
+                [ data, ~ ] = loadAnnotations( strrep(annotsPath, 'audio', 'annotations'), ...
+                    fname, 'b', 0 );
+                beats = data.beats;
+                countTimes = beats(:, 3);
                 meter(fileCounter+1) = max(countTimes);
                 % get pattern id of file
-                [annotsPath, fname, ~] = fileparts(fileNames{iFile});
+                
                 %                 fprintf('- %s\n', fname);
                 switch lower(clusterType)
                     case 'meter'
                         patternId = meter(fileCounter+1);
                     case 'dancestyle'
-                        [ data, ~ ] = loadAnnotations( annotsPath, fname, 's', 1 );
+                        [ data, ~ ] = loadAnnotations( strrep(annotsPath, 'audio', 'annotations'), fname, 's', 1 );
                         patternId = find(strcmp(rhythm_names, data.style));
                         if isempty(patternId)
                            fprintf('Please add %s to the rhythm_names\n', data.style);
@@ -397,7 +416,7 @@ classdef RhythmCluster < handle
                     case 'auto'
                         patternId = songClusterIds(iFile);
                     case 'rhythm'
-                        fln = strrep(fileNames{iFile}, '.wav', '.rhythm');
+                        fln = strrep(fileNames{ok_songs(iFile)}, '.wav', '.rhythm');
                         if exist(fln, 'file')
                             fid = fopen(fln, 'r');
                             style = textscan(fid, '%s');
@@ -431,7 +450,7 @@ classdef RhythmCluster < handle
                 % find a bar/file that represents rhythm iR
                 file_id = obj.bar2file(find(bar2rhythm==iR, 1));
                 [annotsPath, fname, ~] = fileparts(fileNames{file_id});
-                [ annots, ~ ] = loadAnnotations( annotsPath, fname, 'm', 0 );
+                [ annots, ~ ] = loadAnnotations( strrep(annotsPath, 'audio', 'annotations'), fname, 'm', 0 );
                 % TODO: what to do if meter of training data does not match
                 % meter of system ?
                 if strcmp(obj.pattern_size, 'bar')
