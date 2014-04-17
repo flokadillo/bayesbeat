@@ -158,6 +158,8 @@ classdef Feature
         
         [ out ] = mvavg( signal, winsize, type );
         
+        [] = convert_mat_to_feat_file(fpath, output_ext, input_fr);
+        
 %         [DetFunc, fr] = compute_LogFiltSpecFlux2(fln, save_it, param);
     end
     

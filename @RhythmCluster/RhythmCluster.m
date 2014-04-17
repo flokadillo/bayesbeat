@@ -50,7 +50,7 @@ classdef RhythmCluster < handle
             obj.feature = Feature(feat_type, frame_length);
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
             obj.dataset = dataset;
-            obj.train_lab_fln = fullfile('~/diss/data/beats/', [dataset, '.lab']);
+            obj.train_lab_fln = fullfile('~/diss/data/beats/lab_files', [dataset, '.lab']);
             obj.data_save_path = data_save_path;
             if exist('pattern_size', 'var')
                 obj.pattern_size = pattern_size;
@@ -96,7 +96,6 @@ classdef RhythmCluster < handle
         end
         
         function make_feats_per_bar(obj, whole_note_div)
-            obj.train_lab_fln = ['~/diss/data/beats/', obj.dataset, '.lab'];
             if exist(obj.train_lab_fln, 'file')
                 fid = fopen(obj.train_lab_fln, 'r');
                 obj.train_file_list = textscan(fid, '%s', 'delimiter', '\n');
@@ -143,6 +142,7 @@ classdef RhythmCluster < handle
             %                   (e.g. [3, 8, 9])
             %             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
             %                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
+          
             fprintf('WARNING: so far only 2 different meters supported!\n');
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
@@ -214,10 +214,10 @@ classdef RhythmCluster < handle
                     data = data + fdim;
                     plot(data, 'Color', col(fdim, :));
                 end
-                title(sprintf('cluster %i (%i items)', c, items_per_cluster(c)));
+                title(sprintf('cluster %i (%i %s)', c, items_per_cluster(c), type));
                 xlim([1 length(data)])
             end
-            outfile = ['/tmp/out-',type, '-', num2str(n_clusters), '.png'];
+            outfile = ['/tmp/patterns-', obj.dataset, '-kmeans-', num2str(n_clusters), '.png'];
             fprintf('writing patterns to %s\n', outfile);
             % save to png
             print(h, outfile, '-dpng');
@@ -279,7 +279,6 @@ classdef RhythmCluster < handle
             end
             save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
                 'file2nBars', 'rhythm_names', 'rhythm2meter');
-%             dlmwrite(obj.clusters_fln, cidx, 'delimiter', '\n');
             obj.n_clusters = n_clusters;
         end
         

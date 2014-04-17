@@ -40,7 +40,11 @@ if param.min_f == 0 && param.max_f > 40000 % use Sebastian's superflux
     end
     setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); % set env path (PYTHONPATH) for this session
     [status, DetFunc] = system(['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 ', fln]);
-    DetFunc = str2double(DetFunc);
+    DetFunc = str2num(DetFunc);
+    if status < 0 || isempty(DetFunc)
+        error('Could not extract features from %s\n', fln);
+    end
+    
 else
     % Load audio file
     % ----------------------------------------------------------------------
