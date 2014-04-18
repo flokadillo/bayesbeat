@@ -69,8 +69,26 @@ classdef Feature
                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
                    fr{iDim} = 1/obj.frame_length;
                 end
+		detfunc{iDim} = detfunc{iDim}(:);
             end
-            observations = cell2mat(detfunc');
+	    len = zeros(obj.feat_dim, 1);
+	    for iDim = 1:obj.feat_dim
+		len(iDim) = length(detfunc{iDim});
+	    end	
+	    if sum(diff(len)) ~= 0
+		[len_min, ~] = min(len);
+		for iDim = 1:obj.feat_dim
+			detfunc{iDim} = detfunc{iDim}(1:len_min);
+		end
+	    end
+	    try
+            	observations = cell2mat(detfunc');
+	    catch exception
+		for iDim=1:obj.feat_dim
+			[m, n] = size(detfunc{iDim})
+		end
+		error('Error detfunc has strange size!\n');
+	   end
         end
         
         function observations = load_all_features(obj, file_list)

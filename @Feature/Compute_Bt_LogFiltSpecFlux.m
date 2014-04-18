@@ -34,14 +34,20 @@ end
 if param.min_f == 0 && param.max_f > 40000 % use Sebastian's superflux
     fr = 50;
     [~, ~, ext] = fileparts(fln);
+    [~, home] = system('echo $HOME');
+    fln = strrep(fln, '~', home(1:end-1)); % remove \n at the end of home
     if strcmp(ext, '.flac') % convert flac to wav
-        system(['flac -d ', fln]);
         fln = strrep(fln, ext, '.wav');
+        if ~exist(fln, 'file')
+            fprintf('%s not exists, creating...\n', fln);
+            system(['flac -df ', fln]);
+        end
     end
     setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); % set env path (PYTHONPATH) for this session
-    [status, DetFunc] = system(['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 ', fln]);
+    fprintf('%s\n', ['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 "', fln, '"']);
+    [status, DetFunc] = system(['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 "', fln, '"']);
     DetFunc = str2num(DetFunc);
-    if status < 0 || isempty(DetFunc)
+    if status ~= 0 || isempty(DetFunc)
         error('Could not extract features from %s\n', fln);
     end
     
@@ -124,6 +130,7 @@ if abs(1/fr - param.frame_length) > 0.001
    DetFunc = Feature.change_frame_rate(DetFunc, round(1000*fr)/1000, 1/param.frame_length );
    fr = 1/param.frame_length;
 end
+DetFunc = DetFunc(:);
 
 if param.save_it
     [pathstr,fname,~] = fileparts(fln);

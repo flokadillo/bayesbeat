@@ -135,7 +135,8 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 Params.feat_type{2} = 'rnn';
 Params.feat_type{1} = 'superflux';
-% Params.feat_type{1} = 'superflux.mvavg.normZ';
+% Params.feat_type{1} = 'lo230_superflux.mvavg';
+% Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -164,6 +165,6 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 Params.test_set = 'beatles';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-% Params.testLab = '~/diss/data/beats/RWC/audio/RWC_Popular_CD3_02.flac';
+% Params.testLab = '/home/florian/diss/data/beats/beatles/audio/01_-_Please_Please_Me/04_-_Chains.flac';
 
 end
