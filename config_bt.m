@@ -55,13 +55,13 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1280;
+Params.M = 1600;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 1;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [3, 4; 4, 4];
+Params.meters = [8; 8];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -133,10 +133,10 @@ Params.n_initial_clusters = 32;
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-Params.feat_type{2} = 'rnn';
-Params.feat_type{1} = 'superflux';
-% Params.feat_type{1} = 'lo230_superflux.mvavg';
-% Params.feat_type{2} = 'hi250_superflux.mvavg';
+%Params.feat_type{2} = 'rnn';
+%Params.feat_type{1} = 'superflux';
+ Params.feat_type{1} = 'lo230_superflux.mvavg';
+ Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -148,7 +148,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_ballroom_3_4';
+Params.train_set = 'adi_118_train_2';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -156,13 +156,13 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+    num2str(Params.R), 'R-kmeans-songs.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'beatles';
+Params.test_set = 'adi_118_test_2';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '/home/florian/diss/data/beats/beatles/audio/01_-_Please_Please_Me/04_-_Chains.flac';

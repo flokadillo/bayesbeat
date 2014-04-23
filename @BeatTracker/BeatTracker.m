@@ -101,15 +101,19 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution;
                 
                 fln = fullfile(obj.temp_path, 'last_model.mat');
+                fln2 = fullfile(obj.sim_dir, 'model.mat');
                 switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
                         save(fln, 'hmm');
+                        save(fln2, 'hmm');
                     case 'PF'
                         pf = obj.model;
                         save(fln, 'pf');
+                        save(fln2, 'pf');
                 end
-                fprintf('* Saved model to %s\n', fln)
+                fprintf('* Saved model to %s\n', fln);
+                fprintf('* Saved model to %s\n', fln2);
             end
 
 %              hmm = obj.model;
