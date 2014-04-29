@@ -120,11 +120,12 @@ classdef ObservationModel
                 xlim([1 length(data)+1])
             end 
         end
-    end
-    
-    methods (Access=protected)
         
-       function obj = make_state2obs_idx(obj)
+        function obj = set_learned_params(obj, learned_params)
+           obj.learned_params = learned_params; 
+        end
+        
+        function obj = make_state2obs_idx(obj)
             %{
             Computes state2obs_idx, which specifies which states are tied (share the same parameters) 
             %}
@@ -144,4 +145,5 @@ classdef ObservationModel
             end
         end 
     end
+    
 end

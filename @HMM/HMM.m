@@ -41,7 +41,7 @@ classdef HMM
             else
                 obj.pr = Params.pr;
             end
-            obj.barGrid = max(Params.barGrid_eff);
+            obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.init_n_gauss = Params.init_n_gauss;
@@ -404,10 +404,10 @@ classdef HMM
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
+                %     fprintf('    Size of Psi = %.1f MB\n', nStates * nFrames * 4 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
             else
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
+                %     fprintf('    Size of Psi = %.1f MB\n', nStates * nFrames * 2 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
             perc = round(0.1*nFrames);

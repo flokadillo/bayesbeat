@@ -47,6 +47,7 @@ Params.inferenceMethod = 'HMM_viterbi';
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
+Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -66,7 +67,7 @@ Params.meters = [8; 8];
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
 % Number of grid points of one pattern per meter
-Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
+% Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
