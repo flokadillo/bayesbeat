@@ -265,16 +265,17 @@ classdef RhythmCluster < handle
                         num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters),'R-kmeans-songs.mat']);
             end
             
-            fprintf('writing %i bar-cluster assignments to %s\n', length(obj.bar_2_cluster), obj.clusters_fln);
+%             fprintf('writing %i bar-cluster assignments to %s\n', length(obj.bar_2_cluster), obj.clusters_fln);
             rhythm2meter = obj.rhythm2meter;
             obj.bar_2_cluster = cidx;
             bar2rhythm = cidx;
             bar2file = obj.bar2file;
             for i = 1:n_clusters
-                rhythm_names{i} = ['kmeans', num2str(i)];
+                rhythm_names{i} = [obj.dataset, '-kmeans_', num2str(i)];
             end
             save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
                 'file2nBars', 'rhythm_names', 'rhythm2meter');
+            fprintf('Saved bar2rhythm, bar2file, file2nBars, rhythm_names, rhythm2meter to %s\n', obj.clusters_fln);
             obj.n_clusters = n_clusters;
         end
         

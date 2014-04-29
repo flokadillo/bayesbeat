@@ -148,7 +148,7 @@ classdef HMM
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
+        function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
@@ -197,8 +197,7 @@ classdef HMM
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
             log_prob = zeros(n_files);
-            
-            
+
             for i_file=1:n_files
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('  %i/%i) %s', i_file, n_files, fname);
@@ -325,6 +324,7 @@ classdef HMM
         end
         
         function [] = visualise_hidden_states(obj, y, map_sequence, pattern_per_frame)
+            % map_sequence: [nFrames x 1] vector 
             if nargin < 4
                 pattern_per_frame =  obj.obs_model.state2obs_idx(map_sequence, 1);
                 bar_pos_per_frame =  obj.obs_model.state2obs_idx(map_sequence, 2);
@@ -660,7 +660,7 @@ classdef HMM
                 end
             end
             % Backtracing
-            bestpath = zeros(nFrames,1);
+            bestpath = zeros(nFrames, 1);
             [ ~, bestpath(nFrames)] = max(delta);
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);

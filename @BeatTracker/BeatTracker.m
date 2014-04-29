@@ -71,8 +71,9 @@ classdef BeatTracker < handle
                 featStr = [featStr, featType];
             end
             featuresFln = fullfile(Params.data_path, [clusterFName, '_', featStr, '.mat']);
+            barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
-                Params.barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
+                barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
                 Params.frame_length, Params.reorganize_bars_into_cluster);
             fprintf(' done\n');
         end
@@ -176,13 +177,14 @@ classdef BeatTracker < handle
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             time1=toc;
-            [beats, tempo, rhythm, meter] = obj.model.do_inference(observations, fname);
+            [beats, tempo, rhythm, meter, best_path] = obj.model.do_inference(observations, fname);
             time2=toc;
             fprintf('    Real time factor: %.2f\n', (time2-time1) / (size(observations, 1) * obj.feature.frame_length));
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
             results{4} = rhythm;
+            results{5} = best_path;
             
 %                         % save state sequence of annotations to file
 %                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
@@ -213,6 +215,7 @@ classdef BeatTracker < handle
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
                 obj.model.rhythm_names);
+            BeatTracker.save_beats(results{5}, fullfile(save_dir, [fname, '.best_path']));
         end
     end
     
@@ -240,9 +243,17 @@ classdef BeatTracker < handle
         
         function [] = save_meter(meter, save_fln)
             m = unique(meter', 'rows')';
-            dlmwrite(save_fln, m, 'delimiter', '\t' );
+            fid = fopen(save_fln, 'w');
+            fprintf(fid, '%i/%i\n', m(1), m(2));
+            fclose(fid);
         end
         
+        function [] = save_best_path(best_path, save_fln)
+            fid = fopen(save_fln, 'w');
+            fprintf(fid, '%i\n', best_path);
+            fclose(fid);
+        end
+       
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)
             %   smooth beat sequence according to Dixon et al., Perceptual Smoothness

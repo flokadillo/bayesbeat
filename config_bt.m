@@ -47,7 +47,7 @@ Params.inferenceMethod = 'HMM_viterbi';
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
+% Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
 
 % SYSTEM PARAMETERS:
 % ==================
