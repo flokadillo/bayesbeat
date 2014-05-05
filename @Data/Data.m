@@ -30,6 +30,8 @@ classdef Data < handle
         
         function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
+            % lab_fln:  text file with filenames and path
+            % train:    [0, 1] indicates whether 
             if exist(lab_fln, 'file')
                 [~, obj.dataset, ext] = fileparts(lab_fln);
                 if strcmpi(ext, '.lab')
@@ -46,10 +48,8 @@ classdef Data < handle
                         fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);
                         obj.file_list = obj.file_list(~ismember(obj.file_list, exclude_songs));
                     end
-                elseif strcmpi(ext, '.wav') || strcmpi(ext, '.flac')
+                else 
                     obj.file_list{1} = lab_fln;
-                else
-                    error('Data: please supply LAB, WAV, or FLAC file instead of %s', lab_fln);
                 end
             else
                 error('Lab file %s not found\n', lab_fln);

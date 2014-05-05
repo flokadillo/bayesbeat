@@ -1,6 +1,6 @@
 classdef BeatTracker < handle
     % Beat tracker Class
-    properties (SetAccess=private)
+    properties
         input_fln               % input filename (.wav or feature file)
         model                   % probabilistic model
         inferenceMethod         % forward, viterbi, ...
@@ -35,7 +35,7 @@ classdef BeatTracker < handle
         end
         
         function init_model(obj, Params)
-            if isfield(Params, 'model_fln')
+            if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
                 if exist(Params.model_fln, 'file')
                     c = load(Params.model_fln);
                     fields = fieldnames(c);
@@ -46,6 +46,11 @@ classdef BeatTracker < handle
                     fprintf('%s was not found, creating new model ...\n', Params.model_fln);
                 end
             else
+                if isempty(obj.train_data) % no training data given -> set defaults
+                    obj.train_data.rhythm2meter_state = ones(1, Params.R); 
+                    obj.train_data.rhythm_names = mat2cell(1:Params.R,1,ones(1, Params.R));
+                end
+                
                 switch Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
@@ -125,6 +130,10 @@ classdef BeatTracker < handle
                     obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
                 obj.refine_model(obj.viterbi_learning_iterations);
             end
+        end
+        
+        function train_transition_model(obj, tempo_per_cluster)
+                obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
         end
         
         function retrain_model(obj, exclude_test_file_id)
@@ -215,7 +224,7 @@ classdef BeatTracker < handle
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
                 obj.model.rhythm_names);
-            BeatTracker.save_beats(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
         end
     end
     

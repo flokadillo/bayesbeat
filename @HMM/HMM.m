@@ -8,7 +8,7 @@ classdef HMM
         T                   % number of different meter
         pn                  % probability of a switch in tempo
         pr                  % probability of a switch in rhythmic pattern
-        rhythm2meter_state        % assigns each rhythmic pattern to a meter state (1, 2, ...)
+        rhythm2meter_state  % assigns each rhythmic pattern to a meter state (1, 2, ...)
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) [2 x nMeters]
         barGrid             % number of different observation model params per bar (e.g., 64)
         minN                % min tempo (n_min) for each rhythmic pattern
@@ -151,7 +151,14 @@ classdef HMM
         function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname)
             
             % compute observation likelihoods
-            obs_lik = obj.obs_model.compute_obs_lik(y);
+            if strcmp(obj.dist_type, 'RNN')
+                obs_lik = obj.rnn_format_obs_prob(y);
+                if obj.R  ~= size(y, 2)
+                    error('Dim of RNN probs should be equal to R!\n');
+                end
+            else
+                obs_lik = obj.obs_model.compute_obs_lik(y);
+            end
             
             
             if strcmp(obj.inferenceMethod, 'HMM_forward')
@@ -949,6 +956,17 @@ classdef HMM
                 belief_func{counter, 2} = logical(sparse(i_rows(i_rows>0), j_cols(i_rows>0), s_vals(i_rows>0), n_beats_i, n_states));
                 counter = counter + 1;
             end
+        end
+        
+        function obs_lik = rnn_format_obs_prob(obj, y)
+            % normalize
+            y = y / max(y);
+            obs_lik = zeros(size(y, 2), obj.barGrid, size(y, 1));
+            for iR = 1:size(y, 2)
+                obs_lik(iR, 1, :) = y;
+                obs_lik(iR, 2:end, :) = repmat((1-y)/(obj.barGrid-1), 1, obj.barGrid-1)';
+            end
+            
         end
         
     end

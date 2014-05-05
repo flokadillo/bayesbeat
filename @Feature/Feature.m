@@ -3,8 +3,8 @@ classdef Feature
     
     properties
         feat_type       % cell array with one cell per feature dimension,
-                        % containing the extension of the feature file
-                        % e.g., feat_type{1} = lo230-superflux.mvavg.normz
+        % containing the extension of the feature file
+        % e.g., feat_type{1} = lo230-superflux.mvavg.normz
         feat_dim        % feature dimension
         frame_length    % frame rate in frames per second
         input_fln
@@ -23,12 +23,12 @@ classdef Feature
             end
             obj.feat_dim = length(feat_type);
         end
-            
+        
         function observations = load_feature(obj, input_fln)
             % parse input_data
             obj.input_fln = input_fln;
             [fpath, fname, ~] = fileparts(input_fln);
-            % compute feature from wav
+            % compute feature from wav ore load it
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
@@ -66,29 +66,29 @@ classdef Feature
                 end
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001
-                   detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
-                   fr{iDim} = 1/obj.frame_length;
+                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
+                    fr{iDim} = 1/obj.frame_length;
                 end
-		detfunc{iDim} = detfunc{iDim}(:);
+                detfunc{iDim} = detfunc{iDim}(:);
             end
-	    len = zeros(obj.feat_dim, 1);
-	    for iDim = 1:obj.feat_dim
-		len(iDim) = length(detfunc{iDim});
-	    end	
-	    if sum(diff(len)) ~= 0
-		[len_min, ~] = min(len);
-		for iDim = 1:obj.feat_dim
-			detfunc{iDim} = detfunc{iDim}(1:len_min);
-		end
-	    end
-	    try
-            	observations = cell2mat(detfunc');
-	    catch exception
-		for iDim=1:obj.feat_dim
-			[m, n] = size(detfunc{iDim})
-		end
-		error('Error detfunc has strange size!\n');
-	   end
+            len = zeros(obj.feat_dim, 1);
+            for iDim = 1:obj.feat_dim
+                len(iDim) = length(detfunc{iDim});
+            end
+            if sum(diff(len)) ~= 0
+                [len_min, ~] = min(len);
+                for iDim = 1:obj.feat_dim
+                    detfunc{iDim} = detfunc{iDim}(1:len_min);
+                end
+            end
+            try
+                observations = cell2mat(detfunc');
+            catch exception
+                for iDim=1:obj.feat_dim
+                    [m, n] = size(detfunc{iDim})
+                end
+                error('Error detfunc has strange size!\n');
+            end
         end
         
         function observations = load_all_features(obj, file_list)
@@ -100,7 +100,7 @@ classdef Feature
         end
     end
     
-   
+    
     methods(Static)
         
         function activations_resampled = change_frame_rate(activations, fr_source, fr_target)
@@ -168,7 +168,7 @@ classdef Feature
             
         end
         
-%         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
+        %         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
         
         [DetFunc, fr] = Compute_Bt_LogFiltSpecFlux(wavFileName, param);
         
@@ -178,7 +178,7 @@ classdef Feature
         
         [] = convert_mat_to_feat_file(fpath, output_ext, input_fr);
         
-%         [DetFunc, fr] = compute_LogFiltSpecFlux2(fln, save_it, param);
+        %         [DetFunc, fr] = compute_LogFiltSpecFlux2(fln, save_it, param);
     end
     
 end
