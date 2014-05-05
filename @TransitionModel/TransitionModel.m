@@ -39,7 +39,7 @@ classdef TransitionModel
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
             % set up pattern transition matrix
-            if size(obj.pr, 1) == obj.R
+            if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
                 % ok, do nothing
             elseif size(obj.pr, 1) == 1
                 obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
@@ -114,13 +114,13 @@ classdef TransitionModel
                     for n_ind = 1:3
                         if n_ind == 1 % tempo decrease
                             nj = ni - 1;
-                            j_n = mj(bar_crossing) + (ni-2)*M;
+                            j_n = mj(bar_crossing) + (nj-1)*M;
                         elseif n_ind == 2 % tempo constant
-                            j_n = mj(bar_crossing) + (ni-1)*M;
                             nj = ni;
+                            j_n = mj(bar_crossing) + (nj-1)*M;
                         else  % tempo increase
-                            j_n = mj(bar_crossing) + ni*M;
                             nj = ni+1;
+                            j_n = mj(bar_crossing) + (nj-1)*M;
                         end
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:R
