@@ -430,6 +430,8 @@ classdef HMM
             O(validInds) = obs_lik(ind(validInds));
             delta = O .* delta;
             delta = delta / sum(delta);
+%             delta = zeros(size(delta));
+%             delta(14000) = 1;
             % move pointer to next observation
             ind = ind + ind_stepsize;
             fprintf('    Decoding (viterbi) .');
@@ -482,6 +484,7 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
+%                 figure(1); plot(delta)
             end
             if obj.save_inference_data,
                 % save for visualization
@@ -495,7 +498,9 @@ classdef HMM
             
             % Backtracing
             bestpath = zeros(nFrames,1);
-            [ ~, bestpath(nFrames)] = max(delta);
+            [ m, bestpath(nFrames)] = max(delta);
+            maxIndex = find(delta == m);
+            bestpath(nFrames) = median(maxIndex);
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
             end
