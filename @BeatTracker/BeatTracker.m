@@ -48,7 +48,7 @@ classdef BeatTracker < handle
             else
                 if isempty(obj.train_data) % no training data given -> set defaults
                     obj.train_data.rhythm2meter_state = ones(1, Params.R); 
-                    obj.train_data.rhythm_names = mat2cell(1:Params.R,1,ones(1, Params.R));
+                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:Params.R), 'UniformOutput', false);
                 end
                 
                 switch Params.inferenceMethod(1:2)

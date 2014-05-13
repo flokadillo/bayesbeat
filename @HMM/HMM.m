@@ -27,6 +27,7 @@ classdef HMM
         n_depends_on_r      % no dependency between n and r
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset       % dataset, which HMM was trained on
+        correct_beats       % [0, 1, 2] correct beats after detection
     end
     
     methods
@@ -55,6 +56,7 @@ classdef HMM
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             obj.n_depends_on_r = Params.n_depends_on_r;
             obj.rhythm_names = rhythm_names;
+            obj.correct_beats = Params.correct_beats;
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
@@ -150,6 +152,12 @@ classdef HMM
         
         function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname)
             
+            % normalize
+            for iR = 1:size(y, 2)
+                y(: ,iR) = y(: ,iR) / max(y(: ,iR));
+            end
+%             y(y<0.1) = 0.1;
+            
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
                 obs_lik = obj.rnn_format_obs_prob(y);
@@ -189,7 +197,33 @@ classdef HMM
             % compute beat times and bar positions of beats
             meter = obj.meter_state2meter(:, t_path);
             beats = obj.find_beat_times(m_path, t_path, n_path);
-            tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
+%             anns=load(['~/diss/data/beats/smc_beats/annotations/beats/', fname]);
+%             figure; plot(y); hold on; stem(anns*100, ones(size(anns))*max(y(:)), 'r'); stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'c--');
+            
+            if strcmp(obj.pattern_size, 'bar')
+                tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
+            else
+                tempo = 60 .* n_path / (obj.M * obj.frame_length);
+%                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
+%                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
+            end  
+            if obj.correct_beats > 0
+                tempo_smooth = sgolayfilt(tempo, 1, min([211, length(tempo)]));
+                win = 60 ./ (tempo_smooth(round(beats(:, 1)/obj.frame_length)) * meter(1, 1) * obj.barGrid);
+            end
+            if obj.correct_beats == 1
+            % method 1
+                beats(:, 1) = beats(:, 1) + win'./2;
+            elseif obj.correct_beats == 2
+            % method 2
+                for i=1:length(beats(:, 1))
+                    beat_frame = round(beats(i, 1)/obj.frame_length);
+                    end_win_frame = min([beat_frame+round(win(i)/obj.frame_length),length(tempo)]);
+                    [~, max_frame] = max(y(beat_frame:end_win_frame, t_path(1)));
+                    beats(i, 1) = beats(i, 1) + (max_frame-1) * obj.frame_length;
+                end
+            end
+%             hold on; stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'k');
             rhythm = r_path;
             
             
@@ -484,7 +518,7 @@ classdef HMM
                 if rem(iFrame, perc) == 0
                     fprintf('.');
                 end
-%                 figure(1); plot(delta)
+%                 figure(1); plot(log(delta))
             end
             if obj.save_inference_data,
                 % save for visualization
@@ -500,7 +534,7 @@ classdef HMM
             bestpath = zeros(nFrames,1);
             [ m, bestpath(nFrames)] = max(delta);
             maxIndex = find(delta == m);
-            bestpath(nFrames) = median(maxIndex);
+            bestpath(nFrames) = round(median(maxIndex));
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
             end
@@ -964,12 +998,11 @@ classdef HMM
         end
         
         function obs_lik = rnn_format_obs_prob(obj, y)
-            % normalize
-            y = y / max(y);
             obs_lik = zeros(size(y, 2), obj.barGrid, size(y, 1));
             for iR = 1:size(y, 2)
-                obs_lik(iR, 1, :) = y;
-                obs_lik(iR, 2:end, :) = repmat((1-y)/(obj.barGrid-1), 1, obj.barGrid-1)';
+                obs_lik(iR, 1, :) = y(:, iR);
+                obs_lik(iR, 2:end, :) = repmat((1-y(:, iR))/(obj.barGrid-1), 1, obj.barGrid-1)';
+%                 obs_lik(iR, 2:end, :) = repmat((1-y(:, iR)), 1, obj.barGrid-1)';
             end
             
         end
