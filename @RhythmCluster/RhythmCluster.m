@@ -30,7 +30,7 @@ classdef RhythmCluster < handle
             obj.feature = Feature(feat_type, frame_length);
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
             obj.dataset = dataset;
-            obj.train_lab_fln = fullfile('~/diss/data/beats/', [dataset, '.lab']);
+            obj.train_lab_fln = fullfile('~/diss/data/beats/lab_files', [dataset, '.lab']);
             obj.data_save_path = data_save_path;
             if exist('pattern_size', 'var')
                 obj.pattern_size = pattern_size;
@@ -301,11 +301,15 @@ classdef RhythmCluster < handle
             nBars = zeros(length(ok_songs), 1);
             obj.file_2_cluster = zeros(length(ok_songs), 1);
             for iFile = 1:length(ok_songs)
-                beats = load(regexprep(fileNames{ok_songs(iFile)}, '.wav.*', '.beats'));
-                countTimes = round(rem(beats(:, 2), 1) * 10);
+                [annotsPath, fname, ~] = fileparts(fileNames{ok_songs(iFile)});
+                 
+                [ anns, error ] = loadAnnotations( annotsPath, fname, 'b', 0 );
+                beats = anns.beats;
+%                 beats = load(strrep(strrep(fileNames{ok_songs(iFile)}, 'audio', 'annotations/beats'), '.wav', '.beats'));
+                countTimes = beats(:,3);
                 meter(fileCounter+1) = max(countTimes);
                 % get pattern id of file
-                [annotsPath, fname, ~] = fileparts(fileNames{iFile});
+               
 
 %                 if ~ismember(meter(fileCounter+1), [3, 4])
 %                     fprintf('    Unsupported meter (%i): %s\n', meter(fileCounter+1), fname);
@@ -330,7 +334,7 @@ classdef RhythmCluster < handle
                     case 'auto'
                         patternId = songClusterIds(iFile);
                     case 'rhythm'
-                        fln = strrep(fileNames{iFile}, '.wav', '.rhythm');
+                        fln = strrep(strrep(fileNames{iFile}, '.wav', '.rhythm'), 'audio', 'annotations/rhythm');
                         if exist(fln, 'file')
                             fid = fopen(fln, 'r');
                             style = textscan(fid, '%s');

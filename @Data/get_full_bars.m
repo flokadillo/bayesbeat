@@ -23,7 +23,7 @@ if nargin==1
     verbose = 0;
 end
 
-btype = round(rem(beats(:,2),1)*10);
+btype = beats(:, 3);
 nBeats = length(btype);
 meter = max(btype);
 

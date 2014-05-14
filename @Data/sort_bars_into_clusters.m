@@ -20,7 +20,7 @@ dataPerFile = cell(nFiles, nClusters, barGrid);
 for iFile=1:nFiles
     fprintf('      %i/%i\n',iFile, nFiles );
     barIds = find(bar2file == iFile); 
-        for iBar = 1:length(barIds)  
+        for iBar = 1:length(barIds) 
             for iPos = 1:barGrid
                 dataPerFile{iFile, clusterIdx(barIds(iBar)), iPos} = ...
                     [dataPerFile{iFile, clusterIdx(barIds(iBar)), iPos}; dataPerBar{barIds(iBar), iPos}];

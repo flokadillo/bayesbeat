@@ -35,7 +35,7 @@ classdef ObservationModel
             obj.R = R;
             obj.barGrid = barGrid;
             bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
-            r2b = obj.barGrid ./ max(bar_durations);
+            r2b = repmat(obj.barGrid ./ max(bar_durations), 2, 1);
             obj.barGrid_eff = round(bar_durations * r2b);
             obj.use_silence_state = use_silence_state;
             obj = obj.make_state2obs_idx;

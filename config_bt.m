@@ -47,14 +47,14 @@ Params.viterbi_learning_iterations = 0;
 % Params.N = 47/26/22;
 Params.M = 768; % total number of discrete position states (used for the meter with the longest duration)
 Params.N = 11;
-Params.R = 3;
+Params.R = 2;
 
 
 % Params.M = 480; % total number of discrete position states (used for the meter with the longest duration)
 % Params.N = 30;
 % Params.R = 1;
 
-Params.meters = [2, 3, 4; 4, 4, 4]; % e.g., [9, 3; 8 4]
+Params.meters = [4; 4]; % e.g., [9, 3; 8 4]
 
 % Params.meters = [4; 4];
 Params.T = size(Params.meters, 2);
@@ -122,14 +122,14 @@ end
 
 % train data
 
-Params.train_set = 'robo-all';
+Params.train_set = 'yoshimi';
 % Params.train_set = 'boeck_3_4';
 
-Params.trainLab =  ['~/diss/data/beats/', Params.train_set, '.lab'];
+Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Params.train_annots_folder = '~/diss/data/beats/ballroom/all';
 % Params.clusterIdFln = fullfile(Params.data_path, 'ca_ballroom_8.txt');
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), '-meter.txt']);
+    num2str(Params.R), '-rhythm.txt']);
 % Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 
@@ -139,10 +139,11 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 
 % Params.test_set = 'robo-all';
 
-% Params.test_set = 'boeck_3_4';
-% Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+% Params.test_set = 'yoshimi_take_2';
+% % Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
 Params.test_set = ' ';
-Params.testLab = '~/diss/data/beats/robo_git2/test/flo_1.wav';
+% Params.testLab = '~/diss/data/beats/robo_git2/test/flo_1.wav';
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
 % Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
 
 [~, clusterFName, ~] = fileparts(Params.clusterIdFln);

@@ -75,7 +75,7 @@ for iFile=1:nFiles
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = annots.beats(round(rem(annots.beats(:,2),1)*10) == 1,1);
+    b1 = annots.beats(annots.beats(:,3) == 1, 1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, fprintf('    %s contains only one bar -> skip it\n', fname); end
@@ -152,7 +152,7 @@ end
 
 if strcmp(pattern_size, 'bar')
     [nBars, ~, barStartIdx] = Data.get_full_bars(beats);
-    btype = round(rem(beats(:,2),1)*10);
+    btype = beats(:,3);
 %     meter = max(btype);
 else
     nBars = size(beats, 1) - 1;

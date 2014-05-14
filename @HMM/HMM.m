@@ -39,7 +39,7 @@ classdef HMM
             obj.Meff = Params.Meff;
             obj.N = Params.N;
             obj.R = Params.R;
-            obj.T = Params.T;
+%             obj.T = Params.T;
             obj.pn = Params.pn;
             if isfield(Params, 'cluster_transitions_fln') && exist(Params.cluster_transitions_fln, 'file')
                 obj.pr = dlmread(Params.cluster_transitions_fln);
@@ -84,7 +84,7 @@ classdef HMM
             
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN)-1;
-                obj.maxN = ones(1, obj.R) * max(obj.maxN)+2;
+                obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
                 obj.N = max(obj.maxN);
                 fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
                     round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
@@ -727,10 +727,6 @@ classdef HMM
             [~, best_states(1)] = max(alpha(:, 1));
             for iFrame = 2:nFrames
                 
-                if iFrame == 376
-                    kj=897;
-                end
-                
                 alpha(:, iFrame) = A' * alpha(:, iFrame-1);
 %                 D = sparse(i_row, j_col, alpha(:, iFrame), nStates, nStates);
                 %                 [ ~, psi(:, iFrame)] = max(bsxfun(@times, A, alpha(:, iFrame-1)));
@@ -740,7 +736,7 @@ classdef HMM
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
                 O(validInds & (O<1e-7)) = 1e-7;
-                fprintf('%.2f\n', max(O(validInds)));
+%                 fprintf('%.2f\n', max(O(validInds)));
                 
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
@@ -881,6 +877,7 @@ classdef HMM
             end
             beatno = [];
             beatco = 0;
+            beats = [];
             for i = 1:numframes-1
                 if meterPath(i) == 0
                     continue;

@@ -96,9 +96,11 @@ classdef Data
             barCounter = 0;
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                beats_fln = fullfile(fpath, [fname, '.beats']);
+                beats_fln = fullfile(strrep(fpath, 'audio', 'annotations/beats'), [fname, '.beats']);
                 if exist(beats_fln, 'file')
-                    obj.beats{iFile} = load(fullfile(fpath, [fname, '.beats']));
+                     anns = loadAnnotations( fpath, fname, 'b', 0);
+                     obj.beats{iFile} = anns.beats; 
+%                     load(fullfile(strrep(fpath, 'audio', 'annotations/beats'), [fname, '.beats']));
                 else
                     error('Beats file %s not found\n', beats_fln);
                 end
@@ -148,7 +150,7 @@ classdef Data
             obj.meter = zeros(length(obj.file_list), 2);
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                meter_fln = fullfile(fpath, [fname, '.meter']);
+                meter_fln = fullfile(strrep(fpath, 'audio', 'annotations/meter'), [fname, '.meter']);
                 if exist(meter_fln, 'file')
                     m = load(meter_fln);
                     if length(m) == 1
@@ -190,7 +192,7 @@ classdef Data
             tempo_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                tempo_fln = fullfile(fpath, [fname, '.bpm']);
+                tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations/bpm'), [fname, '.bpm']);
                 if exist(tempo_fln, 'file')
                     tempo = load(tempo_fln, '-ascii');
                 else
