@@ -124,7 +124,7 @@ classdef BeatTracker < handle
                     obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
                 end
                                
-                obj.model = obj.model.make_initial_distribution;
+                obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
                 
                 fln = fullfile(obj.temp_path, 'last_model.mat');
                 switch obj.inferenceMethod(1:2)
