@@ -26,7 +26,7 @@ classdef TransitionModel
     
     
     methods
-        function obj = TransitionModel(M, Meff, N, R, pn, pr, pt, rhythm2meter_state, minN, maxN, use_silence_state, p2s, pfs)
+        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter_state, minN, maxN, use_silence_state, p2s, pfs)
             obj.M = M;
             obj.Meff = Meff;
             obj.N = N;
@@ -99,11 +99,11 @@ classdef TransitionModel
                 fprintf('.');
                 mi=1:obj.Meff(rhythm2meter_state(rhi));
                 ti = rhythm2meter_state(rhi);
-                for ni = minN(rhi):maxN(rhi)
+                for ni = minN(rhi)+1:maxN(rhi)-1
                     
                     % decode state number to m and n
-                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter(rhi))), ...
-                        repmat(rhi, 1, obj.Meff(rhythm2meter(rhi))));
+                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter_state(rhi))), ...
+                        repmat(rhi, 1, obj.Meff(rhythm2meter_state(rhi))));
                     %                     [mi, ni, rhi] = ind2sub([M, N, R], i);
                     
                     mj = mod(mi + ni - 1, obj.Meff(ti)) + 1; % new position

@@ -11,6 +11,7 @@ classdef BeatTracker < handle
         temp_path
         viterbi_learning_iterations
         init_model_fln          % fln of initial model to start with
+        Params                  % parameters from confi file
     end
     
     methods
@@ -32,55 +33,55 @@ classdef BeatTracker < handle
             obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             obj.temp_path = Params.temp_path;
+            obj.Params = Params;
         end
         
-        function init_model(obj, Params)
-            if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
-                if exist(Params.model_fln, 'file')
-                    c = load(Params.model_fln);
+        function init_model(obj)
+            if isfield(obj.Params, 'model_fln') && ~isempty(obj.Params.model_fln)
+                if exist(obj.Params.model_fln, 'file')
+                    c = load(obj.Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
-                    obj.init_model_fln = Params.model_fln;
-                    fprintf('    Loaded model from %s\n', Params.model_fln);
+                    obj.init_model_fln = obj.Params.model_fln;
+                    fprintf('    Loaded model from %s\n', obj.Params.model_fln);
                 else
-                    fprintf('%s was not found, creating new model ...\n', Params.model_fln);
+                    fprintf('%s was not found, creating new model ...\n', obj.Params.model_fln);
                 end
             else
                 if isempty(obj.train_data) % no training data given -> set defaults
-                    obj.train_data.rhythm2meter_state = ones(1, Params.R); 
-                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:Params.R), 'UniformOutput', false);
+                    obj.train_data.rhythm2meter_state = ones(1, obj.Params.R); 
+                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.Params.R), 'UniformOutput', false);
                 end
                 
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = HMM(obj.Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = PF(obj.Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', obj.Params.inferenceMethod);
                 end
             end
             
         end
-        
-<<<<<<< HEAD
-        function init_train_data(obj, Params)
+
+        function init_train_data(obj)
             fprintf('* Set up training data ...');
-            obj.train_data = Data(Params.trainLab, 1);
-            if ~isfield(Params, 'clusterIdFln'), return;  end
-            obj.train_data = obj.train_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
+            obj.train_data = Data(obj.Params.trainLab, 1);
+            if ~isfield(obj.Params, 'clusterIdFln'), return;  end
+            obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
             % make filename of features
-            [~, clusterFName, ~] = fileparts(Params.clusterIdFln);
+            [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
-            for iDim = 1:Params.featureDim
-                featType = strrep(Params.feat_type{iDim}, '.', '-');
+            for iDim = 1:obj.Params.featureDim
+                featType = strrep(obj.Params.feat_type{iDim}, '.', '-');
                 featStr = [featStr, featType];
             end
-            featuresFln = fullfile(Params.data_path, [clusterFName, '_', featStr, '.mat']);
-            barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
-            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
-                barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
-                Params.frame_length, Params.reorganize_bars_into_cluster);
+            featuresFln = fullfile(obj.Params.data_path, [clusterFName, '_', featStr, '.mat']);
+            barGrid_eff = obj.Params.whole_note_div * (obj.Params.meters(1, :) ./ obj.Params.meters(2, :)); 
+            obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(obj.Params.whole_note_div, ...
+                barGrid_eff, obj.Params.featureDim, featuresFln, obj.Params.feat_type, ...
+                obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
             if obj.Params.use_silence_state
                 fprintf('Warning: So far, only one feature dimension supported (%s)\n', obj.Params.feat_type{1});
                 obj.train_data.feats_silence = [];
@@ -100,14 +101,14 @@ classdef BeatTracker < handle
         
         function init_test_data(obj)
             % create test_data object
-            obj.test_data = Data(Params.testLab, 0);
-            if isfield(Params, 'test_annots_folder')
-                obj.test_data = obj.test_data.set_annots_path(Params.test_annots_folder);
+            obj.test_data = Data(obj.Params.testLab, 0);
+            if isfield(obj.Params, 'test_annots_folder')
+                obj.test_data = obj.test_data.set_annots_path(obj.Params.test_annots_folder);
             end
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
-            if strcmp(Params.train_set, Params.test_set) && isfield(Params, 'clusterIdFln')
-                obj.test_data = obj.test_data.read_pattern_bars(Params.clusterIdFln, Params.meters, Params.pattern_size);
+            if strcmp(obj.Params.train_set, obj.Params.test_set) && isfield(obj.Params, 'clusterIdFln')
+                obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
             end
         end
         
@@ -141,7 +142,7 @@ classdef BeatTracker < handle
                 fprintf('* Saved model to %s\n', fln2);
             end
             
-            obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
+%             obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
 
             if obj.viterbi_learning_iterations > 0
                 obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...

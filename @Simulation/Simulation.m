@@ -31,12 +31,12 @@ classdef Simulation
             obj.system = sys_constructor(obj.Params, sim_id, []);
             % create train_data object
             if obj.Params.n_folds_for_cross_validation ~= 0 || obj.Params.viterbi_learning_iterations ~= 0 || ~isfield(obj.Params, 'model_fln')
-                obj.system.init_train_data(obj.Params);
+                obj.system.init_train_data();
             end
             % create test_data object
-            obj.system.init_test_data(obj.Params);
+            obj.system.init_test_data();
             % initialize probabilistic model
-            obj.system.init_model(obj.Params);
+            obj.system.init_model();
 
             if  obj.Params.n_folds_for_cross_validation > 1
                 % do k-fold cross validation: check if lab files for folds are present

@@ -88,6 +88,8 @@ Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.w
 % of +/- max_shift frames
 Params.max_shift = 6;
 
+Params.correct_beats = 1;
+
 % HMM parameters
 % --------------
 

@@ -135,7 +135,7 @@ classdef HMM
                 obj.initial_prob = zeros(n_states+1, 1);
                 obj.initial_prob(n_states+1) = 1;
             else
-                if use_tempo_prior
+                if obj.init_n_gauss > 0
                     obj.initial_prob = zeros(n_states, 1);
                     for iCluster = 1:size(tempo_per_cluster, 2)
                         meter = obj.meter_state2meter(:, obj.rhythm2meter_state(iCluster));
@@ -434,6 +434,9 @@ classdef HMM
         
 
         function save_hmm_data_to_text(obj, folder)
+            if length(Params.feat_type) > 1
+                error('ERROR HMM.m: So far, only 1d features supported\n');
+            end
             % save transition matrix
             transition_model = obj.trans_model.A;
             % save initial distribution
@@ -441,7 +444,7 @@ classdef HMM
             % save observation model
             observation_model = zeros(obj.R * obj.obs_model.barGrid, 6);
             for i_r=1:obj.R
-                for i_pos=1:obj.obs_model.barGrid_eff(i_r)
+                for i_pos=1:obj.obs_model.barGrid_eff(obj.obs_model.rhythm2meter_state(i_r))
                     observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 1:2) = obj.obs_model.learned_params{i_r, i_pos}.mu;
                     observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 3:4) = obj.obs_model.learned_params{i_r, i_pos}.Sigma;
                     observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 5:6) = obj.obs_model.learned_params{i_r, i_pos}.PComponents;
