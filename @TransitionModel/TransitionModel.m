@@ -235,12 +235,10 @@ classdef TransitionModel
                 n = [];
                 r = [];
                 for i_r=1:R
-                    temp = repmat((minN(i_r):maxN(i_r))-1, R, 1);
-                    n = [n, temp(:)'];
-                    temp = repmat(0:R-1, 1, maxN(i_r)+1-minN(i_r));
-                    r = [r, temp(:)'];
+                    n = [n, minN(i_r):maxN(i_r)];
+                    r = [r, ones(1, length(minN(i_r):maxN(i_r))) * i_r];
                 end
-                cj(p:p+length(n(:))-1) = ones(length(n(:)), 1) + n(:)*M + r(:)*M*N;
+                cj(p:p+length(n(:))-1) = ones(length(n(:)), 1) + (n(:)-1)*M + (r(:)-1)*M*N;
                 val(p:p+length(n(:))-1) = pfs/(length(n(:)));
                 p = p + length(n(:));
                 ri(p0:p-1) = silence_state_id;

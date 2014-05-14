@@ -49,7 +49,7 @@ if strcmp(pattern_size, 'bar')
     bar_grid_max = 0;
     for iFile=1:nFiles
         [dataPath, fname, ~] = fileparts(listing(iFile).name);
-        [ annots, ~ ] = loadAnnotations( strrep(dataPath, 'audio', 'annotations'), fname, 'm', dooutput );
+        [ annots, ~ ] = Data.loadAnnotations( strrep(dataPath, 'audio', 'annotations'), fname, 'm', dooutput );
         if length(annots.meter) == 1
            bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
            Output.file2meter(iFile, 1) = annots.meter;
@@ -70,7 +70,7 @@ for iFile=1:nFiles
     [dataPath, fname, ext] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
-    [ annots, error ] = loadAnnotations(strrep(dataPath, 'audio', 'annotations'), fname, 'mb', dooutput );
+    [ annots, error ] = Data.loadAnnotations(strrep(dataPath, 'audio', 'annotations'), fname, 'mb', dooutput );
     if error,
         if dooutput, fprintf('Error loading annotations, skipping %s\n', fname); end
         continue;

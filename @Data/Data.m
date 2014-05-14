@@ -277,6 +277,8 @@ classdef Data < handle
     
     methods (Static)
         
+        
+        
         function make_k_folds(lab_fln, K)
             if exist(lab_fln, 'file')
                 fid = fopen(lab_fln, 'r');
@@ -299,5 +301,7 @@ classdef Data < handle
         Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
         
         dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
+        
+        [ data, error ] = loadAnnotations( path, basename, datatype, dooutput )
     end
 end

@@ -42,7 +42,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'HMM_forward';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
@@ -56,13 +56,13 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1600;
+Params.M = 1280;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 1;
+Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [8; 8];
+Params.meters = [4; 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -88,7 +88,7 @@ Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.w
 % of +/- max_shift frames
 Params.max_shift = 6;
 
-Params.correct_beats = 1;
+Params.correct_beats = 0;
 
 % HMM parameters
 % --------------
@@ -151,9 +151,9 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
-% Params.feat_type{1} = 'sprflx';
- Params.feat_type{1} = 'lo230_superflux.mvavg';
- Params.feat_type{2} = 'hi250_superflux.mvavg';
+Params.feat_type{1} = 'sprflx';
+%  Params.feat_type{1} = 'lo230_superflux.mvavg';
+%  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -165,7 +165,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'adi_118_train_2';
+Params.train_set = 'yoshimi';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -173,7 +173,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-kmeans-songs.mat']);
+    num2str(Params.R), 'R-rhythm.mat']);
 
 % Test data
 % ----------
@@ -182,6 +182,6 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 Params.test_set = 'adi_118_test_2';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-% Params.testLab = '/home/florian/diss/data/beats/beatles/audio/01_-_Please_Please_Me/04_-_Chains.flac';
+Params.testLab = '/home/florian/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
 
 end

@@ -195,7 +195,7 @@ classdef HMM
                 % HMM forward path
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
-                [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
+%                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
 %                 alpha = alpha(:, 1:200);
 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha));
             elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
@@ -205,17 +205,20 @@ classdef HMM
             else
                 error('inference method not specified\n');
             end
-            figure; 
+            
+            figure;
             subplot(3, 1, 1)
             plot(m_path)
+            ylabel('bar position')
             subplot(3, 1, 2)
             plot(r_path)
+            ylabel('rhythm pattern')
             subplot(3, 1, 3)
             plot(y)
+            ylabel('observation feature')
                        
             t_path = zeros(length(r_path), 1);
             t_path(r_path<=obj.R) = obj.rhythm2meter_state(r_path(r_path<=obj.R));
-            t_path = obj.rhythm2meter_state(r_path);
 
             % compute beat times and bar positions of beats
             meter = zeros(2, length(r_path));
@@ -865,7 +868,7 @@ classdef HMM
                             % allow position shift for each possible
                             % successor
                             m_extended = [m_extended, m(i_s):-1:(m(i_s)-obj.max_shift), m(i_s)+1:+1:(m(i_s)+obj.max_shift)];
-                            m_extended = mod(m_extended - 1, obj.Meff(obj.rhythm2meter(r(i_s)))) + 1; % new position
+                            m_extended = mod(m_extended - 1, obj.Meff(obj.rhythm2meter_state(r(i_s)))) + 1; % new position
                             n_extended = [n_extended, ones(1, 2*obj.max_shift+1)*n(i_s)];
                             r_extended = [r_extended, ones(1, 2*obj.max_shift+1)*r(i_s)];
                         end
