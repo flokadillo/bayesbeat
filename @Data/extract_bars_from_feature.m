@@ -84,7 +84,7 @@ for iFile=1:nFiles
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = annots.beats(annots.beats(:, 3) == 1, 1);
+    b1 = find(annots.beats(:, 3) == 1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
@@ -159,6 +159,7 @@ end
 
 if strcmp(pattern_size, 'bar')
     [nBars, ~, barStartIdx] = Data.get_full_bars(beats);
+
 else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
@@ -166,6 +167,7 @@ else
     meter = 1;
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
+
 barData = cell(nBars, bar_grid_eff);
 bar_pos_per_frame = nan(size(E), 'single');
 pattern_per_frame = nan(size(E), 'single');

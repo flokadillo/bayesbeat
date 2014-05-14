@@ -355,9 +355,8 @@ classdef RhythmCluster < handle
                 beats = data.beats;
                 countTimes = beats(:, 3);
                 meter(fileCounter+1) = max(countTimes);
-                % get pattern id of file
                 
-                %                 fprintf('- %s\n', fname);
+                % get pattern id of file
                 switch lower(clusterType)
                     case 'meter'
                         patternId = meter(fileCounter+1);
@@ -371,7 +370,7 @@ classdef RhythmCluster < handle
                     case 'auto'
                         patternId = songClusterIds(iFile);
                     case 'rhythm'
-                        fln = strrep(fileNames{ok_songs(iFile)}, '.wav', '.rhythm');
+                        fln = strrep(strrep(fileNames{ok_songs(iFile)}, '.wav', '.rhythm'), 'audio', 'annotations/rhythm');
                         if exist(fln, 'file')
                             fid = fopen(fln, 'r');
                             style = textscan(fid, '%s');

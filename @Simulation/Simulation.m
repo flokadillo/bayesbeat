@@ -34,10 +34,10 @@ classdef Simulation
                 obj.system.init_train_data(obj.Params);
             end
             % create test_data object
-
             obj.system.init_test_data(obj.Params);
             % initialize probabilistic model
             obj.system.init_model(obj.Params);
+
             if  obj.Params.n_folds_for_cross_validation > 1
                 % do k-fold cross validation: check if lab files for folds are present
                 [fpath, fname, ~] = fileparts(obj.Params.testLab);
@@ -87,7 +87,6 @@ classdef Simulation
                 test_file_ids = obj.retrain(k);
                 % do testing
                 for iFile=test_file_ids
-%                 for iFile=16
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
                     fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);

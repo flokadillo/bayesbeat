@@ -1,6 +1,6 @@
 classdef Data < handle
     % Data Class (represents training and test data)
-    properties (SetAccess=private)
+    properties 
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
         %         annots_path                     % path to annotations
@@ -19,6 +19,7 @@ classdef Data < handle
         meter_state2meter               % specifies meter for each meter state [2 x nMeters]
         %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
+        feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
         barpos_per_frame                % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
@@ -28,7 +29,7 @@ classdef Data < handle
   
     methods
         
-        function obj = Data(lab_fln, train)
+        function obj = Data(lab_fln, train, frame_length)
             % read lab_fln (a file where all data files are listed)
             % lab_fln:  text file with filenames and path
             % train:    [0, 1] indicates whether 
@@ -82,39 +83,6 @@ classdef Data < handle
                 obj.pattern_size = 'bar';
             end
             
-%             % read annotations
-%             barCounter = 0;
-%             for iFile = 1:length(obj.file_list)
-%                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-%                 beats_fln = fullfile(fpath, [fname, '.beats']);
-%                 if exist(beats_fln, 'file')
-%                     obj.beats{iFile} = load(fullfile(fpath, [fname, '.beats']));
-%                 else
-%                     error('Beats file %s not found\n', beats_fln);
-%                 end
-%                 % determine number of bars
-%                 if strcmp(obj.pattern_size, 'bar')
-%                     [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
-%                 else
-%                     obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
-%                 end
-%                 obj.bar2file(barCounter+1:barCounter + obj.n_bars(iFile)) = iFile;
-%                 barCounter = barCounter + obj.n_bars(iFile);
-%                 if obj.n_bars(iFile) ~= sum(obj.bar2file == iFile) 
-%                     error('%s: Number of bars not consistent !', fname);
-%                 end
-%             end
-%                 
-%             % Check consistency cluster_fln - train_lab
-%             if length(obj.bar2cluster) ~= length(obj.bar2file)
-%                 fprintf('    %s: %i bars\n', cluster_fln, length(obj.bar2cluster));
-%                 fprintf('    computed from beat files: %i bars\n', length(obj.bar2file));
-%                 error('Number of bars not consistent !');
-%             end
-%             % find meter of each rhythmic pattern
-%             if isempty(obj.meter)
-%                 obj = obj.read_meter();
-%             end
             obj.meter_state2meter = meters;
             for iR=1:obj.n_clusters
                 for iM=1:size(obj.meter_state2meter, 2)
@@ -127,20 +95,6 @@ classdef Data < handle
             if ismember(obj.rhythm2meter_state, 0)
                error('Data.read_pattern_bars: could not assign meter state to rhythm\n'); 
             end
-                % find the first bar in data that belongs to cluster iR and
-                % look up its meter
-%                 m = obj.meter(obj.bar2file(find((obj.bar2cluster == iR), 1)), :);
-%                 % TODO: what to do if meter of training data does not match
-%                 % meter of system ?
-%                 if strcmp(obj.pattern_size, 'bar')
-%                     obj.rhythm2meter_state(iR) = find(obj.meter_state2meter(1, :) == m(1));
-%                 elseif strcmp(obj.pattern_size, 'beat')
-%                     obj.rhythm2meter_state(iR) = 1;
-%                 else
-%                     error('Meter of training data is not supported by the system')
-%                 end
-%                 
-%             end
         end
         
         function obj = read_meter(obj)
@@ -148,7 +102,7 @@ classdef Data < handle
             meter_files_available = 1;
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                meter_fln = fullfile(fpath, [fname, '.meter']);
+                meter_fln = fullfile(strrep(fpath, 'audio', 'annotations/meter'), [fname, '.meter']);
                 if exist(meter_fln, 'file')
                     annots = loadAnnotations(fpath, fname, 'm', 0);
                     if length(annots.meter) == 1
@@ -195,7 +149,7 @@ classdef Data < handle
             tempo_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations'), [fname, '.bpm']);
+                tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations/bpm'), [fname, '.bpm']);
                 if exist(tempo_fln, 'file')
                     tempo = load(tempo_fln, '-ascii');
                 else
@@ -243,7 +197,7 @@ classdef Data < handle
             
         end
         
-        
+       
         
         function obj = read_beats(obj)
             % reads beats and downbeats from file and stores them in the
@@ -264,6 +218,60 @@ classdef Data < handle
                 end
             end
         end
+        
+
+        function belief_func = make_belief_functions(obj, model)
+            belief_func = cell(length(obj.file_list), 2);
+            n_states = model.M * model.N * model.R;
+            
+            %             for i_file = 1:length(obj.file_list)
+            for i_file = 1:length(obj.file_list)
+                t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
+                    (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
+                r_state = find(model.rhythm2meter == t_state);
+                M_i = model.Meff(t_state);
+                tol_win = floor(0.0875 * model.M / obj.meter(i_file, 2));
+                
+                btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
+                beats_m = (M_i * (btype-1) / max(btype)) + 1;
+                % beat frames
+                
+                
+                n_beats_i = size(obj.beats{i_file}, 1);
+                i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                s_vals = ones((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+                for iBeat=1:n_beats_i
+                    m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
+                    m = repmat(m_support, 1, model.N * length(r_state));
+                    n = repmat(1:model.N, length(r_state) * length(m_support), 1);
+                    r = repmat(r_state(:), model.N * length(m_support), 1);
+                    states = sub2ind([model.M, model.N, model.R], m(:), n(:), r(:));
+                    idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
+                    i_rows(idx) = iBeat;
+                    j_cols(idx) = states;
+                end
+                %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
+                belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
+                belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
+                belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
+            end
+        end
+        
+%         function feats_silence = extract_feature(obj, fln )
+%             if exist(fln, 'file')
+%                 addpath('~/diss/src/matlab/libs/matlab_utils');
+%                 [feats_silence, fr] = readActivations(fln);
+%                 if (abs(1/fr - obj.frame_length) > 0.001)
+%                     % adjusting framerate:
+%                     [ feats_silence ] = ChangeFramerateOfActivations( obj.feats_silence, fr, 1/obj.frame_length );
+%                 end
+%             else
+%                 error('Silence file %s not found\n', feat_fln);
+%             end
+%         end
+        
+        
         
     end
     

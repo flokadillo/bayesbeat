@@ -1,5 +1,5 @@
 function params = fit_distribution(obj, dataPerClusterAndPosition)
-
+warning('off');
 fprintf('* Set up observation model .');
 warning('off');
 if strcmp(obj.dist_type,'histogram') || strcmp(obj.dist_type,'multivariateHistogram'),
@@ -28,6 +28,7 @@ for iPattern=1:nPatterns % all clusters
         
         switch obj.dist_type
             case 'gamma'
+                featureValues(featureValues<eps) = eps;
                 PD = fitdist(featureValues, 'gamma');
                 params{iPattern, iPos} = PD.Params';
             case 'MOG'
@@ -40,11 +41,12 @@ for iPattern=1:nPatterns % all clusters
                 [params{iPattern, iPos}(1,1), params{iPattern, iPos}(2,1)] = ...
                     normfit(featureValues);
             case 'invGauss'
+                featureValues(featureValues<eps) = eps;
                 PD = fitdist(featureValues, 'inversegaussian');
                 params{iPattern, iPos} = PD.Params';
             case 'gauss0'
-                params{iPattern, iPos}(1,1) = 0;
-                params{iPattern, iPos}(2,1) = sqrt(sum(featureValues.^2)/(length(featureValues)-1));
+                params{iPattern, iPos}(1) = 0;
+                params{iPattern, iPos}(2) = sqrt(sum(featureValues.^2)/(length(featureValues)-1));
             case 'histogram'
                 params{iPattern, iPos} = histc(featureValues, params.centerbins);
                 % normalize

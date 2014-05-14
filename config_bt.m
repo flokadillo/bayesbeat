@@ -75,6 +75,18 @@ Params.frame_length = 0.02;
 % Model initial distribution over tempo states by mixture of init_n_gauss
 % Gaussians.
 Params.init_n_gauss = 0;
+% Use one state to detect silence
+Params.use_silence_state = 1;
+% Probability of entering the silence state
+Params.p2s = 0.00001;
+% Probability of leaving the silence state
+Params.pfs = 0.001;
+% File from which the silence observation model params are learned
+Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
+% In online mode (forward path), the best state is chosen among a set of
+% possible successor state. This set contains position states within a window
+% of +/- max_shift frames
+Params.max_shift = 6;
 
 % HMM parameters
 % --------------
@@ -88,6 +100,7 @@ Params.pn = 0.01;
 Params.tempo_tying = 1; 
 % Probability of rhythmic pattern change
 Params.pr = 0;
+
 
 % PF parameters
 % -------------
@@ -106,7 +119,7 @@ Params.res_int = 30;
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
 Params.resampling_scheme = 3;
-% On the fly Viterbi filtering (TODO: refactoring!)
+
 Params.do_viterbi_filtering = 0;
 
 % APF parameters
@@ -136,6 +149,7 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
+% Params.feat_type{1} = 'sprflx';
  Params.feat_type{1} = 'lo230_superflux.mvavg';
  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
@@ -168,4 +182,23 @@ Params.test_set = 'adi_118_test_2';
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '/home/florian/diss/data/beats/beatles/audio/01_-_Please_Please_Me/04_-_Chains.flac';
 
+<<<<<<< HEAD
+=======
+% % test data
+% Params.test_set = 'ballroom_test_1';
+% %robot=======
+
+% Params.test_set = 'robo-all';
+
+% Params.test_set = 'yoshimi_take_2';
+% % Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
+Params.test_set = ' ';
+% Params.testLab = '~/diss/data/beats/robo_git2/test/flo_1.wav';
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
+% Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
+
+[~, clusterFName, ~] = fileparts(Params.clusterIdFln);
+% clusterFName = strrep(clusterFName, '-songs', '');
+Params.featuresFln = fullfile(Params.data_path, [clusterFName, '_', Params.featStr, '.mat']);
+>>>>>>> robot
 end

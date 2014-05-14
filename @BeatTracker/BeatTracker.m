@@ -51,18 +51,19 @@ classdef BeatTracker < handle
                     obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:Params.R), 'UniformOutput', false);
                 end
                 
-                switch Params.inferenceMethod(1:2)
+                switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     case 'PF'
                         obj.model = PF(Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     otherwise
-                        error('BeatTracker.init_model: inference method %s not known', Params.inferenceMethod);
+                        error('BeatTracker.init_model: inference method %s not known', obj.Params.inferenceMethod);
                 end
             end
             
         end
         
+<<<<<<< HEAD
         function init_train_data(obj, Params)
             fprintf('* Set up training data ...');
             obj.train_data = Data(Params.trainLab, 1);
@@ -80,10 +81,24 @@ classdef BeatTracker < handle
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(Params.whole_note_div, ...
                 barGrid_eff, Params.featureDim, featuresFln, Params.feat_type, ...
                 Params.frame_length, Params.reorganize_bars_into_cluster);
+            if obj.Params.use_silence_state
+                fprintf('Warning: So far, only one feature dimension supported (%s)\n', obj.Params.feat_type{1});
+                obj.train_data.feats_silence = [];
+                for iFile=1:length(obj.Params.silence_fln)
+                    [dataPath, fname, ~] = fileparts(obj.Params.silence_fln{iFile});
+                    feat_fln = fullfile(dataPath, 'beat_activations', [fname, '.', obj.Params.feat_type{1}]);
+                    [silence{iFile}, fr] = Feature.read_activations(feat_fln);
+                    if (abs(1/fr - obj.feature.frame_length) > 0.001)
+                       error('Wrong sampling rate!\n'); 
+                    end
+                    obj.train_data.feats_silence = [obj.train_data.feats_silence; silence{iFile}];
+                end
+%                 obj.train_data.feats_silence  = cellfun(@(x) {x}ones(size(silence)), silence,  [], );
+            end
             fprintf(' done\n');
         end
         
-        function init_test_data(obj, Params)
+        function init_test_data(obj)
             % create test_data object
             obj.test_data = Data(Params.testLab, 0);
             if isfield(Params, 'test_annots_folder')
@@ -102,7 +117,11 @@ classdef BeatTracker < handle
                
                 obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
                 
-                obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
+                if obj.Params.use_silence_state
+                    obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset, obj.train_data.feats_silence);
+                else
+                    obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
+                end
                                
                 obj.model = obj.model.make_initial_distribution;
                 
@@ -121,10 +140,9 @@ classdef BeatTracker < handle
                 fprintf('* Saved model to %s\n', fln);
                 fprintf('* Saved model to %s\n', fln2);
             end
+            
+            obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
 
-%              hmm = obj.model;
-%              save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
-                      
             if obj.viterbi_learning_iterations > 0
                 obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
                     obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);

@@ -18,6 +18,7 @@ classdef TransitionModel
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
         sample_fh
+        use_silence_state
         
         
     end
@@ -25,7 +26,7 @@ classdef TransitionModel
     
     
     methods
-        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter_state, minN, maxN)
+        function obj = TransitionModel(M, Meff, N, R, pn, pr, pt, rhythm2meter_state, minN, maxN, use_silence_state, p2s, pfs)
             obj.M = M;
             obj.Meff = Meff;
             obj.N = N;
@@ -35,15 +36,28 @@ classdef TransitionModel
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.minN = minN;
             obj.maxN = maxN;
+            if nargin < 11
+                use_silence_state = 0;
+                p2s = 0;
+                pfs = 0;
+            end
+            if use_silence_state
+               silence_state_id = obj.M * obj.N *obj.R + 1;
+            else
+                p2s = 0;
+                pfs = 0;
+            end
             if max(maxN) > N
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
             % set up pattern transition matrix
             if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
-                % ok, do nothing
+                % pr is a matrix RxR (R>1), do nothing
             elseif size(obj.pr, 1) == 1
                 obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                obj.pr(find(eye(obj.R))) = (1-pr);
+                obj.pr(logical(eye(obj.R))) = (1-pr);
+            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
+                % ok, do nothing
             else
                 error('p_r has wrong dimensions!\n');
             end
@@ -85,22 +99,12 @@ classdef TransitionModel
                 fprintf('.');
                 mi=1:obj.Meff(rhythm2meter_state(rhi));
                 ti = rhythm2meter_state(rhi);
-                for ni = 1:N
-                    %             for i = start_i:numstates     % at time k
-%                     if rem(i, perc) == 0
-%                         fprintf('.');
-%                     end
-                    % decode state number to m and n
-                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter_state(rhi))), ...
-                        repmat(rhi, 1, obj.Meff(rhythm2meter_state(rhi))));
-                    %                     [mi, ni, rhi] = ind2sub([M, N, R], i);
+                for ni = minN(rhi):maxN(rhi)
                     
-                    % filter out states violating the tempo ...
-                    % constraints, states at the borders are defined separately at the
-                    % end
-                    if (ni <= minN(rhi)) || (ni >= maxN(rhi))
-                        continue;
-                    end
+                    % decode state number to m and n
+                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter(rhi))), ...
+                        repmat(rhi, 1, obj.Meff(rhythm2meter(rhi))));
+                    %                     [mi, ni, rhi] = ind2sub([M, N, R], i);
                     
                     mj = mod(mi + ni - 1, obj.Meff(ti)) + 1; % new position
                     % --------------------------------------------------------------
@@ -130,7 +134,7 @@ classdef TransitionModel
                             
                             ri(p:p+n_bc-1) = i(bar_crossing);
                             cj(p:p+n_bc-1) = j;
-                            val(p:p+n_bc-1) = prob * prob2;
+                            val(p:p+n_bc-1) = prob * prob2 * (1-p2s);
                             p = p + n_bc;
                             %                         end
                             % within a tempo state, all rhythmic patterns have to sum to
@@ -141,8 +145,14 @@ classdef TransitionModel
                             
                         end
                     end
+                    if use_silence_state
+                        ri(p:p+n_bc-1) = i(bar_crossing);
+                        cj(p:p+n_bc-1) = silence_state_id;
+                        val(p:p+n_bc-1) = p2s;
+                        p = p + n_bc;
+                    end
                     % --------------------------------------------------------------
-                    %                     else % inside the bar
+                     % inside the bar
                     j_mr = (rhi-1)*N*M + mj(~bar_crossing);
                     % possible transitions: 3
                     %                         nj = [ni - 1, ni, ni + 1];
@@ -212,19 +222,41 @@ classdef TransitionModel
                 j = j - M;
                 ri(p:p+M-1) = i;  cj(p:p+M-1) = j;   val(p:p+M-1) = 1 - val(p-M:p-1);   p = p + M;
             end
+            
+            if use_silence_state
+                p0 = p;
+                % self transition
+                cj(p) = silence_state_id;
+                val(p) = 1 - pfs; 
+                p = p + 1;
+                % transition from silence state to m=1, n(:), r(:)
+                n = [];
+                r = [];
+                for i_r=1:R
+                    temp = repmat((minN(i_r):maxN(i_r))-1, R, 1);
+                    n = [n, temp(:)'];
+                    temp = repmat(0:R-1, 1, maxN(i_r)+1-minN(i_r));
+                    r = [r, temp(:)'];
+                end
+                cj(p:p+length(n(:))-1) = ones(length(n(:)), 1) + n(:)*M + r(:)*M*N;
+                val(p:p+length(n(:))-1) = pfs/(length(n(:)));
+                p = p + length(n(:));
+                ri(p0:p-1) = silence_state_id;
+                obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), numstates+1, numstates+1);
+            else
+                obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), numstates, numstates);
+            end
             %             end
             
             fprintf(' done\n');
+             
             
-            ri = ri(1:p-1); cj = cj(1:p-1); val = val(1:p-1);
-            obj.A = sparse(ri, cj, val, numstates, numstates);
         end
         
         function error = transition_model_is_corrupt(obj, dooutput)
             if nargin == 1, dooutput = 0; end
             error = 1;
-            
-            
+
             if dooutput, fprintf('*   Checking the Transition Matrix ... '); end
             
             % sum over columns j

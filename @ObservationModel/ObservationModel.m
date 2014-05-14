@@ -20,10 +20,11 @@ classdef ObservationModel
                             % [nStates, 2]. first columns is the rhythmic
                             % pattern indicator, second one the bar
                             % position (e.g., 1, 2 .. 64 )
+        use_silence_state
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff)
+        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff, use_silence_state)
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
@@ -34,16 +35,21 @@ classdef ObservationModel
             obj.R = R;
             obj.barGrid = barGrid;
             bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
-            r2b = obj.barGrid ./ max(bar_durations);
+            r2b = repmat(obj.barGrid ./ max(bar_durations), 2, 1);
             obj.barGrid_eff = round(bar_durations * r2b);
-            obj = obj.make_state2obs_idx();
+            obj.use_silence_state = use_silence_state;
+            obj = obj.make_state2obs_idx;
         end
                       
         params = fit_distribution(obj, data_file_pattern_barpos_dim)
          
-        function obj = train_model(obj, data_file_pattern_barpos_dim)
+        function obj = train_model(obj, data_file_pattern_barpos_dim, data_silence)
             % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
             obj.learned_params = obj.fit_distribution(data_file_pattern_barpos_dim);
+            if obj.use_silence_state
+                temp{1} = data_silence;
+                obj.learned_params(obj.R+1, 1) = obj.fit_distribution(temp);
+            end
             % store learned params in case of leave-one-out testing, where
             % we update learned_params in each step
             obj.learned_params_all = obj.learned_params;
@@ -80,6 +86,10 @@ classdef ObservationModel
 % 		temp = obsLik(iR, 1:barPos, :);
 % 		temp(temp < eps) = eps;
 % 		obsLik(iR, 1:barPos, :) = temp;
+            end
+            if obj.use_silence_state
+                obsLik(obj.R+1, 1, 1:nFrames) = obj.lik_func_handle(observations, ...
+                    obj.learned_params(obj.R+1, 1));
             end
         end
         
@@ -143,6 +153,11 @@ classdef ObservationModel
                     obj.state2obs_idx(ind, 2) = discreteBarPos(1:Meff_iR);
                 end
             end
+            if obj.use_silence_state
+                obj.state2obs_idx(end+1, 1) = obj.R+1;
+                obj.state2obs_idx(end, 2) = 1;
+            end
+            
         end 
     end
     
