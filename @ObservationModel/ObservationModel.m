@@ -139,7 +139,6 @@ classdef ObservationModel
             %{
             Computes state2obs_idx, which specifies which states are tied (share the same parameters) 
             %}
-           
             nStates = obj.M * obj.N * obj.R;
             obj.state2obs_idx = nan(nStates, 2);
             barPosPerGrid = obj.M / obj.barGrid;

@@ -146,6 +146,8 @@ classdef TransitionModel
                         end
                     end
                     if use_silence_state
+                        % transition to silence state possible at bar
+                        % transition
                         ri(p:p+n_bc-1) = i(bar_crossing);
                         cj(p:p+n_bc-1) = silence_state_id;
                         val(p:p+n_bc-1) = p2s;

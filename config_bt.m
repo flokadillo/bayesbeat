@@ -76,7 +76,7 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 1;
+Params.use_silence_state = 0;
 % Probability of entering the silence state
 Params.p2s = 0.00001;
 % Probability of leaving the silence state
@@ -182,23 +182,4 @@ Params.test_set = 'adi_118_test_2';
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '/home/florian/diss/data/beats/beatles/audio/01_-_Please_Please_Me/04_-_Chains.flac';
 
-<<<<<<< HEAD
-=======
-% % test data
-% Params.test_set = 'ballroom_test_1';
-% %robot=======
-
-% Params.test_set = 'robo-all';
-
-% Params.test_set = 'yoshimi_take_2';
-% % Params.testLab = ['~/diss/data/beats/', Params.test_set, '.lab'];
-Params.test_set = ' ';
-% Params.testLab = '~/diss/data/beats/robo_git2/test/flo_1.wav';
-Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
-% Params.test_annots_folder =  viterbi'~/diss/data/beats/ballroom/all';
-
-[~, clusterFName, ~] = fileparts(Params.clusterIdFln);
-% clusterFName = strrep(clusterFName, '-songs', '');
-Params.featuresFln = fullfile(Params.data_path, [clusterFName, '_', Params.featStr, '.mat']);
->>>>>>> robot
 end
