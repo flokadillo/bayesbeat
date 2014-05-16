@@ -302,6 +302,6 @@ classdef Data < handle
         
         dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
         
-        [ data, error ] = loadAnnotations( path, basename, datatype, dooutput )
+        [ data, error ] = load_annotations_bt( filename, ann_type );
     end
 end
