@@ -48,7 +48,6 @@ fprintf('    Organize feature values (%s) into bars ...\n', feature_type);
 if strcmp(pattern_size, 'bar')
     bar_grid_max = 0;
     for iFile=1:nFiles
-%         [dataPath, fname, ~] = fileparts(listing(iFile).name);
         [ meter, ~ ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
         if length(meter) == 1
            bar_grid_max = max([bar_grid_max; whole_note_div * meter / 4]);

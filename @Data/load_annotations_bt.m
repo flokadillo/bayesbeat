@@ -21,6 +21,7 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 %
 % 16.05.2014 by Florian Krebs
 % ----------------------------------------------------------------------
+
 % supported extensions:
 sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', '.rhythm'};
 % get extension of filename
@@ -32,7 +33,7 @@ if sum(strcmp(sup_ext, ext)) > 0
 end
 path = strrep(path, 'audio', ['annotations/', ann_type]);
 filename = fullfile(path, [fname, '.', ann_type]);
-
+% check if file exists
 if ~exist(filename, 'file')
     fprintf('WARNING: load_annotations_bt: %s not found\n', filename);
     data = [];
