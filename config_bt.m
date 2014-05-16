@@ -60,7 +60,7 @@ Params.M = 768;
 % Maximum tempo state 
 Params.N = 11;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 1;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
 Params.meters = [4; 4];
 % Number of position grid points per whole note. This is important for the
@@ -151,7 +151,7 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
-Params.feat_type{1} = 'sprflx';
+Params.feat_type{1} = 'sprflx-mvavg';
 %  Params.feat_type{1} = 'lo230_superflux.mvavg';
 %  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
@@ -165,7 +165,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'yoshimi';
+Params.train_set = 'robo_train';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -173,15 +173,15 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-rhythm.mat']);
+    num2str(Params.R), 'R-none.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'adi_118_test_2';
+Params.test_set = 'robo_test';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-Params.testLab = '/home/florian/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
+% Params.testLab = '/home/florian/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
 
 end

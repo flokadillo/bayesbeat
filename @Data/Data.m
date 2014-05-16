@@ -104,13 +104,13 @@ classdef Data < handle
                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 meter_fln = fullfile(strrep(fpath, 'audio', 'annotations/meter'), [fname, '.meter']);
                 if exist(meter_fln, 'file')
-                    annots = loadAnnotations(fpath, fname, 'm', 0);
+                    meter = Data.load_annotations_bt(obj.file_list{iFile}, 'meter');
                     if length(annots.meter) == 1
-                        obj.meter(iFile, 1) = annots.meter;
+                        obj.meter(iFile, 1) = meter;
                         obj.meter(iFile, 2) = 4;
                         fprintf('Data.read_meter: No denominator in meter file %s found -> adding 4\n', [fname, '.meter']);
                     else
-                        obj.meter(iFile, :) = annots.meter;
+                        obj.meter(iFile, :) = meter;
                     end
                 else
                     meter_files_available = 0;
@@ -203,14 +203,7 @@ classdef Data < handle
             % reads beats and downbeats from file and stores them in the
             % data object
             for iFile = 1:length(obj.file_list)
-                [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                beats_fln = fullfile(fpath, [fname, '.beats']);
-                if exist(beats_fln, 'file')
-                     [ data, ~ ] = loadAnnotations(strrep(fpath, 'audio', 'annotations'), fname, 'b', 0 );
-                    obj.beats{iFile} = data.beats;
-                else
-                    error('Beats file %s not found\n', beats_fln);
-                end
+                [obj.beats{iFile}, ~ ] = Data.load_annotations_bt(obj.file_list{iFile}, 'beats');
                 if strcmp(obj.pattern_size, 'bar')
                     [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
                 else

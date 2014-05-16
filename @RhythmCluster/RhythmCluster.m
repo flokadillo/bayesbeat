@@ -250,12 +250,9 @@ classdef RhythmCluster < handle
                     if ismember(iFile, exclude_songs)
                         continue;
                     end
-                    [fpath, fname, ~] = fileparts(obj.train_file_list{iFile});
-                    [ data, ~ ] = loadAnnotations(strrep(fpath, 'audio', 'annotations'), fname, 'b', 0 );
-                    beats = data.beats;
-                    countTimes = beats(:, 3);
+                    [beats, ~ ] = Data.load_annotations_bt(obj.train_file_list{iFile}, 'beats');
                     % filter out meters that are not 3 or 4
-                    meter(fileCounter+1) = max(countTimes);
+                    meter(fileCounter+1) = max(beats(:, 3));
                     if exist('bad_meters', 'var')
                         if ismember(meter(fileCounter+1), bad_meters)
                             fprintf('    Warning: Skipping %s because of meter (%i)\n', obj.train_file_list{iFile}, meter(fileCounter+1));
@@ -361,7 +358,11 @@ classdef RhythmCluster < handle
             obj.file_2_cluster = zeros(length(ok_songs), 1);
             for iFile = 1:length(ok_songs)
 %                 [annotsPath, fname, ~] = fileparts(fileNames{ok_songs(iFile)});
-                beats = Data.load_annotations_bt( obj.train_file_list{ok_songs(iFile)}, 'beats');
+                [beats, error] = Data.load_annotations_bt( obj.train_file_list{ok_songs(iFile)}, 'beats');
+                if error, error('no beat file found\n'); end
+                if size(beats, 2) < 2
+                    error('Downbeat annotations missing for %s\n', obj.train_file_list{ok_songs(iFile)}); 
+                end
                 meter(fileCounter+1) = max(beats(:, 3));
                 
                 % get pattern id of file

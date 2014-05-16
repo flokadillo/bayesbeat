@@ -46,6 +46,7 @@ if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
     fid = fopen(filename, 'r');
     data = double(cell2mat(textscan(fid, '%d%d', 'delimiter', '/')));
     fclose(fid);
+    if data(2) == 0, data = data(1); end
 elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
     % Load onset annotations
     data = load('-ascii', filename);

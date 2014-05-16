@@ -48,16 +48,16 @@ fprintf('    Organize feature values (%s) into bars ...\n', feature_type);
 if strcmp(pattern_size, 'bar')
     bar_grid_max = 0;
     for iFile=1:nFiles
-        [dataPath, fname, ~] = fileparts(listing(iFile).name);
-        [ annots, ~ ] = Data.loadAnnotations( strrep(dataPath, 'audio', 'annotations'), fname, 'm', dooutput );
-        if length(annots.meter) == 1
-           bar_grid_max = max([bar_grid_max; whole_note_div * annots.meter / 4]);
-           Output.file2meter(iFile, 1) = annots.meter;
+%         [dataPath, fname, ~] = fileparts(listing(iFile).name);
+        [ meter, ~ ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
+        if length(meter) == 1
+           bar_grid_max = max([bar_grid_max; whole_note_div * meter / 4]);
+           Output.file2meter(iFile, 1) = meter;
            Output.file2meter(iFile, 2) = 4;
            fprintf('\n    Warning: meter file has only one value, assuming quarter note beats\n');
         else
-           bar_grid_max = max([bar_grid_max; ceil(whole_note_div * annots.meter(1) / annots.meter(2))]);
-           Output.file2meter(iFile, :) = annots.meter;
+           bar_grid_max = max([bar_grid_max; ceil(whole_note_div * meter(1) / meter(2))]);
+           Output.file2meter(iFile, :) = meter;
         end
         
     end
@@ -70,12 +70,13 @@ for iFile=1:nFiles
     [dataPath, fname, ext] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
-    [ annots, error ] = Data.loadAnnotations(strrep(dataPath, 'audio', 'annotations'), fname, 'mb', dooutput );
-    if error,
+    [ meter, error1 ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
+    [ beats, error2 ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
+    if (error1 || error2),
         if dooutput, fprintf('Error loading annotations, skipping %s\n', fname); end
         continue;
-%     elseif ~ismember(annots.meter, [3; 4])
-%         if dooutput, fprintf('Skipping %s because of meter (%i)\n',fname, annots.meter); end
+%     elseif ~ismember(meter, [3; 4])
+%         if dooutput, fprintf('Skipping %s because of meter (%i)\n',fname, meter); end
 %         continue;
     end
     Output.fileNames{iFile} = listing(iFile).name;
@@ -84,7 +85,7 @@ for iFile=1:nFiles
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = find(annots.beats(:, 3) == 1);
+    b1 = find(beats(:, 3) == 1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
@@ -95,11 +96,11 @@ for iFile=1:nFiles
     else
         % effective number of bar positions (depending on meter)
         if strcmp(pattern_size, 'bar')
-            if length(annots.meter) == 1
-                bar_grid_eff = whole_note_div * annots.meter / 4;
-                annots.meter(2) = 4;
+            if length(meter) == 1
+                bar_grid_eff = whole_note_div * meter / 4;
+                meter(2) = 4;
             else
-                bar_grid_eff = ceil(whole_note_div * annots.meter(1) / annots.meter(2));
+                bar_grid_eff = ceil(whole_note_div * meter(1) / meter(2));
             end
         else
             % beat-length patterns: suppose quarter beats 
@@ -109,8 +110,8 @@ for iFile=1:nFiles
         % collect feature values and determine the corresponding position
         % in a bar
         [barData, nchar, Output.bar_pos_per_frame{iFile}, Output.pattern_per_frame{iFile}] = ...
-            get_feature_at_bar_grid(wav_fln, feature_type, annots.beats, whole_note_div, bar_grid_eff, ...
-            frame_length, pattern_size, annots.meter, nchar);
+            get_feature_at_bar_grid(wav_fln, feature_type, beats, whole_note_div, bar_grid_eff, ...
+            frame_length, pattern_size, meter, nchar);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
