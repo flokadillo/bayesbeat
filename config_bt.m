@@ -182,6 +182,6 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 Params.test_set = 'robo_test';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
- Params.testLab = '/home/florian/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
+ Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
 
 end
