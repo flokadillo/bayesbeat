@@ -178,12 +178,14 @@ classdef Data < handle
                         featureType{iDim}, whole_note_div, frame_length, obj.pattern_size, 1);
                     temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
                         obj.bar2cluster, obj.bar2file);
+			
                 end
                 [n_files, ~, bar_grid_max] = size(temp{1});
                 dataPerFile = cell(n_files, obj.n_clusters, bar_grid_max, featureDim);
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
+		size(dataPerFile{1, 1, 1, 1})
                 obj.barpos_per_frame = TrainData.bar_pos_per_frame;
                 for i=1:length(TrainData.pattern_per_frame)
                     obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
