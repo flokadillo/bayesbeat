@@ -66,7 +66,7 @@ end
 nchar = 0;
 %main loop over all files
 for iFile=1:nFiles
-    [dataPath, fname, ext] = fileparts(listing(iFile).name);
+    [~, fname, ~] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
     [ meter, error1 ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
@@ -173,28 +173,28 @@ bar_pos_per_frame = nan(size(E), 'single');
 pattern_per_frame = nan(size(E), 'single');
 for iBar=1:nBars
 	% compute start and end frame of bar using fr
-% 	startFrame = max([floor(beats(barStartIdx(iBar), 1) * fr), 1]);  % first frame of bar
+% 	first_frame_of_bar = max([floor(beats(barStartIdx(iBar), 1) * fr), 1]);  % first frame of bar
 % 	nextFrame = floor(beats(barStartIdx(iBar)+meter(1), 1) * fr); % first frame of next bar
-    startFrame = floor(beats(barStartIdx(iBar), 1) * fr) + 1; % first frame of bar
-	endFrame = floor(beats(barStartIdx(iBar)+meter(1), 1) * fr) + 1; % first frame of next bar
+    first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + 1; % first frame of bar
+	first_frame_of_next_bar = floor(beats(barStartIdx(iBar)+meter(1), 1) * fr) + 1; % first frame of next bar
 
 	% extract feature for this bar
-% 	featBar = E(startFrame:nextFrame);
-    featBar = E(startFrame:endFrame);
+% 	featBar = E(first_frame_of_bar:nextFrame);
+    featBar = E(first_frame_of_bar:first_frame_of_next_bar);
 
 	% set up time frames of bar
-% 	t = (startFrame:nextFrame) / fr - 1/(2*fr); % subtract half frame (1/(2*fr)) to yield center of frame
-    t = (startFrame:endFrame) / fr - 1/(2*fr);
+% 	t = (first_frame_of_bar:nextFrame) / fr - 1/(2*fr); % subtract half frame (1/(2*fr)) to yield center of frame
+    t = (first_frame_of_bar:first_frame_of_next_bar) / fr - 1/(2*fr);
 
 	% interpolate to find bar position of each audio frame
 	barPosLin = round(interp1(beats(barStartIdx(iBar):barStartIdx(iBar)+meter(1), 1), beatsBarPos, t,'linear','extrap'));
     barPosLin(barPosLin < 1) = 1;
     % bar position 64th grid per frame
-    bar_pos_per_frame(startFrame:endFrame-1) = barPosLin(1:end-1);
-    pattern_per_frame(startFrame:endFrame-1) = ones(endFrame-startFrame, 1) * iBar;
+    bar_pos_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = barPosLin(1:end-1);
+    pattern_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ones(first_frame_of_next_bar-first_frame_of_bar, 1) * iBar;
 	% group all feature values that belong to the same barPos
-	currBarData = accumarray(barPosLin', featBar(:), [], @(x) {x});
-%     currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+1, 1], @(x) {x});
+% 	currBarData = accumarray(barPosLin', featBar(:), [], @(x) {x});
+    currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+1, 1], @(x) {x});
     
 	% add to bar cell array	
 	barData(iBar, :) = currBarData(1:bar_grid_eff); % last element belongs to next bar -> remove it

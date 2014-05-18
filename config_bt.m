@@ -76,13 +76,13 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 0;
+Params.use_silence_state = 1;
 % Probability of entering the silence state
 Params.p2s = 0.00001;
 % Probability of leaving the silence state
 Params.pfs = 0.001;
 % File from which the silence observation model params are learned
-Params.silence_fln{1} = '/home/florian/diss/data/beats/robo_git2/track-silence.wav';
+Params.silence_fln{1} = '~/diss/data/beats/robo_git2/track-silence.wav';
 % In online mode (forward path), the best state is chosen among a set of
 % possible successor state. This set contains position states within a window
 % of +/- max_shift frames

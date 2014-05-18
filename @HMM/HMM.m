@@ -174,15 +174,14 @@ classdef HMM
         end
         
         function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname)
-            
-            % normalize
-            for iR = 1:size(y, 2)
-                y(: ,iR) = y(: ,iR) / max(y(: ,iR));
-            end
-%             y(y<0.1) = 0.1;
-            
+                        
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
+                % normalize
+                % TODO: norm to max=0.95 instead of 1
+                for iR = 1:size(y, 2)
+                    y(: ,iR) = y(: ,iR) / max(y(: ,iR));
+                end
                 obs_lik = obj.rnn_format_obs_prob(y);
                 if obj.R  ~= size(y, 2)
                     error('Dim of RNN probs should be equal to R!\n');
@@ -207,15 +206,16 @@ classdef HMM
             end
             
             figure;
-            subplot(3, 1, 1)
+            ax(1) = subplot(3, 1, 1)
             plot(m_path)
             ylabel('bar position')
-            subplot(3, 1, 2)
+            ax(2) = subplot(3, 1, 2)
             plot(r_path)
             ylabel('rhythm pattern')
-            subplot(3, 1, 3)
+            ax(3) = subplot(3, 1, 3)
             plot(y)
             ylabel('observation feature')
+            linkaxes(ax,'x');
                        
             t_path = zeros(length(r_path), 1);
             t_path(r_path<=obj.R) = obj.rhythm2meter_state(r_path(r_path<=obj.R));
