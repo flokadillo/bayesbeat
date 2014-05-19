@@ -54,7 +54,7 @@ classdef HMM
             obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
-            obj.inferenceMethod = Params.inferenceMethod;
+%             obj.inferenceMethod = Params.inferenceMethod;
             obj.tempo_tying = Params.tempo_tying;
             obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             obj.n_depends_on_r = Params.n_depends_on_r;
@@ -173,7 +173,7 @@ classdef HMM
             
         end
         
-        function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname)
+        function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname, inference_method)
                         
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
@@ -190,14 +190,14 @@ classdef HMM
                 obs_lik = obj.obs_model.compute_obs_lik(y);
             end
             
-            if strcmp(obj.inferenceMethod, 'HMM_forward')
+            if strfind(inference_method, 'forward')
                 % HMM forward path
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
 %                 alpha = alpha(:, 1:200);
 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha));
-            elseif strcmp(obj.inferenceMethod, 'HMM_viterbi')
+            elseif strfind(inference_method, 'viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
@@ -205,17 +205,17 @@ classdef HMM
                 error('inference method not specified\n');
             end
             
-            figure;
-            ax(1) = subplot(3, 1, 1)
-            plot(m_path)
-            ylabel('bar position')
-            ax(2) = subplot(3, 1, 2)
-            plot(r_path)
-            ylabel('rhythm pattern')
-            ax(3) = subplot(3, 1, 3)
-            plot(y)
-            ylabel('observation feature')
-            linkaxes(ax,'x');
+%             figure;
+%             ax(1) = subplot(3, 1, 1);
+%             plot(m_path)
+%             ylabel('bar position')
+%             ax(2) = subplot(3, 1, 2);
+%             plot(r_path)
+%             ylabel('rhythm pattern')
+%             ax(3) = subplot(3, 1, 3);
+%             plot(y)
+%             ylabel('observation feature')
+%             linkaxes(ax,'x');
                        
             t_path = zeros(length(r_path), 1);
             t_path(r_path<=obj.R) = obj.rhythm2meter_state(r_path(r_path<=obj.R));

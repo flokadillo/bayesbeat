@@ -62,7 +62,7 @@ Params.N = 11;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [4; 4];
+Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -76,7 +76,7 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 1;
+Params.use_silence_state = 0;
 % Probability of entering the silence state
 Params.p2s = 0.00001;
 % Probability of leaving the silence state
@@ -151,9 +151,9 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
-Params.feat_type{1} = 'sprflx';
-%  Params.feat_type{1} = 'lo230_superflux.mvavg';
-%  Params.feat_type{2} = 'hi250_superflux.mvavg';
+% Params.feat_type{1} = 'sprflx';
+ Params.feat_type{1} = 'lo230_superflux.mvavg';
+ Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -165,7 +165,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'yoshimi';
+Params.train_set = 'boeck_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -173,7 +173,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-rhythm.mat']);
+    num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
