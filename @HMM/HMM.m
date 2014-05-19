@@ -54,16 +54,27 @@ classdef HMM
             obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
-%             obj.inferenceMethod = Params.inferenceMethod;
             obj.tempo_tying = Params.tempo_tying;
-            obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
+            if isfield(Params, 'viterbi_learning_iterations')
+                obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
+            else
+                obj.viterbi_learning_iterations = 0;
+            end
             obj.n_depends_on_r = Params.n_depends_on_r;
-            obj.max_shift = Params.max_shift;
+            if isfield(Params, 'max_shift')
+                obj.max_shift = Params.max_shift;
+            end
             obj.use_silence_state = Params.use_silence_state;
-            obj.p2s = Params.p2s;
-            obj.pfs = Params.pfs;
+            if obj.use_silence_state
+                obj.p2s = Params.p2s;
+                obj.pfs = Params.pfs;
+            end
             obj.rhythm_names = rhythm_names;
-            obj.correct_beats = Params.correct_beats;
+            if isfield(Params, 'correct_beats')
+                obj.correct_beats = Params.correct_beats;
+            else
+                obj.correct_beats = 0;
+            end
         end
         
  
@@ -173,7 +184,7 @@ classdef HMM
             
         end
         
-        function [beats, tempo, rhythm, meter, hidden_state_sequence] = do_inference(obj, y, fname, inference_method)
+        function results = do_inference(obj, y, fname, inference_method)
                         
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
@@ -253,7 +264,11 @@ classdef HMM
             end
 %             hold on; stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'k');
             rhythm = r_path(r_path<=obj.R);
-
+            results{1} = beats;
+            results{2} = tempo;
+            results{3} = meter;
+            results{4} = r_path;
+            results{5} = hidden_state_sequence;
         end
         
         function [obj, bar2cluster] = viterbi_training(obj, features, train_data)

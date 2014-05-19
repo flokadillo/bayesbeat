@@ -40,7 +40,8 @@ classdef PF < handle
         n_initial_clusters          % Number of cluster to start with
         rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
-        pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
+        pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
+        use_silence_state           % state that describes non-musical content
     end
     
     methods
@@ -54,7 +55,7 @@ classdef PF < handle
             obj.nParticles = Params.nParticles;
             obj.sigma_N = Params.sigmaN;
             obj.pr = Params.pr;
-            obj.barGrid = max(Params.barGrid_eff);
+            obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter_state = rhythm2meter_state;
@@ -64,7 +65,6 @@ classdef PF < handle
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
             obj.do_viterbi_filtering = Params.do_viterbi_filtering;
-            obj.inferenceMethod = Params.inferenceMethod;
             obj.save_inference_data = Params.save_inference_data;
             obj.state_distance_coefficients = Params.state_distance_coefficients;
             obj.cluster_merging_thr = Params.cluster_merging_thr;
@@ -74,12 +74,13 @@ classdef PF < handle
             obj.rhythm_names = rhythm_names;
             obj.pattern_size = Params.pattern_size;
             obj.resampling_interval = Params.res_int;
+            obj.use_silence_state = Params.use_silence_state;
             rng('shuffle');
             %             % Matlab 2010
             %             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
         end
         
-        function obj = make_initial_distribution(obj)
+        function obj = make_initial_distribution(obj, tempo_per_cluster)
             
             % TODO: Implement prior initial distribution for tempo
             obj.initial_m = zeros(obj.nParticles, 1);
@@ -131,7 +132,7 @@ classdef PF < handle
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, obj.use_silence_state);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
@@ -155,20 +156,17 @@ classdef PF < handle
             
         end
         
-        function [beats, tempo, rhythm, meter] = do_inference(obj, y, fname)
-            %                         profile on
-            %             tic;
+        function results = do_inference(obj, y, fname, inference_method)
+            if isempty(strfind(inference_method, 'PF'))
+               error('Inference method %s not compatible with PF model\n', inference_method);
+            end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            % prevent observation probabilities to be zero
-            % obs_lik(obs_lik < eps) = eps;
             obj = obj.pf(obs_lik, fname);
-            %              if strcmp(obj.inferenceMethod, 'PF')
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
             fprintf('    Best weight log joint = %.1f\n', joint_prob_best.sum);
-            %             elseif strcmp(obj.inferenceMethod, 'PF_viterbi')
-            if strcmp(obj.inferenceMethod, 'PF_viterbi')
+            if strfind(inference_method, 'viterbi')
                 [m_path_v, n_path_v, r_path_v] = obj.path_via_viterbi(obs_lik);
                 [ joint_prob_vit ] = obj.compute_joint_of_sequence([m_path_v, n_path_v, r_path_v], obs_lik);
                 fprintf('    Viterbi log joint = %.1f\n', joint_prob_vit.sum);
@@ -177,22 +175,16 @@ classdef PF < handle
                     m_path = m_path_v;
                     n_path = n_path_v;
                     r_path = r_path_v;
-                end
-                %             else
-                %                 error('PF.m: unknown inferenceMethod');
-                
+                end                
             end
-            %                         profile viewer
-            %                 fprintf('Hallo\n')
-            %             fprintf('    Runtime: %.2f sec\n', toc);
             % meter path
             t_path = obj.rhythm2meter_state(r_path);
             
             % compute beat times and bar positions of beats
-            meter = obj.meter_state2meter(:, t_path);
-            beats = obj.find_beat_times(m_path, t_path);
-            tempo = meter(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
-            rhythm = r_path;
+            results{3} = obj.meter_state2meter(:, t_path);
+            results{1} = obj.find_beat_times(m_path, t_path);
+            results{2} = results{3}(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
+            results{4} = r_path;            
         end
         
         function [ joint_prob ] = compute_joint_of_sequence(obj, state_sequence, obs_lik)

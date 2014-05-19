@@ -110,7 +110,7 @@ classdef BeatTracker < handle
 %             end
         end
         
-        function train_model(obj, init_n_gauss)
+        function train_model(obj)
             if isempty(obj.init_model_fln)
                 tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
                
@@ -138,7 +138,7 @@ classdef BeatTracker < handle
             
 %             obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
 
-            if obj.Params.viterbi_learning_iterations > 0
+            if isfield(obj.Params, 'viterbi_learning_iterations') && obj.Params.viterbi_learning_iterations > 0
                 obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
                     obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
                 obj.refine_model(obj.Params.viterbi_learning_iterations);
@@ -195,13 +195,9 @@ classdef BeatTracker < handle
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             tic;
-            [beats, tempo, rhythm, meter, best_path] = obj.model.do_inference(observations, fname, obj.inferenceMethod);
+            results = obj.model.do_inference(observations, fname, obj.inferenceMethod);
             fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
-            results{1} = beats;
-            results{2} = tempo;
-            results{3} = meter;
-            results{4} = rhythm;
-            results{5} = best_path;
+
             
 %                         % save state sequence of annotations to file
 %                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
@@ -227,12 +223,17 @@ classdef BeatTracker < handle
         end
         
         function [] = save_results(obj, results, save_dir, fname)
+            if ~exist(save_dir, 'dir')
+                system(['mkdir ', save_dir]);
+            end
             BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats']));
             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
                 obj.model.rhythm_names);
-            BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            if strfind(obj.inferenceMethod, 'HMM')
+                BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            end
         end
     end
     

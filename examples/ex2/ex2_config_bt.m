@@ -1,4 +1,4 @@
-function Params = ex1_config_bt(base_path)
+function Params = ex2_config_bt(base_path)
 % [Params] = config_bt
 %   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
@@ -20,15 +20,17 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
-Params.results_path = fullfile(Params.base_path, 'examples/ex1/results');
+Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+Params.results_path = fullfile(Params.base_path, 'examples/ex2/results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
 % ======================
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'PF';
 % Filename of pre-stored model to load
-Params.model_fln = fullfile(Params.base_path, 'examples/ex1/hmm_boeck.mat');
+% Params.model_fln = fullfile(Params.base_path, 'examples/ex1/hmm_boeck.mat');
+Params.model_fln = fullfile(Params.base_path, 'examples/ex2/pf_boeck.mat');
  
 % SYSTEM PARAMETERS:
 % ==================
