@@ -21,8 +21,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
 % ======================
-Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
-'PF_viterbi'}
+% Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
 % Filename of pre-stored model to load
 Params.model_fln = fullfile(Params.base_path, 'examples/ex1/hmm_boeck.mat');
