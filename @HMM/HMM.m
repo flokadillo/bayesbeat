@@ -91,13 +91,13 @@ classdef HMM
             end            
 
             if max(obj.maxN) ~= obj.N
-                fprintf('N should be %i instead of %i -> corrected\n', max(obj.maxN), obj.N); 
+                fprintf('    N should be %i instead of %i -> corrected\n', max(obj.maxN), obj.N); 
                 obj.N = max(obj.maxN);
             end
             
             if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN)-1;
-                obj.maxN = ones(1, obj.R) * max(obj.maxN)+1;
+                obj.minN = ones(1, obj.R) * min(obj.minN);
+                obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
                 fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
                     round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
@@ -486,7 +486,7 @@ classdef HMM
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P' ,'transition_model', ...
                 'observation_model', 'initial_prob', 'state_to_obs', 'rhythm_to_meter', '-v7.3');
-            fprintf('Saved model data to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
+            fprintf('    Saved model data to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
         end
         
 

@@ -120,7 +120,7 @@ classdef RhythmCluster < handle
         
         function make_feats_per_bar(obj, whole_note_div)
             if exist(obj.train_lab_fln, 'file')
-                fprintf('Found %i files in %s\n', length(obj.train_file_list), obj.dataset);
+                fprintf('    Found %i files in %s\n', length(obj.train_file_list), obj.dataset);
                 dataPerBar = [];
                 for iDim =1:obj.feature.feat_dim
                     Output = Data.extract_bars_from_feature(obj.train_file_list, obj.feature.feat_type{iDim}, ...
@@ -135,9 +135,9 @@ classdef RhythmCluster < handle
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
                     num2str(obj.feature.feat_dim), 'd_', obj.dataset, '.txt']);
                 dlmwrite(obj.feat_matrix_fln, dataPerBar, 'delimiter', '\t', 'precision', 4);
-                fprintf('Saved data per bar to %s\n', obj.feat_matrix_fln);
+                fprintf('    Saved data per bar to %s\n', obj.feat_matrix_fln);
             else
-                error('%s not found', obj.train_lab_fln)
+                error('    %s not found', obj.train_lab_fln)
             end
         end
         
@@ -153,7 +153,7 @@ classdef RhythmCluster < handle
             obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
         end
         
-        function do_clustering(obj, n_clusters, type, bad_meters)
+        function ca_fln = do_clustering(obj, n_clusters, type, bad_meters)
             % type = 'bars' : cluster data_per_bar
             % type = 'songs': cluster data_per_song
             % bad_meters    : [1 x nMeters] numerator of meters to ignore
@@ -161,7 +161,7 @@ classdef RhythmCluster < handle
             %             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
             %                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
             [file2nBars, ~] = hist(obj.bar2file, 1:length(obj.train_file_list));
-            fprintf('WARNING: so far only 2 different meters supported!\n');
+            fprintf('    WARNING: so far only 2 different meters supported!\n');
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
                 meter_per_item = obj.bar_2_meter;
@@ -235,7 +235,7 @@ classdef RhythmCluster < handle
                 xlim([1 length(data)])
             end
             outfile = ['/tmp/patterns-', obj.dataset, '-kmeans-', type, '-', num2str(n_clusters), '.png'];
-            fprintf('writing patterns to %s\n', outfile);
+            fprintf('    Writing patterns to %s\n', outfile);
             % save to png
             print(h, outfile, '-dpng');
             
@@ -290,8 +290,9 @@ classdef RhythmCluster < handle
             end
             save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
                 'file2nBars', 'rhythm_names', 'rhythm2meter');
-            fprintf('Saved bar2rhythm, bar2file, file2nBars, rhythm_names, rhythm2meter to %s\n', obj.clusters_fln);
+            fprintf('    Saved bar2rhythm, bar2file, file2nBars, rhythm_names, rhythm2meter to %s\n', obj.clusters_fln);
             obj.n_clusters = n_clusters;
+            ca_fln = obj.clusters_fln;
         end
         
         function compute_cluster_transitions(obj)

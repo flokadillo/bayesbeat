@@ -35,7 +35,7 @@ path = strrep(path, 'audio', ['annotations/', ann_type]);
 filename = fullfile(path, [fname, '.', ann_type]);
 % check if file exists
 if ~exist(filename, 'file')
-    fprintf('WARNING: load_annotations_bt: %s not found\n', filename);
+    fprintf('    WARNING: load_annotations_bt: %s not found\n', filename);
     data = [];
     error = 1;
     return;

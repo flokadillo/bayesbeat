@@ -42,49 +42,74 @@ end
 Output.dataPerBar = []; idLastBar = 0;
 Output.fileNames = cell(nFiles, 1);
 Output.file2meter = zeros(nFiles, 2);
-fprintf('    Organize feature values (%s) into bars ...\n', feature_type);
+beats_all = cell(nFiles, 1);
+fprintf('* Organize feature values (%s) into bars ...\n', feature_type);
 
-% whole_note_div is loop over all files to find maximum bargrid
-if strcmp(pattern_size, 'bar')
-    bar_grid_max = 0;
-    for iFile=1:nFiles
-        [ meter, ~ ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
-        if length(meter) == 1
-           bar_grid_max = max([bar_grid_max; whole_note_div * meter / 4]);
-           Output.file2meter(iFile, 1) = meter;
-           Output.file2meter(iFile, 2) = 4;
-           fprintf('\n    Warning: meter file has only one value, assuming quarter note beats\n');
+% load meter and beats for all files
+for iFile=1:nFiles
+        [meter, error1] = Data.load_annotations_bt(listing(iFile).name, 'meter');
+        [beats_all{iFile}, error2] = Data.load_annotations_bt(listing(iFile).name, 'beats');
+        if error1
+            Output.file2meter(iFile, 1) = max(beats_all{iFile}(:, 3));
+            Output.file2meter(iFile, 2) = 4;
+            fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
         else
-           bar_grid_max = max([bar_grid_max; ceil(whole_note_div * meter(1) / meter(2))]);
-           Output.file2meter(iFile, :) = meter;
+            Output.file2meter(iFile, :) = meter;
         end
-        
-    end
+end
+% determine maximum bar grid (corresponding to the longest bar)
+if strcmp(pattern_size, 'bar')
+    bar_grid_max = ceil(max(whole_note_div * Output.file2meter(:, 1) ./ Output.file2meter(:, 2)));
 else
+    % beat length patterns, assume quarter note beats
     bar_grid_max = round(whole_note_div / 4);
 end
+
+% if strcmp(pattern_size, 'bar')
+%     bar_grid_max = 0;
+%     for iFile=1:nFiles
+%         [ meter, error ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
+%         if error
+%             [ beats, error ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
+%             meter = max(beats(:, 3));
+%         end
+%         if length(meter) == 1
+%            bar_grid_max = max([bar_grid_max; whole_note_div * meter / 4]);
+%            Output.file2meter(iFile, 1) = meter;
+%            Output.file2meter(iFile, 2) = 4;
+%            fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
+%            
+%         else
+%            bar_grid_max = max([bar_grid_max; ceil(whole_note_div * meter(1) / meter(2))]);
+%            Output.file2meter(iFile, :) = meter;
+%         end
+%         
+%     end
+% else
+%     bar_grid_max = round(whole_note_div / 4);
+% end
 nchar = 0;
 %main loop over all files
 for iFile=1:nFiles
     [~, fname, ~] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
-    [ meter, error1 ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
-    [ beats, error2 ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
-    if (error1 || error2),
+%     [ meter, error1 ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
+%     [ beats, error2 ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
+%     if error1 % no meter file, read meter from beats file assuming quarter note beats
+%         meter = max(beats(:, 3));
+%         
+%     end
+    if isempty(beats_all{iFile})
         if dooutput, fprintf('Error loading annotations, skipping %s\n', fname); end
         continue;
-%     elseif ~ismember(meter, [3; 4])
-%         if dooutput, fprintf('Skipping %s because of meter (%i)\n',fname, meter); end
-%         continue;
     end
     Output.fileNames{iFile} = listing(iFile).name;
     wav_fln = listing(iFile).name;
-%     featureFln = fullfile(dataPath, 'beat_activations', [fname, '.', feature_type]);
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = find(beats(:, 3) == 1);
+    b1 = find(beats_all{iFile}(:, 3) == 1);
     
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
@@ -95,12 +120,13 @@ for iFile=1:nFiles
     else
         % effective number of bar positions (depending on meter)
         if strcmp(pattern_size, 'bar')
-            if length(meter) == 1
-                bar_grid_eff = whole_note_div * meter / 4;
-                meter(2) = 4;
-            else
-                bar_grid_eff = ceil(whole_note_div * meter(1) / meter(2));
-            end
+%             if length(meter) == 1
+%                 bar_grid_eff = whole_note_div * meter / 4;
+%                 meter(2) = 4;
+%                 fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
+%             else
+                bar_grid_eff = ceil(whole_note_div * Output.file2meter(iFile, 1) ./ Output.file2meter(iFile, 2));
+%             end
         else
             % beat-length patterns: suppose quarter beats 
             bar_grid_eff = whole_note_div / 4;
@@ -109,8 +135,8 @@ for iFile=1:nFiles
         % collect feature values and determine the corresponding position
         % in a bar
         [barData, nchar, Output.bar_pos_per_frame{iFile}, Output.pattern_per_frame{iFile}] = ...
-            get_feature_at_bar_grid(wav_fln, feature_type, beats, whole_note_div, bar_grid_eff, ...
-            frame_length, pattern_size, meter, nchar);
+            get_feature_at_bar_grid(wav_fln, feature_type, beats_all{iFile}, whole_note_div, bar_grid_eff, ...
+            frame_length, pattern_size, Output.file2meter(iFile, :), nchar);
         if ~isempty(barData)
             [nNewBars, currBarGrid] = size(barData);
             % for triple meter fill in empty cells
@@ -147,7 +173,6 @@ function [barData, nchar, bar_pos_per_frame, pattern_per_frame] = get_feature_at
 
 % load feature values from file and up/downsample to frame_length
 [E, fr] = load_features(wav_fln, feature_type, frame_length);
-nchar = 0;
 % if feature vector to short for annotations, copy last value
 if length(E)/fr < beats(end, 1), E = [E; E(end)]; end
 

@@ -145,21 +145,28 @@ classdef Data < handle
             end
         end
         
-        function tempo_per_cluster = get_tempo_per_cluster(obj)
-            tempo_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
+        function [tempo_min_per_cluster, tempo_max_per_cluster] = get_tempo_per_cluster(obj)
+            tempo_min_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
+            tempo_max_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
-                [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations/bpm'), [fname, '.bpm']);
-                if exist(tempo_fln, 'file')
-                    tempo = load(tempo_fln, '-ascii');
-                else
-                    error('BPM file %s not found\n', tempo_fln);
+%                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
+                [obj.beats{iFile}, error ] = Data.load_annotations_bt(obj.file_list{iFile}, 'beats');
+%                 tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations/bpm'), [fname, '.bpm']);
+                if error
+                    error('Beats file not found\n');
                 end
+                beat_periods = sort(diff(obj.beats{iFile}(:, 1)), 'descend');
+                % ignore the biggest and smallest 10 percent of the beat
+                % periods
+                beat_periods = beat_periods(floor(length(beat_periods)/10):floor(length(beat_periods)*9/10));
+                
                 % so far, only the first bar of each file is used and assigned the style to the whole file
                 styleId = obj.bar2cluster(obj.bar2file == iFile);
                 
                 if ~isempty(styleId)
-                    tempo_per_cluster(iFile, styleId(1)) = tempo;
+                    tempo_min_per_cluster(iFile, styleId(1)) = 60/max(beat_periods);
+                    tempo_max_per_cluster(iFile, styleId(1)) = 60/min(beat_periods);
+%                     tempo_per_cluster(iFile, styleId(1)) = tempo;
                 end
             end
             
@@ -171,7 +178,7 @@ classdef Data < handle
             if exist(featuresFln, 'file') && ~reorganize_bars_into_cluster
                 load(featuresFln, 'dataPerFile');
             else
-                fprintf('    Extract and organise trainings data: \n');
+                fprintf('* Extract and organise trainings data: \n');
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
                     TrainData = Data.extract_bars_from_feature(obj.file_list, ...

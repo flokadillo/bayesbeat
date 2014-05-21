@@ -112,9 +112,9 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
-                tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
+                [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
                
-                obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
+                obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster)), ceil(max(tempo_max_per_cluster)));
                 
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset, obj.train_data.feats_silence);
@@ -122,18 +122,18 @@ classdef BeatTracker < handle
                     obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
                 end
                                
-                obj.model = obj.model.make_initial_distribution(tempo_per_cluster);
+                obj.model = obj.model.make_initial_distribution([tempo_min_per_cluster; tempo_max_per_cluster]);
                 
-                fln = fullfile(obj.temp_path, 'last_model.mat');
-                switch obj.inferenceMethod(1:2)
-                    case 'HM'
-                        hmm = obj.model;
-                        save(fln, 'hmm');
-                    case 'PF'
-                        pf = obj.model;
-                        save(fln, 'pf');
-                end
-                fprintf('* Saved model to %s\n', fln);
+%                 fln = fullfile(obj.temp_path, 'last_model.mat');
+%                 switch obj.inferenceMethod(1:2)
+%                     case 'HM'
+%                         hmm = obj.model;
+%                         save(fln, 'hmm');
+%                     case 'PF'
+%                         pf = obj.model;
+%                         save(fln, 'pf');
+%                 end
+%                 fprintf('* Saved model to %s\n', fln);
             end
             
 %             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
