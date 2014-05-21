@@ -12,7 +12,7 @@ classdef RhythmCluster < handle
         dataset             % training dataset on which clustering is performed
         train_lab_fln       % lab file with training data files
         train_file_list     % list of training files
-        beat_ann_list       % list of beat annotation files
+%         beat_ann_list       % list of beat annotation files
         data_save_path      % path where cluster ids per bar are stored
         exclude_songs_fln   % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
@@ -35,7 +35,7 @@ classdef RhythmCluster < handle
             %  Construct Rhythmcluster object
             % ----------------------------------------------------------------------
             %INPUT parameter:
-            % dataset                   :
+            % dataset                 : path to lab file (list of training files)
             %
             %OUTPUT parameter:
             % obj
@@ -50,7 +50,7 @@ classdef RhythmCluster < handle
             end
             obj.feature = Feature(feat_type, frame_length);
             obj.clusters_fln = '/tmp/cluster_assignments.txt';
-            obj.dataset = dataset;
+            
             
             obj.data_save_path = data_save_path;
             if exist('pattern_size', 'var')
@@ -59,7 +59,14 @@ classdef RhythmCluster < handle
                 obj.pattern_size = 'bar';
             end
             % load list of training files
-            obj.train_lab_fln = fullfile('~/diss/data/beats/lab_files', [dataset, '.lab']);
+            if strfind(dataset, '.lab')
+                obj.train_lab_fln = dataset;
+                [~, obj.dataset, ~] = fileparts(dataset); 
+            else
+                obj.train_lab_fln = fullfile('~/diss/data/beats/lab_files', [dataset, '.lab']);
+                obj.dataset = dataset;
+            end
+                
             if exist(obj.train_lab_fln, 'file')
                 fid = fopen(obj.train_lab_fln, 'r');
                 obj.train_file_list = textscan(fid, '%s', 'delimiter', '\n');
@@ -67,9 +74,9 @@ classdef RhythmCluster < handle
                 fclose(fid);
                 % beat annotation path is usually under
                 % annotations/beats/xxx.beats
-                obj.beat_ann_list = cellfun(@(x) strrep(x, 'audio', 'annotations/beats'), obj.train_file_list, 'UniformOutput', 0);
-                obj.beat_ann_list = cellfun(@(x) strrep(x, '.wav', '.beats'), obj.train_file_list, 'UniformOutput', 0);
-                obj.beat_ann_list = cellfun(@(x) strrep(x, '.flac', '.beats'), obj.train_file_list, 'UniformOutput', 0);
+%                 obj.beat_ann_list = cellfun(@(x) strrep(x, 'audio', 'annotations/beats'), obj.train_file_list, 'UniformOutput', 0);
+%                 obj.beat_ann_list = cellfun(@(x) strrep(x, '.wav', '.beats'), obj.train_file_list, 'UniformOutput', 0);
+%                 obj.beat_ann_list = cellfun(@(x) strrep(x, '.flac', '.beats'), obj.train_file_list, 'UniformOutput', 0);
             else
                error('ERROR RhythmCluster.m: %s not found\n', obj.train_lab_fln);
             end
@@ -304,7 +311,7 @@ classdef RhythmCluster < handle
         end
         
         
-        function [] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
+        function [ca_fln] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
             % [bar2rhythm] = make_cluster_assignment_file(trainLab)
             %   Creates vector bar2rhythm that assigns each
             %   bar in trainLab to the pattern specified by the dancestyle annotation.

@@ -29,7 +29,7 @@ classdef Data < handle
   
     methods
         
-        function obj = Data(lab_fln, train, frame_length)
+        function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
             % lab_fln:  text file with filenames and path
             % train:    [0, 1] indicates whether 
@@ -185,6 +185,7 @@ classdef Data < handle
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
+
                 obj.barpos_per_frame = TrainData.bar_pos_per_frame;
                 for i=1:length(TrainData.pattern_per_frame)
                     obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};

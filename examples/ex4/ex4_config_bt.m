@@ -1,4 +1,4 @@
-function Params = config_bt
+function Params = ex4_config_bt(base_path)
 % [Params] = config_bt
 %   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
@@ -15,9 +15,14 @@ function Params = config_bt
 Params.system = 'BeatTracker';
 
 % Path settings
+if exist('base_path', 'var')
+    Params.base_path = base_path;
+else
+    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+end
 Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'results');
+Params.results_path = fullfile(Params.base_path, 'examples/ex4/results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -26,13 +31,6 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
 Params.n_depends_on_r = 0;
-% If patternGiven=true, then take the pattern labels as given
-Params.patternGiven = 0;
-% n_folds_for_cross_validation
-%   0) use train and test set as described below
-%   1) use leave-one-out splitting (train and test are the same)
-%   k) use k-fold cross-validation (train and test are the same)
-Params.n_folds_for_cross_validation = 0;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
 Params.save_inference_data = 0;
@@ -42,12 +40,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
-% Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 0;
-% Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
+Params.inferenceMethod = 'PF';
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -58,7 +51,7 @@ Params.viterbi_learning_iterations = 0;
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 768;
 % Maximum tempo state 
-Params.N = 30;
+Params.N = 11;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
@@ -77,31 +70,8 @@ Params.frame_length = 0.02;
 Params.init_n_gauss = 0;
 % Use one state to detect silence
 Params.use_silence_state = 0;
-% Probability of entering the silence state
-Params.p2s = 0.00001;
-% Probability of leaving the silence state
-Params.pfs = 0.001;
-% File from which the silence observation model params are learned
-Params.silence_fln{1} = '~/diss/data/beats/robo_git2/track-silence.wav';
-% In online mode (forward path), the best state is chosen among a set of
-% possible successor state. This set contains position states within a window
-% of +/- max_shift frames
-Params.max_shift = 6;
 % Probability of rhythmic pattern change
 Params.pr = 0;
-Params.correct_beats = 0;
-
-% HMM parameters
-% --------------
-
-% Probability of tempo acceleration (and deceleration)
-Params.pn = 0.01;  
-% Settings for Viterbi learning: tempo_tying
-%   0) p_n tied across position states (different p_n for each n)
-%   1) Global p_n for all changes (only one p_n)
-%   2) Separate p_n for tempo increase and decrease (two different p_n)
-Params.tempo_tying = 1; 
-
 
 % PF parameters
 % -------------
@@ -148,12 +118,9 @@ Params.n_initial_clusters = 32;
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-%Params.feat_type{2} = 'rnn';
-%Params.feat_type{1} = 'superflux';
-% Params.feat_type{1} = 'sprflx';
  Params.feat_type{1} = 'lo230_superflux.mvavg';
  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'sprflx-online';
+
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 
@@ -166,21 +133,11 @@ Params.featureDim = length(Params.feat_type);
 % Train dataset
 Params.train_set = 'test_3_4';
 % Path to lab file
-Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
-% Path to file where pattern transitions are stored
-%  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
-% Path to file where cluster to bar assignments are stored
-Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+Params.trainLab =  'examples/ex4/test_3_4.lab';
 
 % Test data
 % ----------
 
-% Test dataset
-Params.test_set = 'robo_test';
-% Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_bridge_1.wav';
+Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
 
 end

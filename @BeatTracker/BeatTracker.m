@@ -9,21 +9,20 @@ classdef BeatTracker < handle
         test_data
         sim_dir                 % directory where results are save
         temp_path
-        viterbi_learning_iterations
         init_model_fln          % fln of initial model to start with
         Params                  % parameters from confi file
     end
     
     methods
-        function obj = BeatTracker(Params, sim_id, model_fln)
+        function obj = BeatTracker(Params, sim_id)
             
             % parse probabilistic model
-            if ~isempty(model_fln)
-                if exist(model_fln, 'file')
-                    c = load(model_fln);
+            if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
+                if exist(Params.model_fln, 'file')
+                    c = load(Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
-                    obj.init_model_fln = model_fln;
+                    obj.init_model_fln = Params.model_fln;
                 else
                     error('Model file %s not found', model_fln);
                 end
@@ -31,7 +30,6 @@ classdef BeatTracker < handle
             obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
             obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
-            obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
             obj.temp_path = Params.temp_path;
             obj.Params = Params;
         end
@@ -107,12 +105,12 @@ classdef BeatTracker < handle
             end
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
-            if strcmp(obj.Params.train_set, obj.Params.test_set) && isfield(obj.Params, 'clusterIdFln')
-                obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
-            end
+%             if strcmp(obj.Params.train_set, obj.Params.test_set) && isfield(obj.Params, 'clusterIdFln')
+%                 obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
+%             end
         end
         
-        function train_model(obj, init_n_gauss)
+        function train_model(obj)
             if isempty(obj.init_model_fln)
                 tempo_per_cluster = obj.train_data.get_tempo_per_cluster();
                
@@ -140,10 +138,10 @@ classdef BeatTracker < handle
             
 %             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
 
-            if obj.viterbi_learning_iterations > 0
+            if isfield(obj.Params, 'viterbi_learning_iterations') && obj.Params.viterbi_learning_iterations > 0
                 obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
                     obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
-                obj.refine_model(obj.viterbi_learning_iterations);
+                obj.refine_model(obj.Params.viterbi_learning_iterations);
             end
         end
         
@@ -190,25 +188,16 @@ classdef BeatTracker < handle
                 save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
             end
         end
-        
-        function compute_features(obj, input_fln)
-            obj.input_fln = input_fln;
-        end
-        
+               
         function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
-            time1=toc;
-            [beats, tempo, rhythm, meter, best_path] = obj.model.do_inference(observations, fname);
-            time2=toc;
-            fprintf('    Real time factor: %.2f\n', (time2-time1) / (size(observations, 1) * obj.feature.frame_length));
-            results{1} = beats;
-            results{2} = tempo;
-            results{3} = meter;
-            results{4} = rhythm;
-            results{5} = best_path;
+            tic;
+            results = obj.model.do_inference(observations, fname, obj.inferenceMethod);
+            fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
+
             
 %                         % save state sequence of annotations to file
 %                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
@@ -234,12 +223,17 @@ classdef BeatTracker < handle
         end
         
         function [] = save_results(obj, results, save_dir, fname)
+            if ~exist(save_dir, 'dir')
+                system(['mkdir ', save_dir]);
+            end
             BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats']));
             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
                 obj.model.rhythm_names);
-            BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            if strfind(obj.inferenceMethod, 'HMM')
+                BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            end
         end
     end
     
