@@ -39,7 +39,7 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_forward';
@@ -58,7 +58,7 @@ Params.viterbi_learning_iterations = 0;
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 768;
 % Maximum tempo state 
-Params.N = 11;
+Params.N = 30;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
@@ -181,7 +181,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Test dataset
 Params.test_set = 'robo_test';
 % Path to lab file (.lab) or to test song (.wav)
-Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
- Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
+% Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_bridge_1.wav';
 
 end

@@ -40,29 +40,40 @@ classdef Feature
                     param.save_it = 1; % save feature to folder ./beat_activations
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
-                    if strfind(obj.feat_type{iDim}, 'lo230_superflux')
-                        param.min_f = 0;
-                        param.max_f = 230;
-                    elseif strfind(obj.feat_type{iDim}, 'hi250_superflux')
-                        param.min_f = 250;
-                        param.max_f = 44100;
-                    elseif strfind(obj.feat_type{iDim}, 'superflux')
-                        param.min_f = 0;
-                        param.max_f = 44100;
-                    else
-                        error('Feature %s invalid' ,obj.feat_type{iDim});
-                    end
+                    % post processing
+                    % moving average filter
                     if strfind(obj.feat_type{iDim}, 'mvavg')
                         param.doMvavg = 1;
                     else
                         param.doMvavg = 0;
                     end
+                    % normalisation
                     if strfind(obj.feat_type{iDim}, 'normZ')
                         param.norm_each_file = 2; % 2 for z-score computation
                     else
                         param.norm_each_file = 0;
                     end
-                    [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                    % feature type
+                    if strfind(obj.feat_type{iDim}, 'lo230_superflux')
+                        param.min_f = 0;
+                        param.max_f = 230;
+                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                    elseif strfind(obj.feat_type{iDim}, 'hi250_superflux')
+                        param.min_f = 250;
+                        param.max_f = 44100;
+                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                    elseif strfind(obj.feat_type{iDim}, 'superflux')
+                        param.min_f = 0;
+                        param.max_f = 44100;
+                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                    elseif strfind(obj.feat_type{iDim}, 'sprflx')
+                        % sebastian's superflux
+                        [detfunc{iDim}, fr{iDim}] = obj.python_sprflx(input_fln, param.save_it);
+                    else
+                        error('Feature %s invalid' ,obj.feat_type{iDim});
+                    end
+                    
+                    
                 end
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001
@@ -171,6 +182,8 @@ classdef Feature
         %         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
         
         [DetFunc, fr] = Compute_Bt_LogFiltSpecFlux(wavFileName, param);
+        
+        [DetFunc, fr] = python_sprflx(wavFileName, save_it);
         
         [S, t, f] = STFT(x, winsize, hopsize, fftsize, fs, type, online, plots, norm);
         

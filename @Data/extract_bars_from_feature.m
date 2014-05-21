@@ -194,7 +194,7 @@ for iBar=1:nBars
     pattern_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ones(first_frame_of_next_bar-first_frame_of_bar, 1) * iBar;
 	% group all feature values that belong to the same barPos
 % 	currBarData = accumarray(barPosLin', featBar(:), [], @(x) {x});
-    currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+1, 1], @(x) {x});
+    currBarData = accumarray(barPosLin', featBar(:), [bar_grid_eff+2, 1], @(x) {x});
     
 	% add to bar cell array	
 	barData(iBar, :) = currBarData(1:bar_grid_eff); % last element belongs to next bar -> remove it

@@ -185,7 +185,6 @@ classdef Data < handle
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
-		size(dataPerFile{1, 1, 1, 1})
                 obj.barpos_per_frame = TrainData.bar_pos_per_frame;
                 for i=1:length(TrainData.pattern_per_frame)
                     obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};

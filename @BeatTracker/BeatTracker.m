@@ -138,7 +138,7 @@ classdef BeatTracker < handle
                 fprintf('* Saved model to %s\n', fln);
             end
             
-%             obj.model.save_hmm_data_to_text('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
+%             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
 
             if obj.viterbi_learning_iterations > 0
                 obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
