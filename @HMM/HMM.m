@@ -28,6 +28,8 @@ classdef HMM
         train_dataset       % dataset, which HMM was trained on [string]
         correct_beats       % [0, 1, 2] correct beats after detection
         max_shift           % frame shifts that are allowed in forward path
+        obs_lik_floor       % obs_lik has to be > floor to avoid overfitting
+        update_interval     % best state sequence is set to the global max each update_interval
         use_silence_state
         pfs                 % transition from silence
         p2s                 % transition to silence
@@ -61,30 +63,34 @@ classdef HMM
                 obj.viterbi_learning_iterations = 0;
             end
             obj.n_depends_on_r = Params.n_depends_on_r;
-            if isfield(Params, 'max_shift')
-                obj.max_shift = Params.max_shift;
+            if isfield(Params, 'online')
+                obj.max_shift = Params.online.max_shift;
+                obj.update_interval = Params.online.update_interval;
+                obj.obs_lik_floor = Params.online.obs_lik_floor;
             end
+            obj.rhythm_names = rhythm_names;
             obj.use_silence_state = Params.use_silence_state;
             if obj.use_silence_state
                 obj.p2s = Params.p2s;
                 obj.pfs = Params.pfs;
+                obj.rhythm_names{obj.R+1} = 'silence';
             end
-            obj.rhythm_names = rhythm_names;
+            
             if isfield(Params, 'correct_beats')
                 obj.correct_beats = Params.correct_beats;
             else
                 obj.correct_beats = 0;
             end
-        end
-        
+        end     
  
         function obj = make_transition_model(obj, minTempo, maxTempo)            
             % convert from BPM into barpositions / audio frame
             meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
+            meter_denom = obj.meter_state2meter(2, obj.rhythm2meter_state);
 
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+                obj.minN = floor(obj.M .* obj.frame_length .* minTempo ./ (meter_denom * 60));
+                obj.maxN = ceil(obj.M .* obj.frame_length .* maxTempo ./ (meter_denom * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
@@ -206,8 +212,8 @@ classdef HMM
                 [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
-                dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
-                dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
+%                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
+%                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strfind(inference_method, 'viterbi')
                 % decode MAP state sequence using Viterbi
                 hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
@@ -216,17 +222,17 @@ classdef HMM
                 error('inference method not specified\n');
             end
             
-            figure;
-            ax(1) = subplot(3, 1, 1);
-            plot(m_path)
-            ylabel('bar position')
-            ax(2) = subplot(3, 1, 2);
-            plot(r_path)
-            ylabel('rhythm pattern')
-            ax(3) = subplot(3, 1, 3);
-            plot(y)
-            ylabel('observation feature')
-            linkaxes(ax,'x');
+%             figure;
+%             ax(1) = subplot(3, 1, 1);
+%             plot(m_path)
+%             ylabel('bar position')
+%             ax(2) = subplot(3, 1, 2);
+%             plot(r_path)
+%             ylabel('rhythm pattern')
+%             ax(3) = subplot(3, 1, 3);
+%             plot(y)
+%             ylabel('observation feature')
+%             linkaxes(ax,'x');
 
                        
             t_path = zeros(length(r_path), 1);
@@ -482,10 +488,14 @@ classdef HMM
             % state 2 obs index
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
             rhythm_to_meter = obj.meter_state2meter(:, obj.rhythm2meter_state);
-            
+
+            tempo_ranges = zeros(2, obj.R);
+            tempo_ranges(1, :) = obj.minN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
+            tempo_ranges(2, :) = obj.maxN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
+
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P' ,'transition_model', ...
-                'observation_model', 'initial_prob', 'state_to_obs', 'rhythm_to_meter', '-v7.3');
+                'observation_model', 'initial_prob', 'state_to_obs', 'rhythm_to_meter', 'tempo_ranges', '-v7.3');
             fprintf('    Saved model data to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
         end
         
@@ -804,7 +814,6 @@ classdef HMM
         
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, fname)
             % HMM forward path
-            update_int = 100;
             store_alpha = 0;
             
             nFrames = size(obs_lik, 3);
@@ -871,9 +880,7 @@ classdef HMM
 %                 validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-                O(validInds & (O<1e-7)) = 1e-7;
-%                 fprintf('%.2f\n', max(O(validInds)));
-                
+                O(validInds & (O < obj.obs_lik_floor)) = obj.obs_lik_floor;               
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 if store_alpha
@@ -891,7 +898,7 @@ classdef HMM
                     fprintf('.');
                 end
                 
-                if rem(iFrame, update_int) == 0
+                if rem(iFrame, obj.update_interval) == 0
                     % use global maximum as best state
                     if store_alpha
                         [~, best_states(iFrame)] = max(alpha(:, iFrame));
@@ -942,15 +949,10 @@ classdef HMM
             else
                 marginal_best_bath = [];
             end
-%             temp= zeros(maxState, nFrames);
-%             temp(minState:maxState, :) = alpha;
-%             alpha = temp;
             % add state offset
             marginal_best_bath = marginal_best_bath + minState - 1;
             best_states = best_states + minState - 1;
-            fprintf(' done\n');
-%             dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:50)) );
-%             dlmwrite(['~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/', fname, '-best_states.txt'], uint32(best_states));		
+            fprintf(' done\n');	
         end
         
         function [m_path_new, n_path_new, r_path_new] = refine_forward_path1(obj, m_path, n_path, r_path)
@@ -1038,42 +1040,36 @@ classdef HMM
             end
 
             beatno = [];
-            beatco = 0;
+            bar_number = 0;
             beats = [];
             for i = 1:numframes-1
                 if meterPath(i) == 0
                     continue;
                 end
-                for b = 1:length(beatpositions{meterPath(i)})
-                    if positionPath(i) == beatpositions{meterPath(i)}(b)
-                        beats = [beats; i];
-                        beatno = [beatno; beatco + b/10];
-                        if b == meter(1, i), beatco = beatco + 1; end
+                for beat_pos = 1:length(beatpositions{meterPath(i)})
+                    if positionPath(i) == beatpositions{meterPath(i)}(beat_pos)
+                        % current frame = beat frame
+                        beats = [beats; [i, bar_number, beat_pos]];
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
                         break;
-                    elseif ((positionPath(i) > beatpositions{meterPath(i)}(b)) && (positionPath(i+1) > beatpositions{meterPath(i)}(b)) && (positionPath(i) > positionPath(i+1)))
-                        % transition of two bars
-                        %                         if positionPath(i+1) == mod(positionPath(i) + tempoPath(i) - 1, obj.Meff(meterPath(i))) + 1;
-                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{meterPath(i)}(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == meter(1, i), beatco = beatco + 1; end
+                    elseif ((positionPath(i+1) > beatpositions{meterPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
+                        % bar transition between frame i and frame i+1
+                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{meterPath(i)}(beat_pos));
+                        beats = [beats; [round(bt), bar_number, beat_pos]];                        
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
                         break;
-                        %                         end
-                    elseif ((positionPath(i) < beatpositions{meterPath(i)}(b)) && (positionPath(i+1) > beatpositions{meterPath(i)}(b)))
-                        %                         if positionPath(i+1) == mod(positionPath(i) + tempoPath(i) - 1, obj.Meff(meterPath(i))) + 1;
-                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{meterPath(i)}(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == meter(1, i), beatco = beatco + 1; end
+                    elseif ((positionPath(i) < beatpositions{meterPath(i)}(beat_pos)) && (beatpositions{meterPath(i)}(beat_pos) < positionPath(i+1)))
+                        % beat position lies between frame i and frame i+1
+                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{meterPath(i)}(beat_pos));
+                        beats = [beats; [round(bt), bar_number, beat_pos]];  
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
                         break;
-                        %                         end
                     end
                 end
             end
             % if positionPath(i) == beatpositions(b), beats = [beats; i]; end
             
-            beats = beats * obj.frame_length;
-            beats = [beats beatno];
+            beats(:, 1) = beats(:, 1) * obj.frame_length;
         end
         
         function belief_func = make_belief_functions(obj, train_data, file_ids)

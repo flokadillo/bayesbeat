@@ -1,4 +1,4 @@
-function Params = config_bt
+function Params = config_bt(base_path)
 % [Params] = config_bt
 %   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
@@ -15,7 +15,11 @@ function Params = config_bt
 Params.system = 'BeatTracker';
 
 % Path settings
-Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+if exist('base_path', 'var')
+    Params.base_path = base_path;
+else
+    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+end
 Params.data_path = fullfile(Params.base_path, 'data');
 Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
@@ -42,7 +46,7 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'HMM_forward';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
@@ -56,13 +60,13 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 768;
+Params.M = 1280;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [3, 4; 4, 4];
+Params.meters = [4; 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -76,17 +80,23 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 0;
+Params.use_silence_state = 1;
 % Probability of entering the silence state
-Params.p2s = 0.00001;
+Params.p2s = 0.1; % 0.00001
 % Probability of leaving the silence state
-Params.pfs = 0.001;
+Params.pfs = 0.001; % 0.001
 % File from which the silence observation model params are learned
 Params.silence_fln{1} = '~/diss/data/beats/robo_git2/track-silence.wav';
 % In online mode (forward path), the best state is chosen among a set of
 % possible successor state. This set contains position states within a window
 % of +/- max_shift frames
-Params.max_shift = 6;
+Params.online.max_shift = 6;
+% In online mode, we reset the best state sequence to the global best state
+% each update_interval
+Params.online.update_interval = 100;
+% To avoid overfitting and prevent the obs_lik to become zero, we set a
+% floor
+Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
 Params.correct_beats = 0;
@@ -150,9 +160,9 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
-% Params.feat_type{1} = 'sprflx';
- Params.feat_type{1} = 'lo230_superflux.mvavg';
- Params.feat_type{2} = 'hi250_superflux.mvavg';
+Params.feat_type{1} = 'sprflx';
+%  Params.feat_type{1} = 'lo230_superflux.mvavg';
+%  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -164,7 +174,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'test_3_4';
+Params.train_set = 'yoshimi';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -172,7 +182,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+    num2str(Params.R), 'R-rhythm.mat']);
 
 % Test data
 % ----------
@@ -181,6 +191,6 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 Params.test_set = 'robo_test';
 % Path to lab file (.lab) or to test song (.wav)
 % Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_bridge_1.wav';
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
 
 end

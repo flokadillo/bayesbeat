@@ -158,7 +158,7 @@ classdef Data < handle
                 beat_periods = sort(diff(obj.beats{iFile}(:, 1)), 'descend');
                 % ignore the biggest and smallest 10 percent of the beat
                 % periods
-                beat_periods = beat_periods(floor(length(beat_periods)/10):floor(length(beat_periods)*9/10));
+                beat_periods = beat_periods(max([floor(length(beat_periods)/10), 1]):min([floor(length(beat_periods)*9/10), length(beat_periods)]));
                 
                 % so far, only the first bar of each file is used and assigned the style to the whole file
                 styleId = obj.bar2cluster(obj.bar2file == iFile);

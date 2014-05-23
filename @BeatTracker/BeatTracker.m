@@ -29,7 +29,9 @@ classdef BeatTracker < handle
             end
             obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
-            obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+            if exist('sim_id', 'var')
+                obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+            end
             obj.temp_path = Params.temp_path;
             obj.Params = Params;
         end
@@ -240,7 +242,7 @@ classdef BeatTracker < handle
     methods(Static)
         function [] = save_beats(beats, save_fln)
             fid = fopen(save_fln, 'w');
-            fprintf(fid, '%.3f\t%.1f\n', beats');
+            fprintf(fid, '%.3f\t%i.%i\n', beats');
             fclose(fid);
         end
         
