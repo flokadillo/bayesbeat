@@ -85,7 +85,7 @@ classdef HMM
  
         function obj = make_transition_model(obj, minTempo, maxTempo)            
             % convert from BPM into barpositions / audio frame
-            meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
+%             meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
             meter_denom = obj.meter_state2meter(2, obj.rhythm2meter_state);
 
             if strcmp(obj.pattern_size, 'bar')

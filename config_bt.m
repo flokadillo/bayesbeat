@@ -100,6 +100,9 @@ Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
 Params.correct_beats = 0;
+% Set tempo limits
+Params.min_tempo = 70;
+Params.max_tempo = 100;
 
 % HMM parameters
 % --------------

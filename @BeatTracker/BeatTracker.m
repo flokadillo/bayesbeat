@@ -114,9 +114,14 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
-                [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
+                if isfield(obj.Params, 'min_tempo')
+                    tempo_min_per_cluster = repmat(obj.Params.min_tempo, 1, obj.Params.R);
+                    tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, obj.Params.R);
+                else
+                    [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
+                end
                
-                obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster)), ceil(max(tempo_max_per_cluster)));
+                obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
                 
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset, obj.train_data.feats_silence);
