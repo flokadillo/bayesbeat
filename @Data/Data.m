@@ -58,7 +58,7 @@ classdef Data < handle
             obj.lab_fln = lab_fln;
         end
         
-        function obj = read_pattern_bars(obj, cluster_fln, meters, pattern_size)
+        function obj = read_pattern_bars(obj, cluster_fln, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
             % TODO: bar2file, obj.n_bars should be loaded not computed!
@@ -83,7 +83,7 @@ classdef Data < handle
                 obj.pattern_size = 'bar';
             end
             
-            obj.meter_state2meter = meters;
+            obj.meter_state2meter = unique(obj.rhythm2meter', 'rows')';
             for iR=1:obj.n_clusters
                 for iM=1:size(obj.meter_state2meter, 2)
                     if (obj.meter_state2meter(1, iM) == obj.rhythm2meter(iR, 1)) && (obj.meter_state2meter(2, iM) == obj.rhythm2meter(iR, 2))

@@ -36,7 +36,7 @@ classdef HMM
     end
     
     methods
-        function obj = HMM(Params, rhythm2meter_state, rhythm_names)
+        function obj = HMM(Params, meter_state2meter, rhythm2meter_state, rhythm_names)
             
             obj.M = Params.M;
             obj.N = Params.N;
@@ -47,13 +47,13 @@ classdef HMM
             else
                 obj.pr = Params.pr;
             end
-            obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)));
+            obj.barGrid = max(Params.whole_note_div * (meter_state2meter(1, :) ./ meter_state2meter(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter_state = rhythm2meter_state;
-            obj.meter_state2meter = Params.meters;
-            obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) * (Params.M ./ max(Params.meters(1, :) ./ Params.meters(2, :))));
+            obj.meter_state2meter = meter_state2meter;
+            obj.Meff = round((meter_state2meter(1, :) ./ meter_state2meter(2, :)) * (Params.M ./ max(meter_state2meter(1, :) ./ meter_state2meter(2, :))));
             obj.pattern_size = Params.pattern_size;
             obj.save_inference_data = Params.save_inference_data;
             obj.tempo_tying = Params.tempo_tying;
@@ -190,7 +190,7 @@ classdef HMM
             
         end
         
-        function results = do_inference(obj, y, fname, inference_method)
+        function results = do_inference(obj, y, fname, inference_method, do_output)
                         
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
@@ -209,7 +209,7 @@ classdef HMM
             
             if strfind(inference_method, 'forward')
                 % HMM forward path
-                [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, fname); 
+                [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, do_output); 
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
 %                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
@@ -812,7 +812,7 @@ classdef HMM
             fprintf(' done\n');
         end
         
-        function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, fname)
+        function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, do_output)
             % HMM forward path
             store_alpha = 0;
             
@@ -866,7 +866,7 @@ classdef HMM
             end
             % move pointer to next observation
             ind = ind + ind_stepsize;
-            fprintf('    Forward path .');
+            if do_output, fprintf('    Forward path .'); end
             for iFrame = 2:nFrames
                 if store_alpha
                     alpha(:, iFrame) = A' * alpha(:, iFrame-1);
@@ -894,7 +894,7 @@ classdef HMM
                     norm_const = sum(alpha);
                     alpha = alpha / norm_const;
                 end
-                if rem(iFrame, perc) == 0
+                if rem(iFrame, perc) == 0 && do_output
                     fprintf('.');
                 end
                 
@@ -952,7 +952,7 @@ classdef HMM
             % add state offset
             marginal_best_bath = marginal_best_bath + minState - 1;
             best_states = best_states + minState - 1;
-            fprintf(' done\n');	
+            if do_output, fprintf(' done\n'); end
         end
         
         function [m_path_new, n_path_new, r_path_new] = refine_forward_path1(obj, m_path, n_path, r_path)

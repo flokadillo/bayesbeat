@@ -159,8 +159,8 @@ classdef Feature
             % 4.1.2012 by florian krebs
             % ----------------------------------------------------------------------
             if ~exist(fln,'file')
-                
                 act = []; fr = [];
+                fprintf('WARNING: %s not found\n', fln);
                 return
             end
             fid = fopen(fln,'r');

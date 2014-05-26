@@ -55,7 +55,7 @@ classdef BeatTracker < handle
                 
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(obj.Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = HMM(obj.Params, obj.train_data.meter_state2meter, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     case 'PF'
                         obj.model = PF(obj.Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     otherwise
@@ -69,7 +69,7 @@ classdef BeatTracker < handle
             fprintf('* Set up training data ...');
             obj.train_data = Data(obj.Params.trainLab, 1);
             if ~isfield(obj.Params, 'clusterIdFln'), return;  end
-            obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
+            obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.pattern_size);
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
@@ -78,23 +78,20 @@ classdef BeatTracker < handle
                 featStr = [featStr, featType];
             end
             featuresFln = fullfile(obj.Params.data_path, [clusterFName, '_', featStr, '.mat']);
-            barGrid_eff = obj.Params.whole_note_div * (obj.Params.meters(1, :) ./ obj.Params.meters(2, :)); 
+            barGrid_eff = obj.Params.whole_note_div * (obj.train_data.meter_state2meter(1, :) ./ obj.train_data.meter_state2meter(2, :)); 
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(obj.Params.whole_note_div, ...
                 barGrid_eff, obj.Params.featureDim, featuresFln, obj.Params.feat_type, ...
                 obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
+            % process silence data
             if obj.Params.use_silence_state
                 fprintf('Warning: So far, only one feature dimension supported (%s)\n', obj.Params.feat_type{1});
+                fid = fopen(obj.Params.silence_lab, 'r');
+                silence_files = textscan(fid, '%s\n'); silence_files = silence_files{1};
+                fclose(fid);
                 obj.train_data.feats_silence = [];
-                for iFile=1:length(obj.Params.silence_fln)
-                    [dataPath, fname, ~] = fileparts(obj.Params.silence_fln{iFile});
-                    feat_fln = fullfile(dataPath, 'beat_activations', [fname, '.', obj.Params.feat_type{1}]);
-                    [silence{iFile}, fr] = Feature.read_activations(feat_fln);
-                    if (abs(1/fr - obj.feature.frame_length) > 0.001)
-                       error('Wrong sampling rate!\n'); 
-                    end
-                    obj.train_data.feats_silence = [obj.train_data.feats_silence; silence{iFile}];
+                for iFile=1:length(silence_files)
+                    obj.train_data.feats_silence = [obj.train_data.feats_silence;  obj.feature.load_feature(silence_files{iFile})];
                 end
-%                 obj.train_data.feats_silence  = cellfun(@(x) {x}ones(size(silence)), silence,  [], );
             end
             fprintf(' done\n');
         end
@@ -196,14 +193,19 @@ classdef BeatTracker < handle
             end
         end
                
-        function results = do_inference(obj, test_file_id)
+        function results = do_inference(obj, test_file_id, do_output)
+            if ~exist('do_output', 'var')
+                do_output = 1;
+            end
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
             % compute observation likelihoods
             tic;
-            results = obj.model.do_inference(observations, fname, obj.inferenceMethod);
-            fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
+            results = obj.model.do_inference(observations, fname, obj.inferenceMethod, do_output);
+            if do_output
+                fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
+            end
 
             
 %                         % save state sequence of annotations to file

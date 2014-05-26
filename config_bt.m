@@ -65,13 +65,9 @@ Params.M = 1280;
 Params.N = 30;
 % Number of rhythmic pattern states
 Params.R = 2;
-% Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [4; 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
-% Number of grid points of one pattern per meter
-% Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
@@ -82,11 +78,11 @@ Params.init_n_gauss = 0;
 % Use one state to detect silence
 Params.use_silence_state = 1;
 % Probability of entering the silence state
-Params.p2s = 0.1; % 0.00001
+Params.p2s = 0.00001; % 0.00001
 % Probability of leaving the silence state
 Params.pfs = 0.001; % 0.001
 % File from which the silence observation model params are learned
-Params.silence_fln{1} = '~/diss/data/beats/robo_git2/track-silence.wav';
+Params.silence_lab = '~/diss/data/beats/lab_files/robo_silence.lab';
 % In online mode (forward path), the best state is chosen among a set of
 % possible successor state. This set contains position states within a window
 % of +/- max_shift frames
@@ -100,7 +96,7 @@ Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
 Params.correct_beats = 0;
-% Set tempo limits
+% Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
 Params.min_tempo = 70;
 Params.max_tempo = 100;
 
