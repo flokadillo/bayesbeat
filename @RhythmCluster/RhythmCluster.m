@@ -68,10 +68,8 @@ classdef RhythmCluster < handle
             end
                 
             if exist(obj.train_lab_fln, 'file')
-                fid = fopen(obj.train_lab_fln, 'r');
-                obj.train_file_list = textscan(fid, '%s', 'delimiter', '\n');
-                obj.train_file_list = obj.train_file_list{1};
-                fclose(fid);
+                train_data = Data(obj.train_lab_fln, 1);
+                obj.train_file_list = train_data.file_list;
                 % beat annotation path is usually under
                 % annotations/beats/xxx.beats
 %                 obj.beat_ann_list = cellfun(@(x) strrep(x, 'audio', 'annotations/beats'), obj.train_file_list, 'UniformOutput', 0);
@@ -120,7 +118,7 @@ classdef RhythmCluster < handle
         
         function make_feats_per_bar(obj, whole_note_div)
             if exist(obj.train_lab_fln, 'file')
-                fprintf('    Found %i files in %s\n', length(obj.train_file_list), obj.dataset);
+                fprintf('    Found %i files in %s\n', length(obj.train_file_list), obj.train_lab_fln);
                 dataPerBar = [];
                 for iDim =1:obj.feature.feat_dim
                     Output = Data.extract_bars_from_feature(obj.train_file_list, obj.feature.feat_type{iDim}, ...

@@ -26,7 +26,6 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', '.rhythm'};
 % get extension of filename
 [path, fname, ext] = fileparts(filename);
-path = strrep(path, 'audio', ['annotations/', ann_type]);
 if sum(strcmp(sup_ext, ext)) > 0
     % ext is standard, set ann_type = ext
     ann_type = ext(2:end);  

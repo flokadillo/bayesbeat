@@ -127,20 +127,20 @@ classdef HMM
             
         end
         
-        function obj = make_observation_model(obj, data_file_pattern_barpos_dim, train_dataset, data_silence)
+        function obj = make_observation_model(obj, train_data)
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, obj.use_silence_state);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, train_data.feat_type, obj.use_silence_state);
             
             % Train model
             if obj.use_silence_state
-                obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim, data_silence);
+                obj.obs_model = obj.obs_model.train_model(train_data);
             else
-                obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
+                obj.obs_model = obj.obs_model.train_model(train_data);
             end
             
-            obj.train_dataset = train_dataset;
+            obj.train_dataset = train_data.dataset;
             
         end
         
@@ -222,17 +222,17 @@ classdef HMM
                 error('inference method not specified\n');
             end
             
-%             figure;
-%             ax(1) = subplot(3, 1, 1);
-%             plot(m_path)
-%             ylabel('bar position')
-%             ax(2) = subplot(3, 1, 2);
-%             plot(r_path)
-%             ylabel('rhythm pattern')
-%             ax(3) = subplot(3, 1, 3);
-%             plot(y)
-%             ylabel('observation feature')
-%             linkaxes(ax,'x');
+            figure;
+            ax(1) = subplot(3, 1, 1);
+            plot(m_path)
+            ylabel('bar position')
+            ax(2) = subplot(3, 1, 2);
+            plot(r_path)
+            ylabel('rhythm pattern')
+            ax(3) = subplot(3, 1, 3);
+            plot(y)
+            ylabel('observation feature')
+            linkaxes(ax,'x');
 
                        
             t_path = zeros(length(r_path), 1);
@@ -496,7 +496,7 @@ classdef HMM
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P' ,'transition_model', ...
                 'observation_model', 'initial_prob', 'state_to_obs', 'rhythm_to_meter', 'tempo_ranges', '-v7.3');
-            fprintf('    Saved model data to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
+            fprintf('* Saved model data (Flower) to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
         end
         
 

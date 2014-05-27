@@ -21,10 +21,11 @@ classdef ObservationModel
                             % pattern indicator, second one the bar
                             % position (e.g., 1, 2 .. 64 )
         use_silence_state
+        feat_type           % cell array (features (extension) to be used)
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff, use_silence_state)
+        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff, feat_type, use_silence_state)
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
@@ -38,15 +39,16 @@ classdef ObservationModel
             obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
             obj.use_silence_state = use_silence_state;
             obj = obj.make_state2obs_idx;
+            obj.feat_type = feat_type;
         end
                       
         params = fit_distribution(obj, data_file_pattern_barpos_dim)
          
-        function obj = train_model(obj, data_file_pattern_barpos_dim, data_silence)
+        function obj = train_model(obj, train_data)
             % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
-            obj.learned_params = obj.fit_distribution(data_file_pattern_barpos_dim);
+            obj.learned_params = obj.fit_distribution(train_data.feats_file_pattern_barPos_dim);
             if obj.use_silence_state
-                temp{1} = data_silence;
+                temp{1} = train_data.feats_silence;
                 obj.learned_params(obj.R+1, 1) = obj.fit_distribution(temp);
             end
             % store learned params in case of leave-one-out testing, where

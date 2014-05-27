@@ -7,7 +7,7 @@ classdef BeatTracker < handle
         feature
         train_data
         test_data
-        sim_dir                 % directory where results are save
+        sim_dir                 % directory where results are saved
         temp_path
         init_model_fln          % fln of initial model to start with
         Params                  % parameters from confi file
@@ -23,16 +23,20 @@ classdef BeatTracker < handle
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
                     obj.init_model_fln = Params.model_fln;
+                    obj.feature = Feature(obj.model.obs_model.feat_type, obj.model.frame_length);
                 else
                     error('Model file %s not found', model_fln);
                 end
+            else
+                obj.feature = Feature(Params.feat_type, Params.frame_length);
             end
-            obj.feature = Feature(Params.feat_type, Params.frame_length);
             obj.inferenceMethod = Params.inferenceMethod;
             if exist('sim_id', 'var')
                 obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
             end
-            obj.temp_path = Params.temp_path;
+            if isfield(Params, 'temp_path')
+                obj.temp_path = Params.temp_path;
+            end
             obj.Params = Params;
         end
         
@@ -84,7 +88,9 @@ classdef BeatTracker < handle
                 obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
             % process silence data
             if obj.Params.use_silence_state
-                fprintf('Warning: So far, only one feature dimension supported (%s)\n', obj.Params.feat_type{1});
+                if length(obj.Params.feat_type) > 1
+                    error('\nERROR: BeatTracker.init_train_data: So far, only one feature dimension supported\n', obj.Params.feat_type{1});
+                end
                 fid = fopen(obj.Params.silence_lab, 'r');
                 silence_files = textscan(fid, '%s\n'); silence_files = silence_files{1};
                 fclose(fid);
@@ -121,23 +127,23 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
                 
                 if obj.Params.use_silence_state
-                    obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset, obj.train_data.feats_silence);
+                    obj.model = obj.model.make_observation_model(obj.train_data);
                 else
-                    obj.model = obj.model.make_observation_model(obj.train_data.feats_file_pattern_barPos_dim, obj.train_data.dataset);
+                    obj.model = obj.model.make_observation_model(obj.train_data);
                 end
                                
                 obj.model = obj.model.make_initial_distribution([tempo_min_per_cluster; tempo_max_per_cluster]);
                 
-%                 fln = fullfile(obj.temp_path, 'last_model.mat');
-%                 switch obj.inferenceMethod(1:2)
-%                     case 'HM'
-%                         hmm = obj.model;
-%                         save(fln, 'hmm');
-%                     case 'PF'
-%                         pf = obj.model;
-%                         save(fln, 'pf');
-%                 end
-%                 fprintf('* Saved model to %s\n', fln);
+                fln = fullfile(obj.temp_path, 'last_model.mat');
+                switch obj.inferenceMethod(1:2)
+                    case 'HM'
+                        hmm = obj.model;
+                        save(fln, 'hmm');
+                    case 'PF'
+                        pf = obj.model;
+                        save(fln, 'pf');
+                end
+                fprintf('* Saved model (Matlab) to %s\n', fln);
             end
             
 %             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
@@ -235,7 +241,7 @@ classdef BeatTracker < handle
             if ~exist(save_dir, 'dir')
                 system(['mkdir ', save_dir]);
             end
-            BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats']));
+            BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats.txt']));
             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...

@@ -3,7 +3,6 @@ classdef Data < handle
     properties 
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
-        %         annots_path                     % path to annotations
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
         meter                           % meter of each file [nFiles x 2]
@@ -17,13 +16,13 @@ classdef Data < handle
         rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
         rhythm2meter_state              % specifies for each bar the corresponding meter state [R x 1]
         meter_state2meter               % specifies meter for each meter state [2 x nMeters]
-        %         tempo_per_cluster               % tempo of each file ordered by clusters [nFiles x nClusters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
         barpos_per_frame                % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
         pattern_per_frame               % cell array [nFiles x 1] of rhythm of each frame
+        feat_type                       % cell array (features (extension) to be used)
     end
     
   
@@ -55,6 +54,14 @@ classdef Data < handle
             else
                 error('Lab file %s not found\n', lab_fln);
             end
+            % replace paths by absolute paths
+            for i_file = 1:length(obj.file_list)
+                if strcmp(obj.file_list{i_file}(1), '~') || strcmp(obj.file_list{i_file}(1), '/')
+                    % ok, absolute path given
+                else
+                    obj.file_list{i_file} = fullfile(pwd, obj.file_list{i_file});
+                end
+            end
             obj.lab_fln = lab_fln;
         end
         
@@ -83,7 +90,7 @@ classdef Data < handle
                 obj.pattern_size = 'bar';
             end
             
-            obj.meter_state2meter = unique(obj.rhythm2meter', 'rows')';
+            obj.meter_state2meter = unique(obj.rhythm2meter, 'rows')';
             for iR=1:obj.n_clusters
                 for iM=1:size(obj.meter_state2meter, 2)
                     if (obj.meter_state2meter(1, iM) == obj.rhythm2meter(iR, 1)) && (obj.meter_state2meter(2, iM) == obj.rhythm2meter(iR, 2))
@@ -174,6 +181,8 @@ classdef Data < handle
         
         function obj = extract_feats_per_file_pattern_barPos_dim(obj, whole_note_div, barGrid_eff, ...
                 featureDim, featuresFln, featureType, frame_length, reorganize_bars_into_cluster)
+            
+            obj.feat_type = featureType;
             % Extract audio features and sort them according to bars and position
             if exist(featuresFln, 'file') && ~reorganize_bars_into_cluster
                 load(featuresFln, 'dataPerFile');

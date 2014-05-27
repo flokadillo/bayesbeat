@@ -60,11 +60,11 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1280;
+Params.M = 768*2;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 1;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -86,10 +86,10 @@ Params.silence_lab = '~/diss/data/beats/lab_files/robo_silence.lab';
 % In online mode (forward path), the best state is chosen among a set of
 % possible successor state. This set contains position states within a window
 % of +/- max_shift frames
-Params.online.max_shift = 6;
+Params.online.max_shift = 4;
 % In online mode, we reset the best state sequence to the global best state
 % each update_interval
-Params.online.update_interval = 100;
+Params.online.update_interval = 1000;
 % To avoid overfitting and prevent the obs_lik to become zero, we set a
 % floor
 Params.online.obs_lik_floor = 1e-7;
@@ -173,7 +173,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'yoshimi';
+Params.train_set = 'yoshimi_take_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -181,15 +181,15 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-rhythm.mat']);
+    num2str(Params.R), 'R-none.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'robo_test';
+Params.test_set = 'yoshimi_take_2';
 % Path to lab file (.lab) or to test song (.wav)
 % Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_1_norm.wav';
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
 
 end
