@@ -34,13 +34,13 @@ classdef Data < handle
             % lab_fln:  text file with filenames and path
             % train:    [0, 1] indicates whether 
             if exist(lab_fln, 'file')
-                [~, obj.dataset, ext] = fileparts(lab_fln);
+                [fpath, obj.dataset, ext] = fileparts(lab_fln);
                 if strcmpi(ext, '.lab')
                     fid = fopen(lab_fln, 'r');
                     obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
                     fclose(fid);
-                    fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/data', ...
-                        [obj.dataset, '-exclude.txt']);
+                    % check excluded files
+                    fln = fullfile(fpath, [obj.dataset, '-exclude.txt']);
                     if train && exist(fln, 'file')
                         fid = fopen(fln, 'r');
                         exclude_songs = textscan(fid, '%s');
