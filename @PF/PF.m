@@ -130,16 +130,16 @@ classdef PF < handle
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
         
-        function obj = make_observation_model(obj, data_file_pattern_barpos_dim, train_dataset)
+        function obj = make_observation_model(obj, train_data)
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, obj.use_silence_state);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, train_data.feat_type, obj.use_silence_state);
             
             % Train model
-            obj.obs_model = obj.obs_model.train_model(data_file_pattern_barpos_dim);
+            obj.obs_model = obj.obs_model.train_model(train_data);
             
-            obj.train_dataset = train_dataset;
+            obj.train_dataset = train_data.dataset;
             
         end
         
@@ -158,7 +158,7 @@ classdef PF < handle
             
         end
         
-        function results = do_inference(obj, y, fname, inference_method)
+        function results = do_inference(obj, y, fname, inference_method, do_output)
             if isempty(strfind(inference_method, 'PF'))
                error('Inference method %s not compatible with PF model\n', inference_method);
             end
@@ -167,7 +167,9 @@ classdef PF < handle
             obj = obj.pf(obs_lik, fname);
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             [ joint_prob_best ] = obj.compute_joint_of_sequence([m_path, n_path, r_path], obs_lik);
-            fprintf('    Best weight log joint = %.1f\n', joint_prob_best.sum);
+            if do_output
+                fprintf('    Best weight log joint = %.1f\n', joint_prob_best.sum);
+            end
             if strfind(inference_method, 'viterbi')
                 [m_path_v, n_path_v, r_path_v] = obj.path_via_viterbi(obs_lik);
                 [ joint_prob_vit ] = obj.compute_joint_of_sequence([m_path_v, n_path_v, r_path_v], obs_lik);

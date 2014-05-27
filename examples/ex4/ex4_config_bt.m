@@ -11,9 +11,6 @@ function Params = ex4_config_bt(base_path)
 % 06.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 
-% system name
-Params.system = 'BeatTracker';
-
 % Path settings
 if exist('base_path', 'var')
     Params.base_path = base_path;
@@ -133,7 +130,7 @@ Params.featureDim = length(Params.feat_type);
 % Train dataset
 Params.train_set = 'test_3_4';
 % Path to lab file
-Params.trainLab =  'examples/ex4/test_3_4.lab';
+Params.trainLab =  fullfile(Params.base_path, 'examples/ex4/test_3_4.lab');
 
 % Test data
 % ----------
