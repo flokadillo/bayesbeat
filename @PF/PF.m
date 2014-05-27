@@ -124,7 +124,9 @@ classdef PF < handle
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
             end
-            
+            if max(obj.maxN) > obj.N
+               obj.N = ceil(max(obj.maxN));
+            end
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
         
@@ -761,7 +763,8 @@ classdef PF < handle
         outIndex = resampleSystematic2( w, n_samples );
         
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
-            % divide space into fixed cells
+            % divide space into fixed cells with equal number of grid
+            % points for position and tempo states
             % states: [nParticles x nStates]
             % state_dim: [nStates x 1]
             groups = zeros(size(states, 1), 1);
@@ -772,6 +775,7 @@ classdef PF < handle
             m_edges = linspace(1, state_dims(1) + 1, n_m_bins + 1);
             n_edges = linspace(0, state_dims(2) + 1, n_n_bins + 1);
             for iR=1:state_dims(3)
+                % get all particles that belong to pattern iR
                 ind = find(states(:, 3) == iR);
                 [~, BIN_m] = histc(states(ind, 1), m_edges);
                 [~, BIN_n] = histc(states(ind, 2), n_edges);
