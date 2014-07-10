@@ -173,7 +173,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'adi_118_train_1';
+Params.train_set = 'adi_118_train_2';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -187,7 +187,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % ----------
 
 % Test dataset
-Params.test_set = 'adi_118_test_1';
+Params.test_set = 'adi_118_test_2';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 %Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';

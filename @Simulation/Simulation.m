@@ -77,6 +77,10 @@ classdef Simulation
         function obj = train_system(obj)
                 % train model
                 obj.system.train_model();
+		% save model to simulation folder
+		hmm = obj.system.model;
+		save(fullfile(obj.sim_dir, 'model.mat'), 'hmm');
+		fprintf('    Saved model to %s\n', fullfile(obj.sim_dir, 'model.mat'));
         end
                
         function do_sim(obj)
