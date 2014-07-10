@@ -43,10 +43,10 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_forward';
+Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
@@ -60,7 +60,7 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 768*2;
+Params.M = 3072;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
@@ -76,7 +76,7 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 1;
+Params.use_silence_state = 0;
 % Probability of entering the silence state
 Params.p2s = 0.00001; % 0.00001
 % Probability of leaving the silence state
@@ -97,8 +97,8 @@ Params.online.obs_lik_floor = 1e-7;
 Params.pr = 0;
 Params.correct_beats = 0;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-Params.min_tempo = 70;
-Params.max_tempo = 100;
+%Params.min_tempo = 70;
+%Params.max_tempo = 100;
 
 % HMM parameters
 % --------------
@@ -159,9 +159,9 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 %Params.feat_type{2} = 'rnn';
 %Params.feat_type{1} = 'superflux';
-Params.feat_type{1} = 'sprflx';
-%  Params.feat_type{1} = 'lo230_superflux.mvavg';
-%  Params.feat_type{2} = 'hi250_superflux.mvavg';
+%Params.feat_type{1} = 'sprflx';
+  Params.feat_type{1} = 'lo230_superflux.mvavg';
+  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -173,23 +173,23 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'yoshimi_take_1';
+Params.train_set = 'adi_118_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-%  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-none.mat']);
+    num2str(Params.R), 'R-kmeans.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'yoshimi_take_2';
+Params.test_set = 'adi_118_test_1';
 % Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
+Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
+%Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
 
 end

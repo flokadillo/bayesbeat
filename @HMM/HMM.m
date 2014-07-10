@@ -222,17 +222,17 @@ classdef HMM
                 error('inference method not specified\n');
             end
             
-            figure;
-            ax(1) = subplot(3, 1, 1);
-            plot(m_path)
-            ylabel('bar position')
-            ax(2) = subplot(3, 1, 2);
-            plot(r_path)
-            ylabel('rhythm pattern')
-            ax(3) = subplot(3, 1, 3);
-            plot(y)
-            ylabel('observation feature')
-            linkaxes(ax,'x');
+          %  figure;
+          %  ax(1) = subplot(3, 1, 1);
+          %  plot(m_path)
+          %  ylabel('bar position')
+          %  ax(2) = subplot(3, 1, 2);
+          %  plot(r_path)
+          %  ylabel('rhythm pattern')
+          %  ax(3) = subplot(3, 1, 3);
+          %  plot(y)
+          %  ylabel('observation feature')
+          %  linkaxes(ax,'x');
 
                        
             t_path = zeros(length(r_path), 1);
