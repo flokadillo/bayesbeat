@@ -105,8 +105,8 @@ classdef HMM
                 obj.minN = ones(1, obj.R) * min(obj.minN);
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
-                fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
-                    round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
+                fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
+                    round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
 %                     obj.minN = ones(1, obj.R) * 8;
 %                     obj.maxN = ones(1, obj.R) * obj.N;
             end
