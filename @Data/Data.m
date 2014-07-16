@@ -234,26 +234,36 @@ classdef Data < handle
         function belief_func = make_belief_functions(obj, model)
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
-            
+            tol_win_perc_of_ibi = 0.0875;
             %             for i_file = 1:length(obj.file_list)
             for i_file = 1:length(obj.file_list)
+		% determine meter state of current file
                 t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
                     (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
+		% determine rhythmic pattern state of current file
                 r_state = find(model.rhythm2meter == t_state);
+		% determine correct M of current file
                 M_i = model.Meff(t_state);
-                tol_win = floor(0.0875 * model.M / obj.meter(i_file, 2));
                 
+		tol_win = floor(ol_win_perc_of_ibi * model.M / obj.meter(i_file, 2));
+                % determine beat type of each beat
                 btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
+		% compute bar position m for each beat
                 beats_m = (M_i * (btype-1) / max(btype)) + 1;
                 % beat frames
-                
-                
                 n_beats_i = size(obj.beats{i_file}, 1);
+		% pre-allocate memory for rows, cols and values
                 i_rows = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
                 j_cols = zeros((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
                 s_vals = ones((tol_win*2+1) * n_beats_i * model.N * length(r_state), 1);
+  		% compute inter beat intervals
+		ibi_i = diff(obj.beats{i_file}(:, 1));
+		ibi_i = [ibi_i; ibi_i(end)];
                 for iBeat=1:n_beats_i
-                    m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
+		    % -----------------------------------------------------
+		    % Variant 1: tolerance win constant in beats over tempi
+		    % -----------------------------------------------------
+		    m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
                     m = repmat(m_support, 1, model.N * length(r_state));
                     n = repmat(1:model.N, length(r_state) * length(m_support), 1);
                     r = repmat(r_state(:), model.N * length(m_support), 1);
@@ -261,6 +271,20 @@ classdef Data < handle
                     idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
                     i_rows(idx) = iBeat;
                     j_cols(idx) = states;
+
+		    % -----------------------------------------------------
+		    % Variant 2: Tolerance win constant in time over tempi
+		    % -----------------------------------------------------
+		   % p=1;
+		   % for n_i = model.minN(r_state):model.maxN(r_state)
+		%	tol_win = n_i * tol_win_perc_of_ibi * ibi_i(iBeat) / model.frame_length;
+		%	m_support = mod((beats_m(iBeat)-tol_win:beats_m(iBeat)+tol_win) - 1, M_i) + 1;
+		%	states = sub2ind([model.M, model.N, model.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state);
+		%	j_cols(p:p+length(states)-1) = states;
+		%	i_rows(p:p+length(states)-1) = iBeat;
+		%	p = p + length(states);
+		 %   end
+				
                 end
                 %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
                 belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
