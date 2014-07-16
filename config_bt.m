@@ -29,7 +29,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
-Params.n_depends_on_r = 0;
+Params.n_depends_on_r = 1;
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
 % n_folds_for_cross_validation
@@ -43,12 +43,12 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 0;
+Params.viterbi_learning_iterations = 1;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
 % Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
@@ -60,11 +60,11 @@ Params.viterbi_learning_iterations = 0;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 3072;
+Params.M = 768;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 1;
+Params.R = 3;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -173,7 +173,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'adi_118_train_2';
+Params.train_set = 'hainsworth_train_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -181,13 +181,13 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-kmeans.mat']);
+    num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'adi_118_test_2';
+Params.test_set = 'hainsworth_test_1';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 %Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';

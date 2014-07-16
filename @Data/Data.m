@@ -112,7 +112,7 @@ classdef Data < handle
                 meter_fln = fullfile(strrep(fpath, 'audio', 'annotations/meter'), [fname, '.meter']);
                 if exist(meter_fln, 'file')
                     meter = Data.load_annotations_bt(obj.file_list{iFile}, 'meter');
-                    if length(annots.meter) == 1
+                    if length(meter) == 1
                         obj.meter(iFile, 1) = meter;
                         obj.meter(iFile, 2) = 4;
                         fprintf('Data.read_meter: No denominator in meter file %s found -> adding 4\n', [fname, '.meter']);

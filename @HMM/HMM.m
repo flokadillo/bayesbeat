@@ -105,10 +105,15 @@ classdef HMM
                 obj.minN = ones(1, obj.R) * min(obj.minN);
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
-                fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
+                fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
                     round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
 %                     obj.minN = ones(1, obj.R) * 8;
 %                     obj.maxN = ones(1, obj.R) * obj.N;
+	    else
+		for r_i = 1:obj.R
+                	fprintf('    R=%i: Tempo limited to %i - %i bpm\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
+                    round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)));
+		end
             end
             
             % Create transition model
@@ -318,7 +323,7 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/', fname, '.txt']);
+                BeatTracker.save_beats(beats, ['temp/', fname, '-vit_method1.txt']);
                 
                 if min(n_path) < 5
                    fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path)); 
