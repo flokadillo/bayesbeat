@@ -291,7 +291,7 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
-            log_prob = zeros(n_files);
+        %    log_prob = zeros(n_files);
             
             for i_file=1:n_files
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
@@ -315,7 +315,7 @@ classdef HMM
                 % plot assignment from hidden states to observations after
                 % training iteration
                 %                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), best_path);
-                log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
+              %  log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
                 %                 fprintf('    log_prob=%.2f\n', log_prob(i_file));
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
                 
@@ -323,7 +323,7 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/', fname, '-vit_method2_inter_ann_int.txt']);
+                BeatTracker.save_beats(beats, ['temp/vit_method2_inter_ann_int/', fname, '.beats.txt']);
                 
                 if min(n_path) < 5
                     fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path));
@@ -415,7 +415,7 @@ classdef HMM
                 obj.rhythm2meter_state, obj.minN, obj.maxN);
             % update observation model
             obj.obs_model = obj.obs_model.train_model(observation_per_state);
-            fprintf('  Total log_prob=%.2f\n', sum(log_prob));
+          %  fprintf('  Total log_prob=%.2f\n', sum(log_prob));
         end
         
         function [] = visualise_hidden_states(obj, y, map_sequence, pattern_per_frame)
