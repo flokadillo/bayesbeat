@@ -323,7 +323,7 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/vit_method2_inter_ann_int/', fname, '.beats.txt']);
+                BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
                 
                 if min(n_path) < 5
                     fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path));
@@ -414,7 +414,8 @@ classdef HMM
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter_state, obj.minN, obj.maxN);
             % update observation model
-            obj.obs_model = obj.obs_model.train_model(observation_per_state);
+            train_data.feats_file_pattern_barPos_dim = observation_per_state;
+            obj.obs_model = obj.obs_model.train_model(train_data);
           %  fprintf('  Total log_prob=%.2f\n', sum(log_prob));
         end
         
