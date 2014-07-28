@@ -323,7 +323,7 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
+                BeatTracker.save_beats(beats, ['temp/R4_vit_method1_0_7/', fname, '.beats.txt']);
                 
                 if min(n_path) < 5
                     fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path));
@@ -1083,7 +1083,8 @@ classdef HMM
                 % compute belief functions for the whole dataset
                 file_ids = 1:length(train_data.file_list);
             end
-            tol_beats = 0.0875; % size of tolerance window in percentage of one beat period
+            tol_beats = 0.0875; % tolerance window in percentage of one beat period
+	    method_type = 1;
             tol_bpm = 20; % tolerance in +/- bpm for tempo variable
             % compute tol_win in [frames]
             %             tol_win_m = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1));
@@ -1137,29 +1138,33 @@ classdef HMM
                     beats_m = ((possible_btypes-1) .* M_i ./ obj.meter_state2meter(1, iMeter)) + 1;
                     for iM_beats=beats_m % loop over beat types
                         for iBeat=1:n_beats_i % loop over beats of file i
+			    if method_type == 1
 %                             % -----------------------------------------------------
 %                             % Variant 1: tolerance win constant in beats over tempi
 %                             % -----------------------------------------------------
-%                             m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
-%                             m = repmat(m_support, 1, obj.N * length(r_state));
-%                             n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
-%                             r = repmat(r_state(:), obj.N * length(m_support), 1);
-%                             states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-%                             idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
-%                             i_rows(idx) = iBeat;
-%                             j_cols(idx) = states;
-                            
+                              m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
+                              m = repmat(m_support, 1, obj.N * length(r_state));
+                              n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
+                              r = repmat(r_state(:), obj.N * length(m_support), 1);
+                              states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
+                              idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
+                              i_rows(idx) = iBeat;
+                              j_cols(idx) = states;
+                            elseif method_type == 2 
                             % -----------------------------------------------------
                             % Variant 2: Tolerance win constant in time over tempi
                             % -----------------------------------------------------
                             
-                            for n_i = obj.minN(r_state):obj.maxN(r_state)
+                              for n_i = obj.minN(r_state):obj.maxN(r_state)
                             	tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
                             	m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
-                            	states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state);
-                            	j_cols(p:p+length(states)-1) = states;
-                            	i_rows(p:p+length(states)-1) = iBeat;
-                            	p = p + length(states);
+                            	for r_i = 1:length(r_state)
+				   states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
+                            	   j_cols(p:p+length(states)-1) = states;
+                            	   i_rows(p:p+length(states)-1) = iBeat;
+                            	   p = p + length(states);
+				end
+                              end
                             end
                             %                             % tempo
                             %                             n_valid = (ibi(iBeat)-tol_win_n):(ibi(iBeat)+tol_win_n);
