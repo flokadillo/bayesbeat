@@ -105,15 +105,10 @@ classdef HMM
                 obj.minN = ones(1, obj.R) * min(obj.minN);
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
-                fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
+               % fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
                     round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
                 %                     obj.minN = ones(1, obj.R) * 8;
                 %                     obj.maxN = ones(1, obj.R) * obj.N;
-            else
-                for r_i = 1:obj.R
-                    fprintf('    R=%i: Tempo limited to %i - %i bpm\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
-                        round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)));
-                end
             end
             
             % Create transition model
@@ -122,7 +117,12 @@ classdef HMM
                 obj.maxN = ones(1, obj.R) * obj.N;
             end
             
-            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
+	    for r_i = 1:obj.R
+                    fprintf('    R=%i: Tempo limited to %i - %i bpm\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
+                        round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)));
+            end
+            
+	    obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter_state, obj.minN, obj.maxN, obj.use_silence_state, obj.p2s, obj.pfs);
             
             % Check transition model
