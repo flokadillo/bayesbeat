@@ -106,15 +106,15 @@ classdef HMM
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
                % fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
-                    round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
+                %    round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
                 %                     obj.minN = ones(1, obj.R) * 8;
                 %                     obj.maxN = ones(1, obj.R) * obj.N;
             end
             
             % Create transition model
             if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
-                obj.minN = ones(1, obj.R);
-                obj.maxN = ones(1, obj.R) * obj.N;
+            %    obj.minN = ones(1, obj.R);
+            %    obj.maxN = ones(1, obj.R) * obj.N;
             end
             
 	    for r_i = 1:obj.R
@@ -294,6 +294,7 @@ classdef HMM
         %    log_prob = zeros(n_files);
             
             for i_file=1:n_files
+	    % for i_file=326
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('  %i/%i) %s', i_file, n_files, fname);
                 % make belief function
@@ -323,11 +324,11 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                BeatTracker.save_beats(beats, ['temp/R4_vit_method1_0_7/', fname, '.beats.txt']);
+             %   BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
                 
                 if min(n_path) < 5
-                    fprintf('    Low tempo detected at file (n=%i), ignoring file.\n', min(n_path));
-                    continue;
+                    fprintf('    Low tempo detected at file (n=%i), doing nothing\n', min(n_path));
+               %     continue;
                 end
                 
                 % save pattern id per bar
@@ -753,7 +754,7 @@ classdef HMM
             nFrames = end_frame - start_frame + 1;
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
-            maxState = max([row; col]);
+	    maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             
@@ -1084,7 +1085,7 @@ classdef HMM
                 file_ids = 1:length(train_data.file_list);
             end
             tol_beats = 0.0875; % tolerance window in percentage of one beat period
-	    method_type = 1;
+	    method_type = 2;
             tol_bpm = 20; % tolerance in +/- bpm for tempo variable
             % compute tol_win in [frames]
             %             tol_win_m = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1));
