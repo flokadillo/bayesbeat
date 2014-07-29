@@ -117,9 +117,9 @@ classdef HMM
             %    obj.maxN = ones(1, obj.R) * obj.N;
             end
             
-	    for r_i = 1:obj.R
-                    fprintf('    R=%i: Tempo limited to %i - %i bpm\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
-                        round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)));
+	        for r_i = 1:obj.R
+                    fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i)\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
+                        round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), obj.minN(r_i), obj.maxN(r_i));
             end
             
 	    obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
@@ -411,6 +411,7 @@ classdef HMM
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN);
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                fprintf('    New tempo limits: %i - %i\n', obj.minN(1), obj.maxN(1));
             end
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter_state, obj.minN, obj.maxN);
