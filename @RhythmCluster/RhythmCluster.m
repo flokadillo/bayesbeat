@@ -43,7 +43,7 @@ classdef RhythmCluster < handle
             % 09.04.2013 by Florian Krebs
             % ----------------------------------------------------------------------
             if nargin == 1
-                feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
+                feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
                 frame_length = 0.02;
                 data_save_path = './data';
                 pattern_size = 'bar';

@@ -205,7 +205,7 @@ classdef BeatTracker < handle
             end
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
-            observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id});
+            observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id}, obj.Params.save_features_to_file);
             % compute observation likelihoods
             tic;
             results = obj.model.do_inference(observations, fname, obj.inferenceMethod, do_output);

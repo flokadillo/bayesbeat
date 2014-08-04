@@ -24,7 +24,12 @@ classdef Feature
             obj.feat_dim = length(feat_type);
         end
         
-        function observations = load_feature(obj, input_fln)
+        function observations = load_feature(obj, input_fln, save_it)
+            if exist('save_it', 'var')
+                param.save_it = save_it;
+            else
+                param.save_it = 1; % save feature to folder ./beat_activations
+            end
             % parse input_data
             obj.input_fln = input_fln;
             [fpath, fname, ~] = fileparts(input_fln);
@@ -36,8 +41,8 @@ classdef Feature
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
-                    fprintf('    Extracting features from %s\n', fname);
-                    param.save_it = 1; % save feature to folder ./beat_activations
+                    fprintf('    Extracting %s from %s\n', obj.feat_type{iDim}, fname);
+                    
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
                     % post processing

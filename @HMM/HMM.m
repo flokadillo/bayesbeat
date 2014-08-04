@@ -55,7 +55,11 @@ classdef HMM
             obj.meter_state2meter = meter_state2meter;
             obj.Meff = round((meter_state2meter(1, :) ./ meter_state2meter(2, :)) * (Params.M ./ max(meter_state2meter(1, :) ./ meter_state2meter(2, :))));
             obj.pattern_size = Params.pattern_size;
-            obj.save_inference_data = Params.save_inference_data;
+            if isfield(Params, 'save_inference_data')
+                obj.save_inference_data = Params.save_inference_data;
+            else
+                obj.save_inference_data = 0;
+            end
             obj.tempo_tying = Params.tempo_tying;
             if isfield(Params, 'viterbi_learning_iterations')
                 obj.viterbi_learning_iterations = Params.viterbi_learning_iterations;
