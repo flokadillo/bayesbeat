@@ -209,7 +209,8 @@ classdef Data < handle
                 end
                 barpos_per_frame = obj.barpos_per_frame;
                 pattern_per_frame = obj.pattern_per_frame;
-                save(featuresFln, 'dataPerFile', 'barpos_per_frame', 'pattern_per_frame');
+                save(featuresFln, 'dataPerFile', 'barpos_per_frame', 'pattern_per_frame', '-v7');
+                fprintf('    Saved organized features to %s\n', featuresFln);
             end
             obj.feats_file_pattern_barPos_dim = dataPerFile;
             
