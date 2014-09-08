@@ -134,7 +134,7 @@ classdef BeatTracker < handle
                                
                 obj.model = obj.model.make_initial_distribution([tempo_min_per_cluster; tempo_max_per_cluster]);
                 
-                fln = fullfile(obj.temp_path, 'last_model.mat');
+                fln = fullfile(obj.sim_dir, 'model.mat');
                 switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
@@ -143,6 +143,7 @@ classdef BeatTracker < handle
                         pf = obj.model;
                         save(fln, 'pf');
                 end
+                hmm = obj.model;
                 fprintf('* Saved model (Matlab) to %s\n', fln);
             end
             
