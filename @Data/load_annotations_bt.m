@@ -52,11 +52,16 @@ elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
     data = load('-ascii', filename);
 elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
     % Load beat annotations
-    temp = load('-ascii', filename);
-    data = temp(:, 1);
+    fid = fopen(filename, 'r');
+    temp = textscan(fid, '%f64%s', 'delimiter', '\t');
+    data = temp{1};
     if size(temp, 2) == 2
-        data = [data, floor(temp(:, 2))];
-        data = [data, round(rem(temp(:, 2), 1)*10)];
+        % get bar id and beat number
+        temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
+        'UniformOutput', 0);
+        bar_id = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
+        beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
+        data = [data, bar_id, beat_number];
     end
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile
