@@ -43,15 +43,18 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
 % Number of iterations of Viterbi training (currently only for HMMs)
-Params.viterbi_learning_iterations = 1;
+Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
+Params.model_fln = '~/diss/src/matlab/beat_tracking/bayes_beat/data/big_hmm_carnatic_beats.mat';
+% Save extracted feature to a folder called "beat_activations" relative to
+% the audio folder
+Params.save_features_to_file = 1;
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -64,7 +67,7 @@ Params.M = 768;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 3;
+Params.R = 2;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -157,11 +160,11 @@ Params.n_initial_clusters = 32;
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-%Params.feat_type{2} = 'rnn';
-%Params.feat_type{1} = 'superflux';
+Params.feat_type{1} = 'sprflx2d0';
+Params.feat_type{2} = 'sprflx2d1';
 %Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
+%   Params.feat_type{1} = 'lo230_superflux.mvavg';
+%   Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -173,7 +176,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'hainsworth_train_1';
+Params.train_set = 'train';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored

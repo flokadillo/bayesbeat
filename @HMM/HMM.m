@@ -109,7 +109,7 @@ classdef HMM
                 obj.minN = ones(1, obj.R) * min(obj.minN);
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
-               % fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
+                % fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
                 %    round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
                 %                     obj.minN = ones(1, obj.R) * 8;
                 %                     obj.maxN = ones(1, obj.R) * obj.N;
@@ -117,16 +117,17 @@ classdef HMM
             
             % Create transition model
             if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
-            %    obj.minN = ones(1, obj.R);
-            %    obj.maxN = ones(1, obj.R) * obj.N;
+                %    obj.minN = ones(1, obj.R);
+                %    obj.maxN = ones(1, obj.R) * obj.N;
             end
             
-	        for r_i = 1:obj.R
-                    fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i)\n', r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
-                        round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), obj.minN(r_i), obj.maxN(r_i));
+            for r_i = 1:obj.R
+                fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i)\n', ...
+                    r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
+                    round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), obj.minN(r_i), obj.maxN(r_i));
             end
             
-	    obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
+            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
                 obj.rhythm2meter_state, obj.minN, obj.maxN, obj.use_silence_state, obj.p2s, obj.pfs);
             
             % Check transition model
@@ -295,10 +296,10 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
-        %    log_prob = zeros(n_files);
+            %    log_prob = zeros(n_files);
             
             for i_file=1:n_files
-	    % for i_file=326
+                % for i_file=326
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('  %i/%i) %s', i_file, n_files, fname);
                 % make belief function
@@ -320,7 +321,7 @@ classdef HMM
                 % plot assignment from hidden states to observations after
                 % training iteration
                 %                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), best_path);
-              %  log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
+                %  log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
                 %                 fprintf('    log_prob=%.2f\n', log_prob(i_file));
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
                 
@@ -328,11 +329,11 @@ classdef HMM
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-             %   BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
+                %   BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
                 
                 if min(n_path) < 5
                     fprintf('    Low tempo detected at file (n=%i), doing nothing\n', min(n_path));
-               %     continue;
+                    %     continue;
                 end
                 
                 % save pattern id per bar
@@ -422,7 +423,7 @@ classdef HMM
             % update observation model
             train_data.feats_file_pattern_barPos_dim = observation_per_state;
             obj.obs_model = obj.obs_model.train_model(train_data);
-          %  fprintf('  Total log_prob=%.2f\n', sum(log_prob));
+            %  fprintf('  Total log_prob=%.2f\n', sum(log_prob));
         end
         
         function [] = visualise_hidden_states(obj, y, map_sequence, pattern_per_frame)
@@ -759,7 +760,7 @@ classdef HMM
             nFrames = end_frame - start_frame + 1;
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
-	    maxState = max([row; col]);
+            maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             
@@ -1090,7 +1091,7 @@ classdef HMM
                 file_ids = 1:length(train_data.file_list);
             end
             tol_beats = 0.0875; % tolerance window in percentage of one beat period
-	    method_type = 2;
+            method_type = 2;
             tol_bpm = 20; % tolerance in +/- bpm for tempo variable
             % compute tol_win in [frames]
             %             tol_win_m = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1));
@@ -1120,7 +1121,7 @@ classdef HMM
                 % estimate roughly the size of the tolerance windows to
                 % pre-allocate memory (assuming 4/4 meter)
                 tol_win_m = floor(tol_beats * obj.M / 4);
-%                 tol_win_n = floor(obj.M .* obj.frame_length * tol_bpm ./ (4 .* 60));
+                %                 tol_win_n = floor(obj.M .* obj.frame_length * tol_bpm ./ (4 .* 60));
                 % pre-allocate memory for rows, cols and values
                 i_rows = zeros((tol_win_m*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
                 j_cols = zeros((tol_win_m*2+1) * n_beats_i * obj.N * obj.R * sum(obj.meter_state2meter(1, :)), 1);
@@ -1144,33 +1145,33 @@ classdef HMM
                     beats_m = ((possible_btypes-1) .* M_i ./ obj.meter_state2meter(1, iMeter)) + 1;
                     for iM_beats=beats_m % loop over beat types
                         for iBeat=1:n_beats_i % loop over beats of file i
-			    if method_type == 1
-%                             % -----------------------------------------------------
-%                             % Variant 1: tolerance win constant in beats over tempi
-%                             % -----------------------------------------------------
-                              m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
-                              m = repmat(m_support, 1, obj.N * length(r_state));
-                              n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
-                              r = repmat(r_state(:), obj.N * length(m_support), 1);
-                              states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-                              idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
-                              i_rows(idx) = iBeat;
-                              j_cols(idx) = states;
-                            elseif method_type == 2 
-                            % -----------------------------------------------------
-                            % Variant 2: Tolerance win constant in time over tempi
-                            % -----------------------------------------------------
-                            
-                              for n_i = obj.minN(r_state):obj.maxN(r_state)
-                            	tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
-                            	m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
-                            	for r_i = 1:length(r_state)
-				   states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
-                            	   j_cols(p:p+length(states)-1) = states;
-                            	   i_rows(p:p+length(states)-1) = iBeat;
-                            	   p = p + length(states);
-				end
-                              end
+                            if method_type == 1
+                                %                             % -----------------------------------------------------
+                                %                             % Variant 1: tolerance win constant in beats over tempi
+                                %                             % -----------------------------------------------------
+                                m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
+                                m = repmat(m_support, 1, obj.N * length(r_state));
+                                n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
+                                r = repmat(r_state(:), obj.N * length(m_support), 1);
+                                states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
+                                idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
+                                i_rows(idx) = iBeat;
+                                j_cols(idx) = states;
+                            elseif method_type == 2
+                                % -----------------------------------------------------
+                                % Variant 2: Tolerance win constant in time over tempi
+                                % -----------------------------------------------------
+                                
+                                for n_i = obj.minN(r_state):obj.maxN(r_state)
+                                    tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
+                                    m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
+                                    for r_i = 1:length(r_state)
+                                        states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
+                                        j_cols(p:p+length(states)-1) = states;
+                                        i_rows(p:p+length(states)-1) = iBeat;
+                                        p = p + length(states);
+                                    end
+                                end
                             end
                             %                             % tempo
                             %                             n_valid = (ibi(iBeat)-tol_win_n):(ibi(iBeat)+tol_win_n);

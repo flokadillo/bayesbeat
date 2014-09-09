@@ -25,7 +25,9 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff, feat_type, use_silence_state)
+        function obj = ObservationModel(dist_type, rhythm2meter_state, ...
+                meter_state2meter, M, N, R, barGrid, Meff, feat_type, ...
+                use_silence_state)
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
