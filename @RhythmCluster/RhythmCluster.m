@@ -363,7 +363,8 @@ classdef RhythmCluster < handle
             nBars = zeros(length(ok_songs), 1);
             obj.file_2_cluster = zeros(length(ok_songs), 1);
             for iFile = 1:length(ok_songs)
-%                 [annotsPath, fname, ~] = fileparts(fileNames{ok_songs(iFile)});
+                [annotsPath, fname, ~] = fileparts(fileNames{ok_songs(iFile)});
+                fprintf('%i) %s\n', iFile, fname);
                 [beats, error] = Data.load_annotations_bt( obj.train_file_list{ok_songs(iFile)}, 'beats');
                 if error, error('no beat file found\n'); end
                 if size(beats, 2) < 2

@@ -57,6 +57,16 @@ else
     if exist('audioread', 'file')
         [x, fs] = audioread(fln);
     else
+        [~, ~, ext] = fileparts(fln);
+        if strcmp(ext, '.flac')
+            fprintf('    Converting flac to wav ...\n');
+            if ~exist(strrep(fln, 'flac', 'wav'), 'file') 
+                fprintf('    Converting flac to wav ...\n');
+                system(['flac -df --output-name=', ...
+                    strrep(strrep(fln, 'flac', 'wav'), '~', '${HOME}'), ...
+                    ' ', fln]);
+            end
+        end
         [x, fs] = wavread(fln);
     end
     if fs ~= 44100

@@ -63,6 +63,7 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
         beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
         data = [data, bar_id, beat_number];
     end
+    fclose(fid);
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile
     data = load('-ascii', filename);
