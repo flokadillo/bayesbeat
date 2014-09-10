@@ -66,6 +66,7 @@ else
                     strrep(strrep(fln, 'flac', 'wav'), '~', '${HOME}'), ...
                     ' ', fln]);
             end
+            fln = strrep(fln, 'flac', 'wav');
         end
         [x, fs] = wavread(fln);
     end
