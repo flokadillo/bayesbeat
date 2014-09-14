@@ -168,14 +168,22 @@ classdef Data < handle
                 beat_periods = beat_periods(max([floor(length(beat_periods)/10), 1]):min([floor(length(beat_periods)*9/10), length(beat_periods)]));
                 
                 % so far, only the first bar of each file is used and assigned the style to the whole file
-                styleId = obj.bar2cluster(obj.bar2file == iFile);
-                
+                styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
                 if ~isempty(styleId)
-                    tempo_min_per_cluster(iFile, styleId(1)) = 60/max(beat_periods);
-                    tempo_max_per_cluster(iFile, styleId(1)) = 60/min(beat_periods);
+                    tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);
+                    tempo_max_per_cluster(iFile, styleId) = 60/min(beat_periods);
 %                     tempo_per_cluster(iFile, styleId(1)) = tempo;
                 end
             end
+	    if sum(isnan(max(tempo_max_per_cluster))) > 0 % cluster without tempo
+		error('cluster without bar assignment\n');		
+%rhythm_id = find(isnan(tempo_max_per_cluster));
+		%for i_r=rhythm_id(:)
+	%		file_id = unique(obj.bar2file(obj.bar2cluster==i_r));
+%			tempo_min_per_cluster(file_id, i_r) = 60/max(beat_periods);
+%                    tempo_max_per_cluster(iFile, styleId(1)) = 60/min(beat_periods);
+		%end
+	    end
             
         end
         
