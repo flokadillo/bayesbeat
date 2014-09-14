@@ -62,9 +62,9 @@ else
             fprintf('    Converting flac to wav ...\n');
             if ~exist(strrep(fln, 'flac', 'wav'), 'file') 
                 fprintf('    Converting flac to wav ...\n');
-                system(['flac -df --output-name=', ...
+		system(['flac -df --output-name="', ...
                     strrep(strrep(fln, 'flac', 'wav'), '~', '${HOME}'), ...
-                    ' ', fln]);
+                    '" "', strrep(fln, '~', '${HOME}'), '"']);
             end
             fln = strrep(fln, 'flac', 'wav');
         end
