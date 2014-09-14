@@ -59,8 +59,14 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
         % get bar id and beat number
         temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
         'UniformOutput', 0);
-        bar_id = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
-        beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
+	if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
+        	bar_id = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
+        	beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
+	else % no bar_id given, set bar_id to nan
+		beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
+		bar_id = nan(size(beat_number));
+		fprintf('WARNING: no bar_id found in %s, set to nan\n', filename);
+	end
         data = [data, bar_id, beat_number];
     end
     fclose(fid);
