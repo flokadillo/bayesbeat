@@ -243,8 +243,13 @@ classdef RhythmCluster < handle
                     num2str(obj.feature.feat_dim), 'd-', num2str(n_clusters), 'R-kmeans.mat']);
             else
                 % read index of  valid songs
-                if exist(obj.exclude_songs_fln, 'f')
-                    exclude_songs = load(obj.exclude_songs_fln, '-ascii');
+                if exist(obj.exclude_songs_fln, 'file')
+                    fid = fopen(obj.exclude_songs_fln, 'r');
+                    exclude_songs = textscan(fid, '%s');
+                    fclose(fid);
+%                     exclude_songs = load(obj.exclude_songs_fln, '-ascii');
+                    exclude_songs = find(ismember(obj.train_file_list, ...
+                        exclude_songs{1}));
                 else
                     exclude_songs = [];
                 end
