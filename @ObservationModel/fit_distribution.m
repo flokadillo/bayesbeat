@@ -11,7 +11,7 @@ end
 
 %Init = generate_init_params_gmdistribution(dataPerClusterAndPosition);
 
-[~, nPatterns, nPos, ~] = size(dataPerClusterAndPosition);
+[nFiles, nPatterns, nPos, featDim] = size(dataPerClusterAndPosition);
 
 params = cell(nPatterns, nPos);
 
@@ -19,8 +19,13 @@ for iPattern=1:nPatterns % all clusters
     fprintf('.');
     
     for iPos=1:nPos
-        
-        featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
+        if nFiles == 1
+            % resulting featureValues should be a matrix [nValues x featDim]
+            % if files are squeezed out we have to transpose
+            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :))');
+        else
+            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
+        end
         
         if isempty(featureValues), 
             break; 
