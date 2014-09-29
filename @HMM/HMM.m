@@ -53,7 +53,9 @@ classdef HMM
             obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
-            obj.Meff = round((meter_state2meter(1, :) ./ meter_state2meter(2, :)) * (Params.M ./ max(meter_state2meter(1, :) ./ meter_state2meter(2, :))));
+            % effective number of bar positions per meter_state
+            obj.Meff = round((meter_state2meter(1, :) ./ meter_state2meter(2, :)) ...
+                * (Params.M ./ max(meter_state2meter(1, :) ./ meter_state2meter(2, :))));
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -89,12 +91,12 @@ classdef HMM
         
         function obj = make_transition_model(obj, minTempo, maxTempo)
             % convert from BPM into barpositions / audio frame
-            %             meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
-            meter_denom = obj.meter_state2meter(2, obj.rhythm2meter_state);
+            meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
+%             meter_denom = obj.meter_state2meter(2, obj.rhythm2meter_state);
             
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.M .* obj.frame_length .* minTempo ./ (meter_denom * 60));
-                obj.maxN = ceil(obj.M .* obj.frame_length .* maxTempo ./ (meter_denom * 60));
+                obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
@@ -123,8 +125,9 @@ classdef HMM
             
             for r_i = 1:obj.R
                 fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i)\n', ...
-                    r_i, round(obj.minN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), ...
-                    round(obj.maxN(r_i)*60*meter_denom(r_i)/(obj.M * obj.frame_length)), obj.minN(r_i), obj.maxN(r_i));
+                    r_i, round(obj.minN(r_i)*60*meter_num(r_i)/(obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length)), ...
+                    round(obj.maxN(r_i)*60*meter_num(r_i)/(obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length)), ...
+                    obj.minN(r_i), obj.maxN(r_i));
             end
             
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
@@ -257,7 +260,7 @@ classdef HMM
             %             figure; plot(y); hold on; stem(anns*100, ones(size(anns))*max(y(:)), 'r'); stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'c--');
             
             if strcmp(obj.pattern_size, 'bar')
-                tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
+                tempo = meter(1, :) .* 60 .* n_path ./ (obj.Meff(obj.rhythm2meter_state(r_path)) * obj.frame_length);
             else
                 tempo = 60 .* n_path / (obj.M * obj.frame_length);
                 %                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);

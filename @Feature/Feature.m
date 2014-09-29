@@ -14,14 +14,19 @@ classdef Feature
     
     methods
         function obj = Feature(feat_type, frame_length)
-            if nargin == 0
-                obj.feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
+            if nargin == 0 
+                obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
                 obj.frame_length = 0.02;
             else
-                obj.feat_type = feat_type;
+                if isempty(feat_type)
+                    obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
+                    fprintf('    WARNING: loaded model does not have field feat_type. Assuming lo230/hi250_superflux.mvavg\n');
+                else
+                    obj.feat_type = feat_type;
+                end
                 obj.frame_length = frame_length;
             end
-            obj.feat_dim = length(feat_type);
+            obj.feat_dim = length(obj.feat_type);
         end
         
         function observations = load_feature(obj, input_fln, save_it)
