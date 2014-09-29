@@ -260,7 +260,7 @@ classdef HMM
             %             figure; plot(y); hold on; stem(anns*100, ones(size(anns))*max(y(:)), 'r'); stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'c--');
             
             if strcmp(obj.pattern_size, 'bar')
-                tempo = meter(2, :) .* 60 .* n_path / (obj.M * obj.frame_length);
+                tempo = meter(1, :) .* 60 .* n_path ./ (obj.Meff(obj.rhythm2meter_state(r_path)) * obj.frame_length);
             else
                 tempo = 60 .* n_path / (obj.M * obj.frame_length);
                 %                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
