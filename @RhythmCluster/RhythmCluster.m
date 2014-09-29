@@ -45,7 +45,7 @@ classdef RhythmCluster < handle
             if nargin == 1
                 feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
                 frame_length = 0.02;
-                data_save_path = './data';
+                data_save_path = '~/diss/src/matlab/beat_tracking/bayes_beat/data';
                 pattern_size = 'bar';
             end
             obj.feature = Feature(feat_type, frame_length);
@@ -162,6 +162,7 @@ classdef RhythmCluster < handle
             fprintf('    WARNING: so far only 2 different meters supported!\n');
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
+		[a,b] = size(obj.data_per_bar{1,1})
                 meter_per_item = obj.bar_2_meter;
             else
                 S = obj.data_per_song;

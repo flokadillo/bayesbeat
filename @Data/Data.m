@@ -193,7 +193,8 @@ classdef Data < handle
             obj.feat_type = featureType;
             % Extract audio features and sort them according to bars and position
             if exist(featuresFln, 'file') && ~reorganize_bars_into_cluster
-                load(featuresFln, 'dataPerFile');
+        	fprintf('* Loading features from %s\n', featuresFln);        
+ 		load(featuresFln, 'dataPerFile');
             else
                 fprintf('* Extract and organise trainings data: \n');
                 for iDim = 1:featureDim
