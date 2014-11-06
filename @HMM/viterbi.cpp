@@ -25,20 +25,20 @@ typedef int mwSize;
 typedef int mwIndex;
 typedef int mwSignedIndex;
 
-#if (defined(_LP64) || defined(_WIN64)) && !defined(MX_COMPAT_32)
-/* Currently 2^48 based on hardware limitations */
-# define MWSIZE_MAX    281474976710655UL
-# define MWINDEX_MAX   281474976710655UL
-# define MWSINDEX_MAX  281474976710655L
-# define MWSINDEX_MIN -281474976710655L
-#else
-# define MWSIZE_MAX    2147483647UL
-# define MWINDEX_MAX   2147483647UL
-# define MWSINDEX_MAX  2147483647L
-# define MWSINDEX_MIN -2147483647L
-#endif
-#define MWSIZE_MIN    0UL
-#define MWINDEX_MIN   0UL
+// #if (defined(_LP64) || defined(_WIN64)) && !defined(MX_COMPAT_32)
+// /* Currently 2^48 based on hardware limitations */
+// # define MWSIZE_MAX    281474976710655UL
+// # define MWINDEX_MAX   281474976710655UL
+// # define MWSINDEX_MAX  281474976710655L
+// # define MWSINDEX_MIN -281474976710655L
+// #else
+// # define MWSIZE_MAX    2147483647UL
+// # define MWINDEX_MAX   2147483647UL
+// # define MWSINDEX_MAX  2147483647L
+// # define MWSINDEX_MIN -2147483647L
+// #endif
+// #define MWSIZE_MIN    0UL
+// #define MWINDEX_MIN   0UL
 #endif
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
@@ -51,13 +51,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   } 
   
 //declare variables
-  mxArray *map_state_sequence, *psi, *debug_data;
+  mxArray *map_state_sequence, *psi;
+  mxArray *debug_data;
   const mwSize *dims;
-  double *debug_data_ptr;
   double sum_k, temp;
   mwSignedIndex *psi_ptr;
   int num_frames, num_states, obs_idx, R, num_pos, num_trans, num_valid_states;
-  int i, r, p, i_trans, prev_end_state, current_start_state, current_end_state;
+  int i, j, r, p, i_trans, prev_end_state, current_start_state, current_end_state;
   int idx, i_state, last_state_valid;
   
 //associate inputs and associate pointers
@@ -74,11 +74,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   // num_frames
   dims = mxGetDimensions(prhs[4]);
   num_frames = (int)dims[2];
-  mexPrintf("%d audio frames\n", num_frames);
-  // num_states
   dims = mxGetDimensions(prhs[3]);
   num_states = (int)dims[0];
-  mexPrintf("%d hidden states\n", num_states);
   // rhythmic patterns
   dims = mxGetDimensions(prhs[4]);
   R = (int)dims[0];
@@ -89,35 +86,28 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   // number of valid states
   dims = mxGetDimensions(prhs[7]);
   num_valid_states = (int)dims[0];
-  mexPrintf("%d valid states\n", num_valid_states);
   
 //associate outputs
   map_state_sequence = plhs[0] = mxCreateDoubleMatrix(num_frames,1,mxREAL);
-  debug_data = plhs[1] = mxCreateDoubleMatrix(num_states, 1, mxREAL);
+//   debug_data = plhs[1] = mxCreateDoubleMatrix(num_states, 1, mxREAL);
   
 //internal variables
   psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxINT32_CLASS, mxREAL);
-  
-//associate pointers (get pointer to the first element of the real data)
-
-  double *map_state_sequence_ptr = mxGetPr(map_state_sequence);
-  psi_ptr = (mwSignedIndex*)mxGetData(psi);
-  debug_data_ptr = mxGetPr(debug_data);
-
-//start computing
   std::vector<double> delta(initial_prob_ptr, initial_prob_ptr+num_states);
   std::vector<double> prediction(initial_prob_ptr, initial_prob_ptr+num_states);
   
+//associate pointers (get pointer to the first element of the real data)
+  double *map_state_sequence_ptr = mxGetPr(map_state_sequence);
+  psi_ptr = (mwSignedIndex*)mxGetData(psi);
+// double *debug_data_ptr = mxGetPr(debug_data);
+//start computing    
   sum_k = 0;
-//   for(i=1280;i<16640;i++)
   for(i=0;i<num_states;i++)
   {
     if ((!mxIsNaN(state_2_r_pos_ptr[i])) && (valid_states_ptr[i] > 0)) {
         // subtract one as in matlab positions and patterns start with one
         r = (int)state_2_r_pos_ptr[i]-1;
         p = (int)state_2_r_pos_ptr[i+num_states]-1;
-//         mexPrintf("   state_2_r_pos_ptr[%d]=%d\n", i, (int)state_2_r_pos_ptr[i]-1);
-//         mexPrintf("   state %d: r=%d, pos=%d, obs_lik[%d]=%f\n", i, r, p, p*num_pos+r, obs_lik_ptr[r + p*R]);
         delta[i] = initial_prob_ptr[i] * obs_lik_ptr[r + p*R];
         sum_k += delta[i];
     }
@@ -125,19 +115,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         delta[i] = 0;
     }   
   }
-//   mexPrintf("sum(delta)=%f\n", sum_k);
-//   mexPrintf("   %f * %f = %f\n", obs_lik_ptr[]i_state, initial_prob_ptr[i_state]);
-//   for (i_state=0; i_state<10; i_state++) {
-//     mexPrintf("   initial_prob_ptr[%d]=%f\n", i_state, initial_prob_ptr[i_state]);
-//   }
   for(i=0;i<num_states;i++)
   {
       delta[i] /= sum_k;
   }
-  for(i=0;i<num_states;i++)
-  {
-      debug_data_ptr[i] = delta[i];
-  }
+//   for(i=0;i<num_states;i++)
+//   {
+//       debug_data_ptr[i] = delta[i];
+//   }
   for(i=1;i<num_frames;i++)
   {
       prev_end_state = -7;
@@ -165,14 +150,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
           if (valid_states_ptr[i_state] == 0) { // i_state is not a valid state (no transition)
               delta[i_state] = 0;
           }    
-          else {
-              if (!mxIsNaN(state_2_r_pos_ptr[i_state])) {
-                  // multiply with observation likelihood and sum up
-                  r = (int)state_2_r_pos_ptr[i_state]-1;
-                  p = (int)state_2_r_pos_ptr[i_state+num_states]-1;
-                  delta[i_state] = prediction[i_state] * obs_lik_ptr[r + p*R + i*R*num_pos]; 
-                  sum_k += delta[i_state];
-              }
+          else if (!mxIsNaN(state_2_r_pos_ptr[i_state])){
+               // multiply with observation likelihood and sum up
+              r = (int)state_2_r_pos_ptr[i_state]-1;
+              p = (int)state_2_r_pos_ptr[i_state+num_states]-1;
+              delta[i_state] = prediction[i_state] * obs_lik_ptr[r + p*R + i*R*num_pos]; 
+              sum_k += delta[i_state];
           }
       } 
       // normalise
