@@ -229,7 +229,13 @@ classdef HMM
                 %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strfind(inference_method, 'viterbi')
                 % decode MAP state sequence using Viterbi
-                hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+%                 tic
+%                 hidden_state_sequence1 = obj.viterbi_decode(obs_lik, fname);
+%                 toc
+%                 tic;
+                hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
+%                 toc
+%                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
@@ -549,8 +555,11 @@ classdef HMM
                 logP_data = zeros(round(size(obj.trans_model.A, 1) / x_fac), nFrames, 'single');
                 best_state = zeros(nFrames, 1);
             end
-            
-            delta = obj.initial_prob(minState:maxState);
+            delta = obj.initial_prob;
+            valid_states = false(maxState, 1);
+            valid_states(unique(col)) = true;
+            delta(~valid_states) = 0;
+            delta = delta(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
                 %     fprintf('    Size of Psi = %.1f MB\n', nStates * nFrames * 4 / 10^6);
@@ -570,7 +579,7 @@ classdef HMM
             O = zeros(nStates, 1);
             validInds = ~isnan(ind); %
             O(validInds) = obs_lik(ind(validInds));
-            O(validInds & (O<1e-10)) = 1e-10;
+%             O(validInds & (O<1e-10)) = 1e-10;
             delta = O .* delta;
             delta = delta / sum(delta);
             %             delta = zeros(size(delta));
@@ -620,7 +629,7 @@ classdef HMM
                 %                 sum(validInds)
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-                O(validInds & (O<1e-10)) = 1e-10;
+%                 O(validInds & (O<1e-10)) = 1e-10;
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 delta_max = O .* delta_max';
@@ -756,6 +765,32 @@ classdef HMM
             fprintf(' done\n');
             
         end
+        
+        
+        function bestpath = viterbi_decode_mex(obj, obs_lik, fname)
+            % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
+            % initial_prob)
+            % Implementation of the Viterbi algorithm
+            % ----------------------------------------------------------------------
+            %INPUT parameter:
+            % obj.trans_model.A     : transition matrix
+            % obslik                : observation likelihood [R x nBarGridSize x nFrames]
+            % obj.initial_prob      : initial state probabilities
+            %
+            %OUTPUT parameter:
+            % bestpath      : MAP state sequence
+            %
+            % 26.7.2012 by Florian Krebs
+            % ----------------------------------------------------------------------
+
+            [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
+            validstate_to_state=unique(state_ids_j); valid_states=zeros(max(state_ids_j), 1); valid_states(validstate_to_state)=1:length(validstate_to_state);
+            bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
+                obj.initial_prob, obs_lik, obj.obs_model.state2obs_idx, ...
+                 valid_states, validstate_to_state);
+            fprintf(' done\n');
+        end
+        
         
         function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
             start_frame = max([belief_func{1}(1), 1]); % make sure that belief_func is >= 1
@@ -1214,6 +1249,10 @@ classdef HMM
     methods (Static)
         
         [m, n] = getpath(M, annots, frame_length, nFrames);
+        
+        [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
+                initial_prob, obs_lik, state2obs_idx, ...
+                 valid_states, validstate_to_state);
         
     end
     
