@@ -162,7 +162,7 @@ classdef RhythmCluster < handle
             fprintf('    WARNING: so far only 2 different meters supported!\n');
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
-		[a,b] = size(obj.data_per_bar{1,1})
+% 		[a,b] = size(obj.data_per_bar{1,1})
                 meter_per_item = obj.bar_2_meter;
             else
                 S = obj.data_per_song;

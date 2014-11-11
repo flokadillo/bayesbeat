@@ -55,6 +55,7 @@ Params.viterbi_learning_iterations = 0;
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
+Params.use_mex_viterbi = 1;
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -63,11 +64,11 @@ Params.save_features_to_file = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1600;
+Params.M = 1408;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 6;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -176,23 +177,23 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_boeck';
+Params.train_set = 'ballroom_beatles_boeck_rwc_2_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+%   Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+    num2str(Params.R), 'R-kmeans.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'beatles_hainsworth_rwc';
+Params.test_set = 'boeck_3_4';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-%Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
+% Params.testLab = '~/diss/data/beats/boeck/train12.wav';
 
 end

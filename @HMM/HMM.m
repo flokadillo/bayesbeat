@@ -33,6 +33,7 @@ classdef HMM
         use_silence_state
         pfs                 % transition from silence
         p2s                 % transition to silence
+        use_mex_viterbi     % 1: use it, 0: don't use it (~5 times slower)
     end
     
     methods
@@ -86,6 +87,11 @@ classdef HMM
                 obj.correct_beats = Params.correct_beats;
             else
                 obj.correct_beats = 0;
+            end
+            if isfield(Params, 'use_mex_viterbi')
+                obj.use_mex_viterbi = Params.use_mex_viterbi;
+            else
+                obj.use_mex_viterbi = 1;
             end
         end
         
@@ -235,7 +241,7 @@ classdef HMM
 %                 tic;
                 hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
 %                 toc
-%                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
+% %                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
