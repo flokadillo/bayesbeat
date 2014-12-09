@@ -189,7 +189,19 @@ classdef HMM
                     % normalize
                     obj.initial_prob = obj.initial_prob ./ sum(obj.initial_prob);
                 else
-                    obj.initial_prob = ones(n_states, 1) / n_states;
+                    obj.initial_prob = zeros(n_states, 1);
+                    % compute number of valid states:
+                    n_range = obj.maxN - obj.minN + ones(1, obj.R);
+                    n_valid_states = obj.Meff(:)' * n_range(:);
+                    prob = 1/n_valid_states;
+                    for r_i = 1:obj.R
+%                         prob = 1/(obj.R * n_range(r_i) * obj.Meff(r_i));
+                        for n_i = obj.minN(r_i):obj.maxN(r_i)
+                            start_state = sub2ind([obj.M, obj.N, obj.R], 1, ...
+                                n_i, r_i);
+                            obj.initial_prob(start_state:start_state+obj.Meff(r_i)-1) = prob;
+                        end
+                    end
                 end
             end
         end
@@ -235,12 +247,12 @@ classdef HMM
                 %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strfind(inference_method, 'viterbi')
                 % decode MAP state sequence using Viterbi
-%                 tic
-%                 hidden_state_sequence1 = obj.viterbi_decode(obs_lik, fname);
-%                 toc
-%                 tic;
-                hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
-%                 toc
+                fprintf('    Decoding (viterbi) .');
+                if obj.use_mex_viterbi
+                    hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
+                else
+                    hidden_state_sequence = obj.viterbi_decode_2(obs_lik, fname);
+                end
 % %                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
@@ -531,7 +543,7 @@ classdef HMM
     end
     
     methods (Access=protected)
-        
+              
         function bestpath = viterbi_decode(obj, obs_lik, fname)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
             % initial_prob)
@@ -580,22 +592,9 @@ classdef HMM
             ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
-            
-            % incorporate first observation
             O = zeros(nStates, 1);
             validInds = ~isnan(ind); %
-            O(validInds) = obs_lik(ind(validInds));
-%             O(validInds & (O<1e-10)) = 1e-10;
-            delta = O .* delta;
-            delta = delta / sum(delta);
-            %             delta = zeros(size(delta));
-            %             delta(14000) = 1;
-            % move pointer to next observation
-            ind = ind + ind_stepsize;
-            fprintf('    Decoding (viterbi) .');
-            
-            for iFrame = 2:nFrames
-                
+            for iFrame = 1:nFrames
                 if obj.save_inference_data,
                     for iR=1:obj.R
                         start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
@@ -619,7 +618,6 @@ classdef HMM
                         [~, best_state(iFrame-1)] = max(delta);
                         %                         best_state(iFrame-1) = best_state(iFrame-1) + minState - 1;
                     end
-                    
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
