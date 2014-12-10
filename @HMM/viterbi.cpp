@@ -92,6 +92,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //   debug_data = plhs[1] = mxCreateDoubleMatrix(num_states, 1, mxREAL);
   
 //internal variables
+  mexPrintf("States=%d, Frames=%d\n", num_valid_states, num_frames);
+  mexPrintf("Size of Psi matrix: %.1f MB\n", num_valid_states*num_frames*4/1E6);
   psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxINT32_CLASS, mxREAL);
   std::vector<double> delta(initial_prob_ptr, initial_prob_ptr+num_states);
   std::vector<double> prediction(initial_prob_ptr, initial_prob_ptr+num_states);
@@ -101,29 +103,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   psi_ptr = (mwSignedIndex*)mxGetData(psi);
 // double *debug_data_ptr = mxGetPr(debug_data);
 //start computing    
-  sum_k = 0;
-  for(i=0;i<num_states;i++)
-  {
-    if ((!mxIsNaN(state_2_r_pos_ptr[i])) && (valid_states_ptr[i] > 0)) {
-        // subtract one as in matlab positions and patterns start with one
-        r = (int)state_2_r_pos_ptr[i]-1;
-        p = (int)state_2_r_pos_ptr[i+num_states]-1;
-        delta[i] = initial_prob_ptr[i] * obs_lik_ptr[r + p*R];
-        sum_k += delta[i];
-    }
-    else {
-        delta[i] = 0;
-    }   
-  }
-  for(i=0;i<num_states;i++)
-  {
-      delta[i] /= sum_k;
-  }
-//   for(i=0;i<num_states;i++)
-//   {
-//       debug_data_ptr[i] = delta[i];
-//   }
-  for(i=1;i<num_frames;i++)
+  for(i=0;i<num_frames;i++)
   {
       prev_end_state = -7;
       // loop over possible transitions

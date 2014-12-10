@@ -248,12 +248,12 @@ classdef HMM
             elseif strfind(inference_method, 'viterbi')
                 % decode MAP state sequence using Viterbi
                 fprintf('    Decoding (viterbi) .');
-                if obj.use_mex_viterbi
-                    hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
-                else
-                    hidden_state_sequence = obj.viterbi_decode_2(obs_lik, fname);
-                end
-% %                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
+%                 if obj.use_mex_viterbi
+                    hidden_state_sequence1 = obj.viterbi_decode_mex(obs_lik, fname);
+%                 else
+                    hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+%                 end
+                figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
