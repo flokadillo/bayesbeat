@@ -59,9 +59,11 @@ classdef BeatTracker < handle
                 
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(obj.Params, obj.train_data.meter_state2meter, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = HMM(obj.Params, obj.train_data.meter_state2meter, ...
+                            obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(obj.Params, obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = PF(obj.Params, obj.train_data.rhythm2meter_state, ...
+                            obj.train_data.rhythm_names);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', obj.Params.inferenceMethod);
                 end
@@ -72,8 +74,18 @@ classdef BeatTracker < handle
         function init_train_data(obj)
             fprintf('* Set up training data ...');
             obj.train_data = Data(obj.Params.trainLab, 1);
-            if ~isfield(obj.Params, 'clusterIdFln'), return;  end
-            obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.pattern_size);
+            if strcmp(obj.Params.pattern_size, 'beat')
+                    % no meter information available, one pattern
+                    % corresponds to 1/4 note
+                    obj.train_data.meter_state2meter = [1; 4]; 
+                    obj.train_data.rhythm2meter_state = 1; 
+                    obj.train_data.rhythm_names = {'beat'};
+            end
+            if isfield(obj.Params, 'clusterIdFln') && strcmp(obj.Params.pattern_size, 'bar')
+                obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.pattern_size);
+            else
+                return;
+            end
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';

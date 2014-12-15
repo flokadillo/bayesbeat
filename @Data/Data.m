@@ -68,7 +68,8 @@ classdef Data < handle
         function obj = read_pattern_bars(obj, cluster_fln, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
-            % TODO: bar2file, obj.n_bars should be loaded not computed!
+            %   loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
+            %   creates n_clusters, meter_state2meter, rhythm2meter_state
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
                 obj.bar2file = C.bar2file;
