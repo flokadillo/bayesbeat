@@ -227,9 +227,9 @@ classdef HMM
             if strcmp(obj.dist_type, 'RNN')
                 % normalize
                 % TODO: norm to max=0.95 instead of 1
-                for iR = 1:size(y, 2)
-                    y(: ,iR) = y(: ,iR) / max(y(: ,iR));
-                end
+%                 for iR = 1:size(y, 2)
+%                     y(: ,iR) = y(: ,iR) / max(y(: ,iR));
+%                 end
                 obs_lik = obj.rnn_format_obs_prob(y);
                 if obj.R  ~= size(y, 2)
                     error('Dim of RNN probs should be equal to R!\n');
