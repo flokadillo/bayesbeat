@@ -581,7 +581,6 @@ classdef HMM
                         frame = frame(x_fac:x_fac:end, :);
                         logP_data(start_ind_c:end_ind_c, iFrame-1) = log(frame(:));
                         [~, best_state(iFrame-1)] = max(delta);
-                        %                         best_state(iFrame-1) = best_state(iFrame-1) + minState - 1;
                     end
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
@@ -593,12 +592,8 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                %                 O = zeros(nStates, 1);
-                %                 validInds = ~isnan(ind);
-                %                 sum(validInds)
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-%                 O(validInds & (O<1e-10)) = 1e-10;
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 delta_max = O .* delta_max';
@@ -614,9 +609,6 @@ classdef HMM
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
-                
-                %                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
-                %                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac', 'psi_mat', 'best_state', 'minState');
             end
             
             % Backtracing
@@ -627,7 +619,6 @@ classdef HMM
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
             end
-            
             % add state offset
             bestpath = bestpath + minState - 1;
             fprintf(' done\n');
@@ -648,9 +639,10 @@ classdef HMM
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-
             [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
-            validstate_to_state=unique(state_ids_j); valid_states=zeros(max(state_ids_j), 1); valid_states(validstate_to_state)=1:length(validstate_to_state);
+            validstate_to_state=unique(state_ids_j); 
+            valid_states=zeros(max(state_ids_j), 1); 
+            valid_states(validstate_to_state)=1:length(validstate_to_state);
             bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
                 obj.initial_prob, obs_lik, obj.obs_model.state2obs_idx, ...
                  valid_states, validstate_to_state);
