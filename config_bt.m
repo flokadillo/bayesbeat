@@ -55,7 +55,7 @@ Params.viterbi_learning_iterations = 0;
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
-Params.use_mex_viterbi = 0;
+Params.use_mex_viterbi = 1;
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -68,12 +68,12 @@ Params.M = 640;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 1;
+Params.R = 2;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
 % Length of rhythmic patterns {beat', 'bar'}
-Params.pattern_size = 'beat'; % 'beat' or 'bar'
+Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
 Params.frame_length = 0.01;
 % Model initial distribution over tempo states by mixture of init_n_gauss
@@ -99,7 +99,7 @@ Params.online.update_interval = 1000;
 Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
-Params.correct_beats = 2;
+Params.correct_beats = 1;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
 Params.min_tempo = 60;
 Params.max_tempo = 215;
@@ -159,14 +159,15 @@ Params.n_initial_clusters = 32;
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
-Params.observationModelType = 'RNN';
+% Params.observationModelType = 'RNN';
+Params.observationModelType = 'MOG';
 % Features (extension) to be used
 % Params.feat_type{1} = 'sprflx2d0';
 % Params.feat_type{2} = 'sprflx2d1';
 %Params.feat_type{1} = 'sprflx';
-%   Params.feat_type{1} = 'lo230_superflux.mvavg';
-%   Params.feat_type{2} = 'hi250_superflux.mvavg';
-Params.feat_type{1} = 'rnn_orig';
+  Params.feat_type{1} = 'lo230_superflux.mvavg';
+  Params.feat_type{2} = 'hi250_superflux.mvavg';
+% Params.feat_type{1} = 'rnn_orig';
 % Params.feat_type{1} = 'rnn_hainsworth';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
@@ -179,7 +180,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_beatles_boeck_rwc_2_3_4';
+Params.train_set = 'boeck_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -187,7 +188,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-kmeans.mat']);
+    num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
@@ -195,9 +196,9 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % Test dataset
 Params.test_set = 'boeck_3_4';
 % Path to lab file (.lab) or to test song (.wav)
-% Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
+Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/boeck/train12.wav';
-Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
+% Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
 % Params.testLab = '~/diss/projects/ismir_beats_2014/lab_files/hainsworth_orig.lab';
 
 end

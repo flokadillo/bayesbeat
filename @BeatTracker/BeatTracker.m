@@ -268,7 +268,7 @@ classdef BeatTracker < handle
     methods(Static)
         function [] = save_beats(beats, save_fln)
             fid = fopen(save_fln, 'w');
-            fprintf(fid, '%.3f\t%i\n', beats(:, [1, 3])');
+            fprintf(fid, '%.3f\t%i\n', beats');
             fclose(fid);
         end
         
