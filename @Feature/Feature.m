@@ -47,7 +47,6 @@ classdef Feature
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
                     fprintf('    Extracting %s from %s\n', obj.feat_type{iDim}, fname);
-                    
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
                     % post processing
@@ -82,8 +81,6 @@ classdef Feature
                     else
                         error('Feature %s invalid' ,obj.feat_type{iDim});
                     end
-                    
-                    
                 end
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001

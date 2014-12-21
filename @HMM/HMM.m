@@ -1066,9 +1066,7 @@ classdef HMM
             for iR = 1:size(y, 2)
                 obs_lik(iR, 1, :) = y(:, iR);
                 obs_lik(iR, 2:end, :) = repmat((1-y(:, iR))/(obj.barGrid-1), 1, obj.barGrid-1)';
-                %                 obs_lik(iR, 2:end, :) = repmat((1-y(:, iR)), 1, obj.barGrid-1)';
             end
-            
         end
         
     end
@@ -1079,8 +1077,7 @@ classdef HMM
         
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
                 initial_prob, obs_lik, state2obs_idx, ...
-                 valid_states, validstate_to_state);
-        
+                 valid_states, validstate_to_state);   
     end
     
     

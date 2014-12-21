@@ -72,7 +72,7 @@ classdef BeatTracker < handle
         end
 
         function init_train_data(obj)
-            fprintf('* Set up training data ...');
+            fprintf('* Set up training data ...\n');
             obj.train_data = Data(obj.Params.trainLab, 1);
             if strcmp(obj.Params.pattern_size, 'beat')
                     % no meter information available, one pattern

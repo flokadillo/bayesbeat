@@ -64,7 +64,7 @@ Params.use_mex_viterbi = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 640;
+Params.M = 1280;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
@@ -75,7 +75,7 @@ Params.whole_note_div = 64;
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
-Params.frame_length = 0.01;
+Params.frame_length = 0.02;
 % Model initial distribution over tempo states by mixture of init_n_gauss
 % Gaussians.
 Params.init_n_gauss = 0;
@@ -99,6 +99,9 @@ Params.online.update_interval = 1000;
 Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
+% Correct beat position afterwards by shifting it to a loacl max of the
+% onset detection function to correct for the rough discretisation of the
+% observation model
 Params.correct_beats = 1;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
 Params.min_tempo = 60;
@@ -180,7 +183,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_3_4';
+Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
