@@ -34,7 +34,7 @@ if exist('params', 'var')
         % from struct
         sim = Simulation(params, sim_id);   
     else
-        if exists(params, 'f')
+        if exist(params, 'file')
             config_fln = params;
         else
             error('ERROR BT_Simulation.m: Config file %s not found\n', ...

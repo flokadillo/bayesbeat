@@ -258,21 +258,28 @@ classdef HMM
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
             else
                 error('inference method not specified\n');
-            end   
+            end  
             t_path = zeros(length(r_path), 1);
-            t_path(r_path<=obj.R) = obj.rhythm2meter_state(r_path(r_path<=obj.R));
+            % strip of silence state
+            if obj.use_silence_state
+                idx = (r_path<=obj.R);
+            else
+                idx = ones(length(r_path), 1);
+            end
+            
+            t_path(idx) = obj.rhythm2meter_state(r_path(idx));
             % compute beat times and bar positions of beats
             meter = zeros(2, length(r_path));
-            meter(:, r_path<=obj.R) = obj.meter_state2meter(:, t_path(r_path<=obj.R));
+            meter(:, idx) = obj.meter_state2meter(:, t_path(idx));
             beats = obj.find_beat_times(m_path, t_path, y);
             if strcmp(obj.pattern_size, 'bar')
-                tempo = meter(1, :) .* 60 .* n_path ./ (obj.Meff(obj.rhythm2meter_state(r_path)) * obj.frame_length);
+                tempo = meter(1, idx) .* 60 .* n_path(idx) ./ (obj.Meff(obj.rhythm2meter_state(r_path(idx))) * obj.frame_length);
             else
-                tempo = 60 .* n_path / (obj.M * obj.frame_length);
+                tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
             end
             
             %             hold on; stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'k');
-            rhythm = r_path(r_path<=obj.R);
+            rhythm = r_path(idx);
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
@@ -910,7 +917,9 @@ classdef HMM
                 if meter_state(i) == 0
                     continue;
                 end
-                for beat_pos = beatpositions{meter_state(i)}
+                for j = 1:length(beatpositions{meter_state(i)})
+                    beat_pos = beatpositions{meter_state(i)}(j);
+%                 for beat_pos = beatpositions{meter_state(i)}
                     beat_detected = false;
                     if position_state(i) == beat_pos;
                         % current frame = beat frame
@@ -941,7 +950,7 @@ classdef HMM
                                 size(beat_act, 2)));
                             bt = win_max_offset + i - 1;
                         end
-                        beats = [beats; [round(bt), beat_pos]];
+                        beats = [beats; [round(bt), j]];
                         break;
                     end
                 end
