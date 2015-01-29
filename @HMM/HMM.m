@@ -228,9 +228,9 @@ classdef HMM
             if strcmp(obj.dist_type, 'RNN')
                 % normalize
                 % TODO: norm to max=0.95 instead of 1
-%                 for iR = 1:size(y, 2)
-%                     y(: ,iR) = y(: ,iR) / max(y(: ,iR));
-%                 end
+                for iR = 1:size(y, 2)
+                    y(: ,iR) = y(: ,iR) / max(y(: ,iR));
+                end
                 obs_lik = obj.rnn_format_obs_prob(y);
                 if obj.R  ~= size(y, 2)
                     error('Dim of RNN probs should be equal to R!\n');
@@ -887,6 +887,8 @@ classdef HMM
             % initialize values
             beats = [];
             if obj.correct_beats
+                % resolution of observation model in
+                % position_states:
                 res_obs = obj.M/obj.barGrid;
                 [dist, btype] = max(beatpositions{iT} - position_state(1));
                 if (abs(dist) < res_obs/2) && (dist < 0)
@@ -929,9 +931,6 @@ classdef HMM
                     end
                     if beat_detected
                         if obj.correct_beats
-                            % resolution of observation model in
-                            % position_states:
-                            res_obs = obj.M/obj.barGrid;
                             % find audioframe that corresponds to beat
                             % position + res_obs
                             j=i;
