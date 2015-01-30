@@ -471,26 +471,42 @@ classdef HMM
         
         
         function save_hmm_data_to_hdf5(obj, folder)
-            %             if length(Params.feat_type) > 1
-            %                 error('ERROR HMM.m: So far, only 1d features supported\n');
-            %             end
+            % saves hmm to hdf5 format to be read into flower. 
             % save transition matrix
             transition_model = obj.trans_model.A;
             % save initial distribution
             initial_prob = obj.initial_prob;
             % save observation model
-            observation_model = zeros(obj.R * obj.obs_model.barGrid, 6);
+            % so far only two mixtures implemented
+            n_mix = 2;
+            feat_dim = length(obj.obs_model.feat_type);
+            n_mu = n_mix * feat_dim;
+            n_sigma = feat_dim * feat_dim * n_mix;
+            n_rows = n_mix + n_mu + n_sigma;
+            
+            observation_model = zeros(obj.R * obj.obs_model.barGrid, n_rows);
             for i_r=1:obj.R
                 for i_pos=1:obj.obs_model.barGrid_eff(obj.obs_model.rhythm2meter_state(i_r))
-                    observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 1:2) = obj.obs_model.learned_params{i_r, i_pos}.mu;
-                    observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 3:4) = obj.obs_model.learned_params{i_r, i_pos}.Sigma;
-                    observation_model(i_pos+(i_r-1)*obj.obs_model.barGrid, 5:6) = obj.obs_model.learned_params{i_r, i_pos}.PComponents;
+                    col = i_pos+(i_r-1)*obj.obs_model.barGrid;
+                    temp = obj.obs_model.learned_params{i_r, i_pos}.mu';
+                    observation_model(col, 1:n_mu) = temp(:);
+%                     temp = permute(obj.obs_model.learned_params{i_r, i_pos}.Sigma, ...
+%                         [3, 1, 2]);
+                    observation_model(col, (n_mu+1):(n_mu+n_sigma)) = ...
+                        obj.obs_model.learned_params{i_r, i_pos}.Sigma(:);
+                    observation_model(col, (n_mu+n_sigma+1):n_rows) = ...
+                        obj.obs_model.learned_params{i_r, i_pos}.PComponents(:);
                 end
             end
             if obj.use_silence_state
-                observation_model(obj.R * obj.obs_model.barGrid + 1, 1:2) = obj.obs_model.learned_params{obj.R+1, 1}.mu;
-                observation_model(obj.R * obj.obs_model.barGrid + 1, 3:4) = obj.obs_model.learned_params{obj.R+1, 1}.Sigma;
-                observation_model(obj.R * obj.obs_model.barGrid + 1, 5:6) = obj.obs_model.learned_params{obj.R+1, 1}.PComponents;
+                % add the silence state as last state to the model
+                col = obj.R * obj.obs_model.barGrid + 1;
+                observation_model(col, 1:1:n_mu) = ...
+                    obj.obs_model.learned_params{obj.R+1, 1}.mu(:);
+                observation_model(col, (n_mu+1):(n_mu+n_sigma)) = ...
+                    obj.obs_model.learned_params{obj.R+1, 1}.Sigma(:);
+                observation_model(col, (n_mu+n_sigma+1):n_rows) = ...
+                    obj.obs_model.learned_params{obj.R+1, 1}.PComponents(:);
             end
             N = obj.N;
             M = obj.M;
@@ -505,10 +521,21 @@ classdef HMM
             tempo_ranges(1, :) = obj.minN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
             tempo_ranges(2, :) = obj.maxN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
             
+            num_gmm_mixtures = n_mix;
+            obs_feature_dim = feat_dim;
+            mapping_position_state = obj.trans_model.position_state_map;
+            mapping_tempo_state = obj.trans_model.tempo_state_map;
+            mapping_rhythm_state = obj.trans_model.rhythm_state_map;
+            
             %save to mat file
-            save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P' ,'transition_model', ...
-                'observation_model', 'initial_prob', 'state_to_obs', 'rhythm_to_meter', 'tempo_ranges', '-v7.3');
-            fprintf('* Saved model data (Flower) to %s\n', fullfile(folder, 'robot_hmm_data.mat'));
+            save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P', ...
+                'transition_model', 'observation_model', 'initial_prob', ...
+                'state_to_obs', 'rhythm_to_meter', 'tempo_ranges', ...
+                'num_gmm_mixtures', 'obs_feature_dim', ...
+                'mapping_position_state', 'mapping_tempo_state', ...
+                'mapping_rhythm_state', '-v7.3');
+            fprintf('* Saved model data (Flower) to %s\n', ...
+                fullfile(folder, 'robot_hmm_data.mat'));
         end
         
         

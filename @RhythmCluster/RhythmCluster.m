@@ -421,7 +421,9 @@ classdef RhythmCluster < handle
                 % find a bar/file that represents rhythm iR
                 file_id = obj.bar2file(find(bar2rhythm==iR, 1));
 %                 [annotsPath, fname, ~] = fileparts(fileNames{file_id});
-                meter = Data.load_annotations_bt( strrep(obj.train_file_list{file_id}, 'audio', 'annotations/meter'), 'meter');
+                meter = Data.load_annotations_bt(...
+                    strrep(obj.train_file_list{file_id}, 'audio', ...
+                    'annotations/meter'), 'meter');
                 % TODO: what to do if meter of training data does not match
                 % meter of system ?
                 if strcmp(obj.pattern_size, 'bar')

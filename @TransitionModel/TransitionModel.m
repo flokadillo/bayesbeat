@@ -19,7 +19,12 @@ classdef TransitionModel
         evaluate_fh
         sample_fh
         use_silence_state
-        
+        tempo_state_map     % [n_states, 1] contains for each state the 
+        %                     corresponding tempo or Nan
+        position_state_map  % [n_states, 1] contains for each state the 
+        %                     corresponding position or Nan
+        rhythm_state_map    % [n_states, 1] contains for each state the 
+        %                     corresponding rhythm or Nan
         
     end
     
@@ -36,6 +41,10 @@ classdef TransitionModel
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.minN = minN;
             obj.maxN = maxN;
+            numstates = M*N*R;
+            obj.tempo_state_map = nan(numstates, 1);
+            obj.position_state_map = nan(numstates, 1);
+            obj.rhythm_state_map = nan(numstates, 1);
             if nargin < 11
                 use_silence_state = 0;
                 p2s = 0;
@@ -86,7 +95,7 @@ classdef TransitionModel
             else
                 error('p_n has wrong dimensions!\n');
             end
-            numstates = M*N*R;
+            
             p = 1;
             % memory allocation:
             ri = zeros(numstates*3,1); cj = zeros(numstates*3,1); val = zeros(numstates*3,1);
@@ -101,17 +110,20 @@ classdef TransitionModel
                 ti = rhythm2meter_state(rhi);
                 for ni = minN(rhi)+1:maxN(rhi)-1
                     
-                    % decode state number to m and n
-                    i = sub2ind([M, N, R], mi, repmat(ni, 1, obj.Meff(rhythm2meter_state(rhi))), ...
+                    % decode m, n, r into state index i
+                    i = sub2ind([M, N, R], mi, repmat(ni, 1, ...
+                        obj.Meff(rhythm2meter_state(rhi))), ...
                         repmat(rhi, 1, obj.Meff(rhythm2meter_state(rhi))));
-                    %                     [mi, ni, rhi] = ind2sub([M, N, R], i);
+                    % save state mappings
+                    obj.tempo_state_map(i) = ni;
+                    obj.position_state_map(i) = mi;
+                    obj.rhythm_state_map(i) = rhi;
                     
                     mj = mod(mi + ni - 1, obj.Meff(ti)) + 1; % new position
                     % --------------------------------------------------------------
                     bar_crossing = mj < mi;
                     n_bc = sum(bar_crossing);
                     nn_bc = length(bar_crossing) - n_bc;
-                    %                     if mj < mi  % bar pointer crossed end of bar
                     % possible transitions: 3 x T x R
                     ind_rn = (rhi-1)*N + ni;
                     
