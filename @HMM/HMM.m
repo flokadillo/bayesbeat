@@ -193,7 +193,7 @@ classdef HMM
                     obj.initial_prob = zeros(n_states, 1);
                     % compute number of valid states:
                     n_range = obj.maxN - obj.minN + ones(1, obj.R);
-                    n_valid_states = obj.Meff(:)' * n_range(:);
+                    n_valid_states = obj.Meff(obj.rhythm2meter_state(:)) * n_range(:);
                     prob = 1/n_valid_states;
                     for r_i = 1:obj.R
 %                         prob = 1/(obj.R * n_range(r_i) * obj.Meff(r_i));
@@ -501,8 +501,8 @@ classdef HMM
             if obj.use_silence_state
                 % add the silence state as last state to the model
                 col = obj.R * obj.obs_model.barGrid + 1;
-                observation_model(col, 1:1:n_mu) = ...
-                    obj.obs_model.learned_params{obj.R+1, 1}.mu(:);
+                temp = obj.obs_model.learned_params{obj.R+1, 1}.mu';
+                observation_model(col, 1:1:n_mu) = temp(:);
                 observation_model(col, (n_mu+1):(n_mu+n_sigma)) = ...
                     obj.obs_model.learned_params{obj.R+1, 1}.Sigma(:);
                 observation_model(col, (n_mu+n_sigma+1):n_rows) = ...

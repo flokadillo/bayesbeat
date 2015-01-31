@@ -24,7 +24,8 @@ if sum(isnan(tot_w)) > 0
 else
     bad_groups = [];
 end
-% kill cluster with lowest weight
+% kill clusters with lowest weight to prevent more than n_max_clusters
+% clusters
 if length(tot_w) - length(bad_groups) > n_max_clusters
     [~, groups_sorted] = sort(tot_w, 'descend');
     fprintf('    too many groups (%i)! -> removing %i\n', length(tot_w) - length(bad_groups), ...
@@ -37,6 +38,8 @@ id_per_group(bad_groups) = [];
 id_per_group = cell2mat(id_per_group);
 
 n_groups = length(tot_w) - length(bad_groups);
+% cumulative sum of particles per group. Each group should have an
+% approximative equal number of particles.
 parts_per_group = diff(round(linspace(0, length(weights), n_groups+1)));
 parts_per_group(end) = length(weights) - sum(parts_per_group(1:end-1));
 w_norm = exp(weights - tot_w(groups)); % subtract in log domain and convert to linear
