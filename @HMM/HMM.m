@@ -241,9 +241,7 @@ classdef HMM
             
             if strfind(inference_method, 'forward')
                 % HMM forward path
-                [hidden_state_sequence, alpha, psi, min_state] = obj.forward_path(obs_lik, do_output);
-                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], psi(:)');
-                %                 [m_path, n_path, r_path] = obj.refine_forward_path(m_path, n_path, r_path, psi, min_state);
+                [~, alpha, hidden_state_sequence, ~] = obj.forward_path(obs_lik, do_output);
                 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
                 %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strfind(inference_method, 'viterbi')
@@ -253,12 +251,16 @@ classdef HMM
                     hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
-                end
-%                 figure; plot(hidden_state_sequence1); hold on; plot(hidden_state_sequence, 'r--');
-                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
+                end                
             else
                 error('inference method not specified\n');
             end  
+            % decode state index into sub indices
+%             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
+            m_path = obj.trans_model.position_state_map(hidden_state_sequence)';
+            n_path = obj.trans_model.tempo_state_map(hidden_state_sequence)';
+            r_path = obj.trans_model.rhythm_state_map(hidden_state_sequence)';
+            
             t_path = zeros(length(r_path), 1);
             % strip of silence state
             if obj.use_silence_state
@@ -467,8 +469,6 @@ classdef HMM
             title('Position 64th grid')
             linkaxes([hAxes1,hAxes2,hAxes3], 'x');
         end
-        
-        
         
         function save_hmm_data_to_hdf5(obj, folder)
             % saves hmm to hdf5 format to be read into flower. 
@@ -682,8 +682,7 @@ classdef HMM
                  valid_states, validstate_to_state);
             fprintf(' done\n');
         end
-        
-        
+               
         function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
             start_frame = max([belief_func{1}(1), 1]); % make sure that belief_func is >= 1
             end_frame = min([belief_func{1}(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames

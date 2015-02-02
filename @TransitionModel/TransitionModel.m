@@ -265,6 +265,19 @@ classdef TransitionModel
             
         end
         
+        function obj = make_whiteleys_tm(obj)
+           % This function creates a transition matrix as proposed by
+           % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure 
+           % in Musical Audio." ISMIR. 2006.
+            
+        end
+        
+        function obj = make_2015_tm(obj)
+           % This function creates a transition function with the following
+           % properties: each tempostate has a different number of position
+           % states
+        end
+        
         function error = transition_model_is_corrupt(obj, dooutput)
             if nargin == 1, dooutput = 0; end
             error = 1;
