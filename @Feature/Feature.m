@@ -185,11 +185,15 @@ classdef Feature
                 fr = [];
             end
             c = textscan(fid, '%s %d', 1);
-            act = textscan(fid, '%f', c{2});
+            if ~strcmp(c{1}, 'DIMENSION:')
+                % file has no header 'DIMENSION'
+                frewind(fid);
+                % ignore first line
+                c = textscan(fid, '%s %f', 1);
+            end
+            act = textscan(fid, '%f');
             act = act{1};
             fclose(fid);
-            
-            
         end
         
         %         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
