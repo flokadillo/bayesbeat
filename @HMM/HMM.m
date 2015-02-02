@@ -264,11 +264,10 @@ classdef HMM
             t_path = zeros(length(r_path), 1);
             % strip of silence state
             if obj.use_silence_state
-                idx = (r_path<=obj.R);
+                idx = logical(r_path<=obj.R);
             else
-                idx = ones(length(r_path), 1);
+                idx = true(length(r_path), 1);
             end
-            
             t_path(idx) = obj.rhythm2meter_state(r_path(idx));
             % compute beat times and bar positions of beats
             meter = zeros(2, length(r_path));

@@ -45,25 +45,25 @@ classdef TransitionModel
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.minN = minN;
             obj.maxN = maxN;
-            obj.tempo_state_map = nan(numstates, 1);
-            obj.position_state_map = nan(numstates, 1);
-            obj.rhythm_state_map = nan(numstates, 1);
+            
             % save silence state variables
             if exist('use_silence_state', 'var')
                 obj.use_silence_state = use_silence_state;
                 obj.p2s = p2s;
                 obj.pfs = pfs;
             else
-                obj.use_silence_state = 0;
+                obj.use_silence_state = 0;                
+            end
+            if ~obj.use_silence_state
+                obj.p2s = 0;
+                obj.pfs = 0;
             end
             % check if N is big enough to cover given tempo range
             if max(maxN) > N
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
-            
             fprintf('* Set up transition model .');
-            
-            
+            obj = obj.make_whiteleys_tm(1);
             fprintf('done\n');
         end
         
@@ -76,11 +76,15 @@ classdef TransitionModel
                 silence_state_id = obj.M * obj.N *obj.R + 1;
             end
             numstates = obj.M * obj.N * obj.R;
+            % alloc memory for
+            obj.tempo_state_map = nan(numstates, 1);
+            obj.position_state_map = nan(numstates, 1);
+            obj.rhythm_state_map = nan(numstates, 1);
             if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
                 % pr is a matrix RxR (R>1), do nothing
             elseif size(obj.pr, 1) == 1
-                obj.pr = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                obj.pr(logical(eye(obj.R))) = (1-pr);
+                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
             elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
                 % ok, do nothing
             else
@@ -151,7 +155,7 @@ classdef TransitionModel
                         end
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:obj.R
-                            prob2 = obj.pr(rhi, rhj);
+                            prob2 = pr_mat(rhi, rhj);
                             j = (rhj - 1) * obj.N * obj.M + j_n;                           
                             ri(p:p+n_bc-1) = i(bar_crossing);
                             cj(p:p+n_bc-1) = j;
