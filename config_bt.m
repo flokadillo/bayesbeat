@@ -65,7 +65,8 @@ Params.use_mex_viterbi = 1;
 
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 1280;
-% Maximum tempo state 
+% 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
+% set to nan if you want to use the maximum number of tempo states possible
 Params.N = 23;
 % Number of rhythmic pattern states
 Params.R = 2;
@@ -117,6 +118,9 @@ Params.pn = 0.001;
 %   1) Global p_n for all changes (only one p_n)
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
+% Type of transition model and state organisation ('whiteley' or '2015')
+Params.transition_model_type = 'whiteley';
+
 
 
 % PF parameters

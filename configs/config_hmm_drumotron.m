@@ -1,4 +1,4 @@
-function Params = config_bt(base_path)
+function Params = config_hmm_drumotron(base_path)
 % [Params] = config_bt
 %   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
