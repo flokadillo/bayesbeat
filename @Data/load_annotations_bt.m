@@ -65,7 +65,7 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
 	else % no bar_id given, set bar_id to nan
 		beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
 		bar_id = nan(size(beat_number));
-		fprintf('WARNING: no bar_id found in %s, set to nan\n', filename);
+% 		fprintf('WARNING: no bar_id found in %s, set to nan\n', filename);
 	end
         data = [data, bar_id, beat_number];
     end

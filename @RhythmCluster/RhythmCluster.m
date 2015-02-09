@@ -159,10 +159,11 @@ classdef RhythmCluster < handle
             %             system(['python ~/diss/projects/rhythm_patterns/do_clustering.py -k ', ...
             %                 num2str(n_clusters), ' ', obj.feat_matrix_fln]);
             [file2nBars, ~] = hist(obj.bar2file, 1:length(obj.train_file_list));
-            fprintf('    WARNING: so far only 2 different meters supported!\n');
+            if ~exist('type', 'var')
+                type = 'songs';
+            end
             if strcmpi(type, 'bars')
                 S = obj.data_per_bar;
-% 		[a,b] = size(obj.data_per_bar{1,1})
                 meter_per_item = obj.bar_2_meter;
             else
                 S = obj.data_per_song;
@@ -174,10 +175,14 @@ classdef RhythmCluster < handle
             else % count items per meter
                 n_items_per_meter = hist(meter_per_item(:, 1), sort(meters(:, 1), 'ascend'));
             end
-            n_clusters_per_meter = ceil(n_items_per_meter * n_clusters / sum(n_items_per_meter));
-            if sum(n_clusters_per_meter) > n_clusters % check because of ceil
-               [~, idx] = max(n_clusters_per_meter); % remove one cluster from meter that has most clusters
-               n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - sum(n_clusters_per_meter) + n_clusters;
+            clusters_per_meter = n_items_per_meter * n_clusters ...
+                / sum(n_items_per_meter);
+            n_clusters_per_meter = ceil(clusters_per_meter);
+            while sum(n_clusters_per_meter) > n_clusters % check because of ceil
+               % find most crowded cluster
+               overhead = clusters_per_meter - n_clusters_per_meter + 1; 
+               [~, idx] = min(overhead); 
+               n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - 1;
             end
             
             % normalise data
@@ -229,6 +234,13 @@ classdef RhythmCluster < handle
                     data = data + fdim;
                     stairs([data, data(end)], 'Color', col(fdim, :));
                 end
+                if obj.feature.feat_dim == 1
+                   y_label = obj.feature.feat_type{1};
+                else
+                   y_label = sprintf('Bottom: %s', ...
+                       strrep(obj.feature.feat_type{1}, '_', '\_'));
+                end
+                ylabel(sprintf('%s', y_label));
                 xlabel('bar position')
                 title(sprintf('cluster %i (%i %s)', c, items_per_cluster(c), type));
                 xlim([1 length(data)])
