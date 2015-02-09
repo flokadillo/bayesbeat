@@ -16,6 +16,7 @@ classdef HMM
         frame_length        % audio frame length in [sec]
         dist_type           % type of parametric distribution
         trans_model         % transition model
+        tm_type             % transition model type ('whiteley' or '2015')
         obs_model           % observation model
         initial_prob        % initial state distribution
         init_n_gauss        % number of components of the GMD modelling the initial distribution for each rhythm
@@ -94,51 +95,66 @@ classdef HMM
             else
                 obj.use_mex_viterbi = 1;
             end
+            if isfield(Params, 'transition_model_type')
+                obj.tm_type = Params.transition_model_type;
+            else
+                obj.tm_type = 'whiteley';
+            end
         end
         
-        function obj = make_transition_model(obj, minTempo, maxTempo)
+        function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm)
             % convert from BPM into barpositions / audio frame
             meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
-%             meter_denom = obj.meter_state2meter(2, obj.rhythm2meter_state);
-            
-            if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+            if strcmp(obj.tm_type, 'whiteley')
+                if strcmp(obj.pattern_size, 'bar')
+                    obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* ...
+                        obj.frame_length .* min_tempo_bpm ./ (meter_num * 60));
+                    obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* ...
+                        obj.frame_length .* max_tempo_bpm ./ (meter_num * 60));
+                else
+                    obj.minN = floor(obj.M * obj.frame_length * min_tempo_bpm ./ 60);
+                    obj.maxN = ceil(obj.M * obj.frame_length * max_tempo_bpm ./ 60);
+                end
+
+                if max(obj.maxN) ~= obj.N
+                    fprintf('    N should be %i instead of %i -> corrected\n', ...
+                        max(obj.maxN), obj.N);
+                    obj.N = max(obj.maxN);
+                end
+
+                if ~obj.n_depends_on_r % no dependency between n and r
+                    obj.minN = ones(1, obj.R) * min(obj.minN);
+                    obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                    obj.N = max(obj.maxN);
+                end
+            elseif strcmp(obj.tm_type, '2015')
+                % number of frames per beat (slowest tempo) 
+                % (python: min_tempo_states)
+                obj.minN = floor(60 * obj.frame_length ./ min_tempo_bpm);
+                % number of frames per beat (fastest tempo)
+                % (python: max_tempo_states)
+                obj.maxN = ceil(60 * obj.frame_length ./ max_tempo_bpm);
+                % compute number of position states 
             else
-                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
-                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
+                error('Transition model %s unknown!\n', obj.tm_type);
             end
-            
-            if max(obj.maxN) ~= obj.N
-                fprintf('    N should be %i instead of %i -> corrected\n', max(obj.maxN), obj.N);
-                obj.N = max(obj.maxN);
-            end
-            
-            if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
-                obj.N = max(obj.maxN);
-                % fprintf('    Tempo limited to %i - %i bpm for all rhythmic patterns\n', round(min(obj.minN)*60*min(meter_denom)/(obj.M * obj.frame_length)), ...
-                %    round(max(obj.maxN)*60*max(meter_denom)/(obj.M * obj.frame_length)));
-                %                     obj.minN = ones(1, obj.R) * 8;
-                %                     obj.maxN = ones(1, obj.R) * obj.N;
-            end
-            
-            % Create transition model
-            if obj.viterbi_learning_iterations > 0 % for viterbi learning use uniform tempo prior
-                %    obj.minN = ones(1, obj.R);
-                %    obj.maxN = ones(1, obj.R) * obj.N;
-            end
-            
+                       
             for r_i = 1:obj.R
-                fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i)\n', ...
-                    r_i, round(obj.minN(r_i)*60*meter_num(r_i)/(obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length)), ...
-                    round(obj.maxN(r_i)*60*meter_num(r_i)/(obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length)), ...
-                    obj.minN(r_i), obj.maxN(r_i));
+                min_bpm = round(obj.minN(r_i)*60*meter_num(r_i)/...
+                    (obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length));
+                delta_bpm = round((obj.minN(r_i)+1)*60*meter_num(r_i)/...
+                    (obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length))-...
+                    min_bpm;
+                max_bpm = round(obj.maxN(r_i)*60*meter_num(r_i)/...
+                    (obj.Meff(obj.rhythm2meter_state(r_i)) * obj.frame_length));
+                fprintf('    R=%i: Tempo limited to %i - %i bpm (%i - %i, resolution %i bpm)\n', ...
+                    r_i, min_bpm, max_bpm, obj.minN(r_i), obj.maxN(r_i), delta_bpm);
             end
             
-            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.rhythm2meter_state, obj.minN, obj.maxN, obj.use_silence_state, obj.p2s, obj.pfs);
+            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, ...
+                obj.R, obj.pn, obj.pr, obj.rhythm2meter_state, obj.minN, ...
+                obj.maxN, obj.use_silence_state, obj.p2s, obj.pfs, ...
+                obj.tm_type);
             
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
@@ -151,7 +167,8 @@ classdef HMM
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, train_data.feat_type, obj.use_silence_state);
+                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, ...
+                obj.Meff, train_data.feat_type, obj.use_silence_state);
             
             % Train model
             if obj.use_silence_state
@@ -200,7 +217,8 @@ classdef HMM
                         for n_i = obj.minN(r_i):obj.maxN(r_i)
                             start_state = sub2ind([obj.M, obj.N, obj.R], 1, ...
                                 n_i, r_i);
-                            obj.initial_prob(start_state:start_state+obj.Meff(r_i)-1) = prob;
+                            obj.initial_prob(start_state:start_state+...
+                                obj.Meff(obj.rhythm2meter_state(r_i))-1) = prob;
                         end
                     end
                 end
@@ -756,21 +774,13 @@ classdef HMM
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, do_output)
             % HMM forward path
             store_alpha = 0;
-            
             nFrames = size(obs_lik, 3);
-            
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
-            
             A = obj.trans_model.A(minState:maxState, minState:maxState);
-            %             i_row = 1:nStates;
-            %             j_col = 1:nStates;
-            
-            %             psi = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
-            
             if store_alpha
                 alpha = zeros(nStates, nFrames);
                 alpha(:, 1) = obj.initial_prob(minState:maxState);
@@ -779,7 +789,6 @@ classdef HMM
                 alpha = obj.initial_prob(minState:maxState);
                 alpha = A' * alpha;
             end
-            
             perc = round(0.1*nFrames);
             if obj.use_silence_state
                 ind = sub2ind([obj.R+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
