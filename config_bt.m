@@ -55,6 +55,7 @@ Params.viterbi_learning_iterations = 0;
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
+% Use mex implementation of viterbi decoding
 Params.use_mex_viterbi = 1;
 
 % SYSTEM PARAMETERS:

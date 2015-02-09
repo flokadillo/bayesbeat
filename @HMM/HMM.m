@@ -976,11 +976,16 @@ classdef HMM
                         if obj.correct_beats
                             % find audioframe that corresponds to beat
                             % position + res_obs
-                            j=i;
-                            while (j < length(position_state)) && (position_state(j) < (beat_pos + res_obs - 1))
-                                j = j + 1;
+                            max_pos=i;
+                            while (max_pos < length(position_state)) ...
+                                    && (position_state(max_pos) < ...
+                                    (beat_pos + res_obs - 1))
+                                max_pos = max_pos + 1;
                             end
-                            [~, win_max_offset] = max(beat_act(floor(bt):j, ...
+                            % find max of last observation feature
+                            % TODO: specify which feature to use for
+                            % correction
+                            [~, win_max_offset] = max(beat_act(floor(bt):max_pos, ...
                                 size(beat_act, 2)));
                             bt = win_max_offset + i - 1;
                         end
