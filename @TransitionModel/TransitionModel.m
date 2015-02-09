@@ -34,7 +34,7 @@ classdef TransitionModel
     
     methods
         function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter_state, ...
-                minN, maxN, use_silence_state, p2s, pfs)
+                minN, maxN, use_silence_state, p2s, pfs, tm_type)
             % save parameters
             obj.M = M;
             obj.Meff = Meff;
@@ -63,7 +63,14 @@ classdef TransitionModel
                 error('N should be %i instead of %i\n', max(maxN), N);
             end
             fprintf('* Set up transition model .');
-            obj = obj.make_whiteleys_tm(1);
+            if ~exist('tm_type', 'var')
+                tm_type = 'whiteley';
+            end
+            if strcmp(tm_type, 'whiteley')
+                obj = obj.make_whiteleys_tm(1);
+            elseif strcmp(tm_type, '2015')
+                obj = obj.make_2015_tm();
+            end
             fprintf('done\n');
         end
         
@@ -211,6 +218,10 @@ classdef TransitionModel
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
                 val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);   
                 p = p + obj.M;
+                % save state mappings
+                obj.tempo_state_map(i) = ni;
+                obj.position_state_map(i) = mi;
+                obj.rhythm_state_map(i) = rhi;
                 % 2) tempo increase
                 j = j + obj.M;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
@@ -227,6 +238,10 @@ classdef TransitionModel
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
                 val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);   
                 p = p + obj.M;
+                % save state mappings
+                obj.tempo_state_map(i) = ni;
+                obj.position_state_map(i) = mi;
+                obj.rhythm_state_map(i) = rhi;
                 % 2) tempo decrease
                 j = j - obj.M;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
@@ -263,6 +278,9 @@ classdef TransitionModel
             % This function creates a transition function with the following
             % properties: each tempostate has a different number of position
             % states
+            
+            % compute position states (between 1 and Meff(r)) for each 
+            % tempo and rhythm pattern (=> cellarray () with row vectors)
         end
         
         function error = transition_model_is_corrupt(obj, dooutput)
@@ -305,9 +323,6 @@ classdef TransitionModel
                 end
                 
             end
-            
-        end
-        
-        
+        end % transition_model_is_corrupt
     end
 end
