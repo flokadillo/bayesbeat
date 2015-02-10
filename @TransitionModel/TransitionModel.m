@@ -7,14 +7,18 @@ classdef TransitionModel
     properties (SetAccess=private)
         A               % sparse transition matrix [nStates x nStates]
         M               % number of max bar positions
-        Meff            % number of positions for each meter
+%         Meff            % number of positions for each meter
         N               % number of tempo states
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
-        rhythm2meter_state    % assigns each rhythmic pattern to a meter state
+        M_per_pattern   % [1 x R] effective number of bar positions per rhythm pattern
+        frames_per_beat % cell arrays with tempi relative to the framerate
+                        % frames_per_beat{1} is a row vector with tempo
+                        % values in [audio frames per beat]
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
+        num_position_states_per_beat % number of position states per beat
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
         sample_fh
@@ -27,24 +31,26 @@ classdef TransitionModel
         %                     corresponding position or Nan
         rhythm_state_map    % [n_states, 1] contains for each state the
         %                     corresponding rhythm or Nan
-        
     end
     
     
     
     methods
-        function obj = TransitionModel(M, Meff, N, R, pn, pr, rhythm2meter_state, ...
-                minN, maxN, use_silence_state, p2s, pfs, tm_type)
+        function obj = TransitionModel(M_per_pattern, N, R, pn, pr, ...
+                position_states_per_beat, frames_per_beat, use_silence_state, ...
+                p2s, pfs, tm_type)
             % save parameters
-            obj.M = M;
-            obj.Meff = Meff;
+            obj.M = max(M_per_pattern);
+            obj.M_per_pattern = M_per_pattern;
             obj.N = N;
             obj.R = R;
             obj.pn = pn;
             obj.pr = pr;
-            obj.rhythm2meter_state = rhythm2meter_state;
-            obj.minN = minN;
-            obj.maxN = maxN;
+            obj.num_position_states_per_beat = position_states_per_beat;
+%             obj.rhythm2meter_state = rhythm2meter_state;
+            obj.frames_per_beat = frames_per_beat;
+%             obj.minN = minN;
+%             obj.maxN = maxN;
             
             % save silence state variables
             if exist('use_silence_state', 'var')
@@ -57,10 +63,6 @@ classdef TransitionModel
             if ~obj.use_silence_state
                 obj.p2s = 0;
                 obj.pfs = 0;
-            end
-            % check if N is big enough to cover given tempo range
-            if max(maxN) > N
-                error('N should be %i instead of %i\n', max(maxN), N);
             end
             fprintf('* Set up transition model .');
             if ~exist('tm_type', 'var')
@@ -78,10 +80,20 @@ classdef TransitionModel
             % This function creates a transition matrix as proposed by
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
+            for ri = 1:obj.R
+                tempo_states = obj.num_position_states_per_beat ./ ...
+                    obj.frames_per_beat{ri};
+                obj.minN(ri) = tempo_states(1);
+                obj.maxN(ri) = tempo_states(end);
+            end
             % set up pattern transition matrix
             if obj.use_silence_state
                 silence_state_id = obj.M * obj.N *obj.R + 1;
             end
+            % check if N is big enough to cover given tempo range
+%             if max(maxN) > N
+%                 error('N should be %i instead of %i\n', max(maxN), N);
+%             end
             numstates = obj.M * obj.N * obj.R;
             % alloc memory for
             obj.tempo_state_map = nan(numstates, 1);
@@ -130,19 +142,18 @@ classdef TransitionModel
            
             for rhi = 1:obj.R
                 if do_output, fprintf('.'); end;
-                mi=1:obj.Meff(obj.rhythm2meter_state(rhi));
-                ti = obj.rhythm2meter_state(rhi);
+                mi=1:obj.M_per_pattern(rhi);
                 for ni = obj.minN(rhi)+1:obj.maxN(rhi)-1
                     % decode m, n, r into state index i
                     i = sub2ind([obj.M, obj.N, obj.R], mi, repmat(ni, 1, ...
-                        obj.Meff(obj.rhythm2meter_state(rhi))), ...
-                        repmat(rhi, 1, obj.Meff(obj.rhythm2meter_state(rhi))));
+                        obj.M_per_pattern(rhi)), ...
+                        repmat(rhi, 1, obj.M_per_pattern(rhi)));
                     % save state mappings
                     obj.tempo_state_map(i) = ni;
                     obj.position_state_map(i) = mi;
                     obj.rhythm_state_map(i) = rhi;
                     % position of state j
-                    mj = mod(mi + ni - 1, obj.Meff(ti)) + 1; % new position
+                    mj = mod(mi + ni - 1, obj.M_per_pattern(rhi)) + 1; % new position
                     % --------------------------------------------------------------
                     bar_crossing = mj < mi;
                     n_bc = sum(bar_crossing);
@@ -202,7 +213,7 @@ classdef TransitionModel
             
             % --------------------------------------------------------------
             % set probabilities for states with min and max tempo (borders of state space)
-            j_r = (0:obj.R-1) * obj.N * obj.M;
+             j_r = (0:obj.R-1) * obj.N * obj.M;
             mi = 1:obj.M;
             for rhi=1:obj.R
                 % -----------------------------------------------
@@ -212,7 +223,7 @@ classdef TransitionModel
                 % only 2 possible transitions
                 % 1) tempo constant
                 nj = ni;
-                mj = mod(mi + ni - 1, obj.Meff(obj.rhythm2meter_state(rhi))) + 1; % new position
+                mj = mod(mi + ni - 1, obj.M_per_pattern(rhi)) + 1; % new position
                 i = j_r(rhi) + (ni - 1) * obj.M + mi;
                 j = j_r(rhi) + (nj - 1) * obj.M + mj;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
@@ -233,7 +244,6 @@ classdef TransitionModel
                 % only 2 possible transitions
                 % 1) tempo constant
                 nj = ni;
-%                 mj = mod(mi + ni - 1, obj.Meff(obj.rhythm2meter_state(rhi))) + 1; % new position
                 i = j_r(rhi) + (ni-1)*obj.M + mi;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
                 val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);   

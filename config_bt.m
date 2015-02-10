@@ -106,8 +106,8 @@ Params.pr = 0;
 % observation model
 Params.correct_beats = 1;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-Params.min_tempo = 60;
-Params.max_tempo = 215;
+% Params.min_tempo = 60;
+% Params.max_tempo = 215;
 
 % HMM parameters
 % --------------
