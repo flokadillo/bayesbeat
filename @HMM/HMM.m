@@ -144,7 +144,7 @@ classdef HMM
                     % use max number of tempi and position states:
                     for ri=1:obj.R
                         frames_per_beat{ri} = ...
-                            min_frames_per_beat(ri):max_frames_per_beat(ri); 
+                            max_frames_per_beat(ri):-1:min_frames_per_beat(ri); 
                     end
                 else
                     % use N tempi and position states and distribute them
@@ -165,8 +165,8 @@ classdef HMM
             for r_i = 1:obj.R
                 bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
                 fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution [%.1f, %.1f] bpm)\n', ...
-                    r_i, bpms(end), bpms(1), (bpms(end-1)-bpms(end)), ...
-                    (bpms(1)-bpms(2)));
+                    r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
+                    (bpms(end)-bpms(end-1)));
             end
             
             obj.trans_model = TransitionModel(obj.Meff(obj.rhythm2meter_state), ...
@@ -202,7 +202,7 @@ classdef HMM
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
-            n_states = obj.M * obj.N * obj.R;
+            n_states = obj.trans_model.num_states;
             
             if obj.use_silence_state
                 % always start in the silence state
@@ -227,19 +227,23 @@ classdef HMM
                     % normalize
                     obj.initial_prob = obj.initial_prob ./ sum(obj.initial_prob);
                 else
-                    obj.initial_prob = zeros(n_states, 1);
-                    % compute number of valid states:
-                    n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(1, obj.R);
-                    n_valid_states = obj.Meff(obj.rhythm2meter_state(:)) * n_range(:);
-                    prob = 1/n_valid_states;
-                    for r_i = 1:obj.R
-%                         prob = 1/(obj.R * n_range(r_i) * obj.Meff(r_i));
-                        for n_i = obj.trans_model.minN(r_i):obj.trans_model.maxN(r_i)
-                            start_state = sub2ind([obj.M, obj.N, obj.R], 1, ...
-                                n_i, r_i);
-                            obj.initial_prob(start_state:start_state+...
-                                obj.Meff(obj.rhythm2meter_state(r_i))-1) = prob;
+                    if strcmp(obj.tm_type, 'whiteley')
+                        obj.initial_prob = zeros(n_states, 1);
+                        % compute number of valid states:
+                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(1, obj.R);
+                        n_valid_states = obj.Meff(obj.rhythm2meter_state(:)) * n_range(:);
+                        prob = 1/n_valid_states;
+                        for r_i = 1:obj.R
+    %                         prob = 1/(obj.R * n_range(r_i) * obj.Meff(r_i));
+                            for n_i = obj.trans_model.minN(r_i):obj.trans_model.maxN(r_i)
+                                start_state = sub2ind([obj.M, obj.N, obj.R], 1, ...
+                                    n_i, r_i);
+                                obj.initial_prob(start_state:start_state+...
+                                    obj.Meff(obj.rhythm2meter_state(r_i))-1) = prob;
+                            end
                         end
+                    elseif strcmp(obj.tm_type, '2015')
+                        obj.initial_prob = ones(n_states, 1) / n_states;
                     end
                 end
             end
@@ -527,8 +531,6 @@ classdef HMM
                     col = i_pos+(i_r-1)*obj.obs_model.barGrid;
                     temp = obj.obs_model.learned_params{i_r, i_pos}.mu';
                     observation_model(col, 1:n_mu) = temp(:);
-%                     temp = permute(obj.obs_model.learned_params{i_r, i_pos}.Sigma, ...
-%                         [3, 1, 2]);
                     observation_model(col, (n_mu+1):(n_mu+n_sigma)) = ...
                         obj.obs_model.learned_params{i_r, i_pos}.Sigma(:);
                     observation_model(col, (n_mu+n_sigma+1):n_rows) = ...
@@ -555,14 +557,22 @@ classdef HMM
             rhythm_to_meter = obj.meter_state2meter(:, obj.rhythm2meter_state);
             
             tempo_ranges = zeros(2, obj.R);
-            tempo_ranges(1, :) = obj.minN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
-            tempo_ranges(2, :) = obj.maxN .* rhythm_to_meter(2, :) * 60 / (obj.M * obj.frame_length);
+            tempo_ranges(1, :) = obj.trans_model.minN .* rhythm_to_meter(2, :) *...
+                60 / (obj.M * obj.frame_length);
+            tempo_ranges(2, :) = obj.trans_model.maxN .* rhythm_to_meter(2, :) *...
+                60 / (obj.M * obj.frame_length);
             
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;
             mapping_position_state = obj.trans_model.position_state_map;
             mapping_tempo_state = obj.trans_model.tempo_state_map;
             mapping_rhythm_state = obj.trans_model.rhythm_state_map;
+%             mapping_state_substate = ones(obj.M, obj.trans_model.N, obj.R, ...
+%                  'int32') * (-1);
+%             for i_state = 1:obj.trans_model.num_states
+%                 mapping_state_substate(mapping_position_state(i_state), ...
+%                     mapping_tempo_state(i_state), mapping_rhythm_state(i_state))
+%             end
             
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P', ...

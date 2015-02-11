@@ -146,17 +146,15 @@ classdef ObservationModel
             %{
             Computes state2obs_idx, which specifies which states are tied (share the same parameters) 
             %}
-            nStates = length(position_state_map);
-            obj.state2obs_idx = nan(nStates, 2);
+            num_states = length(position_state_map);
+            obj.state2obs_idx = nan(num_states, 2);
             barPosPerGrid = obj.M / obj.barGrid;
-            discreteBarPos = floor((0:obj.M - 1) / barPosPerGrid) + 1;
-            for iR=1:obj.R
-                Meff_iR = obj.Meff(obj.rhythm2meter_state(iR));
-                r = ones(Meff_iR, 1) * iR;
-                for iN = 1:obj.N
-                    ind = sub2ind([obj.M, obj.N, obj.R], (1:Meff_iR)', repmat(iN, Meff_iR, 1), r);
-                    obj.state2obs_idx(ind, 1) = r;
-                    obj.state2obs_idx(ind, 2) = discreteBarPos(1:Meff_iR);
+%             discreteBarPos = floor((0:(obj.M - 1)) / barPosPerGrid) + 1;
+            for i_state = 1:num_states
+                if ~isnan(rhythm_state_map(i_state))
+                    obj.state2obs_idx(i_state, 1) = rhythm_state_map(i_state);
+                    obj.state2obs_idx(i_state, 2) = floor((position_state_map(i_state) - ...
+                        1) / barPosPerGrid) + 1;
                 end
             end
             if obj.use_silence_state

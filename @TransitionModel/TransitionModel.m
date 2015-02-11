@@ -34,6 +34,7 @@ classdef TransitionModel
         %                     corresponding position or Nan
         rhythm_state_map    % [n_states, 1] contains for each state the
         %                     corresponding rhythm or Nan
+        num_states
     end
     
     
@@ -71,6 +72,13 @@ classdef TransitionModel
                 obj.pfs = 0;
             end
             fprintf('* Set up transition model .');
+            % compute tempo range in frame domain
+            for ri = 1:obj.R
+                tempo_states = obj.num_position_states_per_beat ./ ...
+                    obj.frames_per_beat{ri};
+                obj.minN(ri) = min(tempo_states);
+                obj.maxN(ri) = max(tempo_states);
+            end
             if ~exist('tm_type', 'var')
                 tm_type = 'whiteley';
             end
@@ -86,12 +94,7 @@ classdef TransitionModel
             % This function creates a transition matrix as proposed by
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
-            for ri = 1:obj.R
-                tempo_states = obj.num_position_states_per_beat ./ ...
-                    obj.frames_per_beat{ri};
-                obj.minN(ri) = tempo_states(1);
-                obj.maxN(ri) = tempo_states(end);
-            end
+            
             % set up pattern transition matrix
             if obj.use_silence_state
                 silence_state_id = obj.M * obj.N *obj.R + 1;
@@ -100,11 +103,11 @@ classdef TransitionModel
 %             if max(maxN) > N
 %                 error('N should be %i instead of %i\n', max(maxN), N);
 %             end
-            numstates = obj.M * obj.N * obj.R;
+            obj.num_states = obj.M * obj.N * obj.R;
             % alloc memory for
-            obj.tempo_state_map = nan(numstates, 1);
-            obj.position_state_map = nan(numstates, 1);
-            obj.rhythm_state_map = nan(numstates, 1);
+            obj.tempo_state_map = ones(obj.num_states, 1, 'int32') * (-1);
+            obj.position_state_map = nan(obj.num_states, 1, 'int32') * (-1);
+            obj.rhythm_state_map = nan(obj.num_states, 1, 'int32') * (-1);
             if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
                 % pr is a matrix RxR (R>1), do nothing
             elseif size(obj.pr, 1) == 1
@@ -141,7 +144,7 @@ classdef TransitionModel
             end
             p = 1;
             % memory allocation:
-            ri = zeros(numstates*3,1); cj = zeros(numstates*3,1); val = zeros(numstates*3,1);
+            ri = zeros(obj.num_states*3,1); cj = zeros(obj.num_states*3,1); val = zeros(obj.num_states*3,1);
          
             for rhi = 1:obj.R
                 if do_output, fprintf('.'); end;
@@ -280,10 +283,10 @@ classdef TransitionModel
                 p = p + length(n(:));
                 ri(p0:p-1) = silence_state_id;
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
-                    numstates+1, numstates+1);
+                    obj.num_states+1, obj.num_states+1);
             else
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
-                    numstates, numstates);
+                    obj.num_states, obj.num_states);
             end
         end
         
@@ -296,14 +299,14 @@ classdef TransitionModel
             threshold = eps;
             
             % total number of states
-            num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
+            obj.num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
                 obj.num_beats_per_pattern(:);
             % compute mapping between linear state index and bar position,
             % tempo and rhythmic patternn sub-states
             % state index counter
-            obj.position_state_map = zeros(num_states, 1);
-            obj.tempo_state_map = zeros(num_states, 1);
-            obj.rhythm_state_map = zeros(num_states, 1);
+            obj.position_state_map = ones(obj.num_states, 1) * (-1);
+            obj.tempo_state_map = ones(obj.num_states, 1) * (-1);
+            obj.rhythm_state_map = ones(obj.num_states, 1, 'int32') * (-1);
             si = 1;
             for ri = 1:obj.R
                 for tempo_state_i = 1:length(obj.frames_per_beat{ri})
@@ -321,9 +324,11 @@ classdef TransitionModel
             end
             
             num_tempo_states = cellfun(@(x) length(x), obj.frames_per_beat);
+            % save the highest number of tempo states of all patterns
+            obj.N = max(num_tempo_states);
             % tempo changes can only occur at the beginning of a beat
         	% compute transition matrix for the tempo changes
-            trans_prob_ = cell(obj.R);
+            trans_prob = cell(obj.R);
             % iterate over all tempo states
             for ri = 1:obj.R
                 trans_prob{ri} = zeros(num_tempo_states(ri), num_tempo_states(ri));
@@ -353,12 +358,10 @@ classdef TransitionModel
             % since these transitions are already included in the tempo transitions
             % Then everything multiplicated with the number of beats with
             % are modelled in the patterns
-            num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
-                obj.num_beats_per_pattern(:);
             % TODO: Note changes between patterns are not implemented yet!
             num_tempo_transitions = (num_tempo_states .* num_tempo_states) * ...
                 obj.num_beats_per_pattern(:);
-            num_transitions = num_states + num_tempo_transitions - ...
+            num_transitions = obj.num_states + num_tempo_transitions - ...
                 (num_tempo_states * obj.num_beats_per_pattern(:));
             % initialise vectors to store the transitions in sparse format
             % rows (states at previous time)
@@ -426,7 +429,7 @@ classdef TransitionModel
             end % over R
             idx = (row_i > 0);
             obj.A = sparse(row_i(idx), col_j(idx), val(idx), ...
-                    num_states, num_states);
+                    obj.num_states, obj.num_states);
         end
         
         function error = transition_model_is_corrupt(obj, dooutput)
