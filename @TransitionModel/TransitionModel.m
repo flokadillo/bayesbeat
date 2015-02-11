@@ -12,12 +12,15 @@ classdef TransitionModel
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
+        alpha           % squeezing factor for the tempo change distribution
         M_per_pattern   % [1 x R] effective number of bar positions per rhythm pattern
+        num_beats_per_pattern % [1 x R] number of beats per pattern
         frames_per_beat % cell arrays with tempi relative to the framerate
                         % frames_per_beat{1} is a row vector with tempo
                         % values in [audio frames per beat]
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
+        
         num_position_states_per_beat % number of position states per beat
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
@@ -36,7 +39,7 @@ classdef TransitionModel
     
     
     methods
-        function obj = TransitionModel(M_per_pattern, N, R, pn, pr, ...
+        function obj = TransitionModel(M_per_pattern, N, R, pn, pr, alpha, ...
                 position_states_per_beat, frames_per_beat, use_silence_state, ...
                 p2s, pfs, tm_type)
             % save parameters
@@ -46,7 +49,10 @@ classdef TransitionModel
             obj.R = R;
             obj.pn = pn;
             obj.pr = pr;
+            obj.alpha = alpha;
             obj.num_position_states_per_beat = position_states_per_beat;
+            obj.num_beats_per_pattern = round(M_per_pattern ./ ...
+                position_states_per_beat);
 %             obj.rhythm2meter_state = rhythm2meter_state;
             obj.frames_per_beat = frames_per_beat;
 %             obj.minN = minN;
@@ -136,10 +142,7 @@ classdef TransitionModel
             p = 1;
             % memory allocation:
             ri = zeros(numstates*3,1); cj = zeros(numstates*3,1); val = zeros(numstates*3,1);
-            % first state with n >= min_n
-%             start_i = sub2ind([M N R], 1, max([minN(1); 2]), 1);
-%             prob2 = zeros(R, 1);
-           
+         
             for rhi = 1:obj.R
                 if do_output, fprintf('.'); end;
                 mi=1:obj.M_per_pattern(rhi);
@@ -289,8 +292,141 @@ classdef TransitionModel
             % properties: each tempostate has a different number of position
             % states
             
-            % compute position states (between 1 and Meff(r)) for each 
-            % tempo and rhythm pattern (=> cellarray () with row vectors)
+            % only allow transition with probability above threshold
+            threshold = eps;
+            
+            % total number of states
+            num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
+                obj.num_beats_per_pattern(:);
+            % compute mapping between linear state index and bar position,
+            % tempo and rhythmic patternn sub-states
+            % state index counter
+            obj.position_state_map = zeros(num_states, 1);
+            obj.tempo_state_map = zeros(num_states, 1);
+            obj.rhythm_state_map = zeros(num_states, 1);
+            si = 1;
+            for ri = 1:obj.R
+                for tempo_state_i = 1:length(obj.frames_per_beat{ri})
+                    n_pos_states = obj.frames_per_beat{ri}(tempo_state_i) * ...
+                        obj.num_beats_per_pattern(ri);
+                    idx = si:(si+n_pos_states-1);
+                    obj.rhythm_state_map(idx) = ri;
+                    obj.tempo_state_map(idx) = obj.num_position_states_per_beat ./ ...
+                        obj.frames_per_beat{ri}(tempo_state_i);
+                    obj.position_state_map(idx) = ...
+                        (0:(n_pos_states - 1)) .* ...
+                        obj.M_per_pattern(ri) ./ n_pos_states + 1;
+                    si = si + length(idx);
+                end
+            end
+            
+            num_tempo_states = cellfun(@(x) length(x), obj.frames_per_beat);
+            % tempo changes can only occur at the beginning of a beat
+        	% compute transition matrix for the tempo changes
+            trans_prob_ = cell(obj.R);
+            % iterate over all tempo states
+            for ri = 1:obj.R
+                trans_prob{ri} = zeros(num_tempo_states(ri), num_tempo_states(ri));
+                for tempo_state_i = 1:length(obj.frames_per_beat{ri})
+                    for tempo_state_j = 1:length(obj.frames_per_beat{ri})
+                        % compute the ratio of the number of beat states between the
+                        % two tempi
+                        ratio = obj.frames_per_beat{ri}(tempo_state_j) /...
+                            obj.frames_per_beat{ri}(tempo_state_i);
+                         % compute the probability for the tempo change
+                        prob = exp(-obj.alpha * abs(ratio - 1));
+                        % keep only transition probabilities > threshold
+                        if prob > threshold
+                            % save the probability
+                            trans_prob{ri}(tempo_state_i, tempo_state_j) = prob;
+                        end
+                    end
+                    % normalise
+                    trans_prob{ri}(tempo_state_i, :) = ...
+                        trans_prob{ri}(tempo_state_i, :) ./ ...
+                        sum(trans_prob{ri}(tempo_state_i, :));
+                end
+            end
+            % Apart from the very beginning of a beat, the tempo stays the same,
+            % thus the number of transitions is equal to the total number of states
+            % plus the number of tempo transitions minus the number of tempo states
+            % since these transitions are already included in the tempo transitions
+            % Then everything multiplicated with the number of beats with
+            % are modelled in the patterns
+            num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
+                obj.num_beats_per_pattern(:);
+            % TODO: Note changes between patterns are not implemented yet!
+            num_tempo_transitions = (num_tempo_states .* num_tempo_states) * ...
+                obj.num_beats_per_pattern(:);
+            num_transitions = num_states + num_tempo_transitions - ...
+                (num_tempo_states * obj.num_beats_per_pattern(:));
+            % initialise vectors to store the transitions in sparse format
+            % rows (states at previous time)
+            row_i = zeros(num_transitions, 1);
+            % cols (states at current time)
+            col_j = zeros(num_transitions, 1);
+            % transition probabilites
+            val = zeros(num_transitions, 1);
+            
+            num_states_per_pattern = cellfun(@(x) sum(x), obj.frames_per_beat) .* ...
+                obj.num_beats_per_pattern;
+            % get linear index of all beat positions
+            positions_at_beat = cell(obj.R, max(obj.num_beats_per_pattern));
+            si = 0;
+            for ri = 1:obj.R
+                positions_at_beat{ri, 1} = si + cumsum([1, ...
+                        obj.frames_per_beat{ri}(1:end-1) * ...
+                        obj.num_beats_per_pattern(ri)]);
+                
+                for bi = 2:obj.num_beats_per_pattern(ri)
+                    positions_at_beat{ri, bi} = ...
+                        positions_at_beat{ri, bi-1} + obj.frames_per_beat{ri};
+                end
+                si = si + num_states_per_pattern(ri);
+            end
+            % get linear index of preceeding state of all beat positions
+            positions_before_beat = cell(obj.R, max(obj.num_beats_per_pattern));
+            for ri = 1:obj.R
+                for bi = 2:obj.num_beats_per_pattern(ri)
+                    positions_before_beat{ri, bi} = ...
+                        positions_at_beat{ri, bi} - 1;
+                end
+                positions_before_beat{ri, 1} =  ...
+                    positions_before_beat{ri, obj.num_beats_per_pattern(ri)} + ...
+                    obj.frames_per_beat{ri};
+            end
+            % transition counter
+            p = 1;
+            for ri = 1:obj.R
+                for bi = 1:obj.num_beats_per_pattern(ri)
+                    for ni = 1:length(obj.frames_per_beat{ri})
+                        for nj = 1:length(obj.frames_per_beat{ri})
+                            if trans_prob{ri}(ni, nj) ~= 0
+                                % create transition
+                                % position before beat
+                                row_i(p) = positions_before_beat{ri, bi}(ni);
+                                % position at beat
+                                col_j(p) = positions_at_beat{ri, bi}(nj);
+                                % store probability
+                                val(p) = trans_prob{ri}(ni, nj);
+                                p = p + 1;
+                            end 
+                        end % over tempo at current time
+                        % transitions of the remainder of the beat: tempo
+                        % transitions are not allowed
+                        idx = p:p+obj.frames_per_beat{ri}(ni) - 2;
+                        row_i(idx) = positions_at_beat{ri, bi}(ni) + ...
+                            (0:obj.frames_per_beat{ri}(ni)-2);
+                        col_j(idx) = positions_at_beat{ri, bi}(ni) + ...
+                            (1:obj.frames_per_beat{ri}(ni)-1);
+                        val(idx) = 1;
+                        p = p + length(idx);
+                    end % over tempo at previous time
+                end % over beats
+            end % over R
+            idx = (row_i > 0);
+            obj.A = sparse(row_i(idx), col_j(idx), val(idx), ...
+                    num_states, num_states);
         end
         
         function error = transition_model_is_corrupt(obj, dooutput)

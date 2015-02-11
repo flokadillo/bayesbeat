@@ -10,7 +10,7 @@ classdef BeatTracker < handle
         sim_dir                 % directory where results are saved
         temp_path
         init_model_fln          % fln of initial model to start with
-        Params                  % parameters from confi file
+        Params                  % parameters from config file
     end
     
     methods
@@ -53,7 +53,7 @@ classdef BeatTracker < handle
                 end
             else
                 if isempty(obj.train_data) % no training data given -> set defaults
-                    obj.train_data.rhythm2meter_state = ones(1, obj.Params.R); 
+                    obj.train_data.rhythm2meter_state = ones(1, obj.Params.R);
                     obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.Params.R), 'UniformOutput', false);
                 end
                 
@@ -70,16 +70,16 @@ classdef BeatTracker < handle
             end
             
         end
-
+        
         function init_train_data(obj)
             fprintf('* Set up training data ...\n');
             obj.train_data = Data(obj.Params.trainLab, 1);
             if strcmp(obj.Params.pattern_size, 'beat')
-                    % no meter information available, one pattern
-                    % corresponds to 1/4 note
-                    obj.train_data.meter_state2meter = [1; 4]; 
-                    obj.train_data.rhythm2meter_state = 1; 
-                    obj.train_data.rhythm_names = {'beat'};
+                % no meter information available, one pattern
+                % corresponds to 1/4 note
+                obj.train_data.meter_state2meter = [1; 4];
+                obj.train_data.rhythm2meter_state = 1;
+                obj.train_data.rhythm_names = {'beat'};
             end
             if isfield(obj.Params, 'clusterIdFln') && strcmp(obj.Params.pattern_size, 'bar')
                 obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.pattern_size);
@@ -94,7 +94,7 @@ classdef BeatTracker < handle
                 featStr = [featStr, featType];
             end
             featuresFln = fullfile(obj.Params.data_path, [clusterFName, '_', featStr, '.mat']);
-            barGrid_eff = obj.Params.whole_note_div * (obj.train_data.meter_state2meter(1, :) ./ obj.train_data.meter_state2meter(2, :)); 
+            barGrid_eff = obj.Params.whole_note_div * (obj.train_data.meter_state2meter(1, :) ./ obj.train_data.meter_state2meter(2, :));
             obj.train_data = obj.train_data.extract_feats_per_file_pattern_barPos_dim(obj.Params.whole_note_div, ...
                 barGrid_eff, obj.Params.featureDim, featuresFln, obj.Params.feat_type, ...
                 obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
@@ -122,9 +122,9 @@ classdef BeatTracker < handle
             end
             % in case where test and train data are the same, cluster ids for the test
             % set are known and can be evaluated
-%             if strcmp(obj.Params.train_set, obj.Params.test_set) && isfield(obj.Params, 'clusterIdFln')
-%                 obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
-%             end
+            %             if strcmp(obj.Params.train_set, obj.Params.test_set) && isfield(obj.Params, 'clusterIdFln')
+            %                 obj.test_data = obj.test_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.meters, obj.Params.pattern_size);
+            %             end
         end
         
         function train_model(obj)
@@ -134,16 +134,20 @@ classdef BeatTracker < handle
                     tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, obj.Params.R);
                 else
                     [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
+                    tempo_min_per_cluster = min(tempo_min_per_cluster);
+                    tempo_max_per_cluster = max(tempo_max_per_cluster);
                 end
-               
-                obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
+                
+                obj = obj.train_transition_model(tempo_min_per_cluster, ...
+                    tempo_max_per_cluster);
+%                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
                 
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 else
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 end
-                               
+                
                 obj.model = obj.model.make_initial_distribution([tempo_min_per_cluster; tempo_max_per_cluster]);
                 
                 fln = fullfile(obj.sim_dir, 'model.mat');
@@ -159,17 +163,24 @@ classdef BeatTracker < handle
                 fprintf('* Saved model (Matlab) to %s\n', fln);
             end
             
-%             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
-
+            %             obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
+            
             if isfield(obj.Params, 'viterbi_learning_iterations') && obj.Params.viterbi_learning_iterations > 0
-            %    obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
-             %       obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
+                %    obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
+                %       obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
                 obj.refine_model(obj.Params.viterbi_learning_iterations);
             end
         end
         
-        function train_transition_model(obj, tempo_per_cluster)
-                obj.model = obj.model.make_transition_model(floor(min(tempo_per_cluster)), ceil(max(tempo_per_cluster)));
+        function obj = train_transition_model(obj, tempo_min_per_cluster, ...
+                tempo_max_per_cluster)
+            if isfield(obj.Params, 'cluster_transitions_fln') && exist(obj.Params.cluster_transitions_fln, 'file')
+                pr = dlmread(obj.Params.cluster_transitions_fln);
+            else
+                pr = obj.Params.pr;
+            end
+            obj.model = obj.model.make_transition_model(tempo_min_per_cluster, ...
+                tempo_max_per_cluster, obj.Params.alpha, obj.Params.pn, pr);
         end
         
         function retrain_model(obj, exclude_test_file_id)
@@ -194,8 +205,8 @@ classdef BeatTracker < handle
                 dash = strfind(obj.init_model_fln, '-');
                 iter_start = str2double(obj.init_model_fln(dash(end)+1:end-4)) + 1;
             else
-%                 hmm = obj.model;
-%                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
+                %                 hmm = obj.model;
+                %                 save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-0.mat']), 'hmm');
                 iter_start = 1;
             end
             
@@ -211,7 +222,7 @@ classdef BeatTracker < handle
                 save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
             end
         end
-               
+        
         function results = do_inference(obj, test_file_id, do_output)
             if ~exist('do_output', 'var')
                 do_output = 1;
@@ -225,21 +236,21 @@ classdef BeatTracker < handle
             if do_output
                 fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
             end
-
             
-%                         % save state sequence of annotations to file
-%                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
-%                         if exist(annot_fln, 'file')
-%                             annots = load(annot_fln);
-%                             r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
-%                             if isempty(r)
-%                                 fprintf('    Cannot compute true path, file not in test_data included ...\n');
-%                             else
-%                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter_state(r)), annots, obj.model.frame_length, size(observations, 1));
-%                                 anns = [m, n, ones(length(m), 1) * r];
-%                                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
-%                             end
-%                         end
+            
+            %                         % save state sequence of annotations to file
+            %                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
+            %                         if exist(annot_fln, 'file')
+            %                             annots = load(annot_fln);
+            %                             r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
+            %                             if isempty(r)
+            %                                 fprintf('    Cannot compute true path, file not in test_data included ...\n');
+            %                             else
+            %                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter_state(r)), annots, obj.model.frame_length, size(observations, 1));
+            %                                 anns = [m, n, ones(length(m), 1) * r];
+            %                                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
+            %                             end
+            %                         end
             %
             
         end
@@ -299,7 +310,7 @@ classdef BeatTracker < handle
             fprintf(fid, '%i\n', best_path);
             fclose(fid);
         end
-       
+        
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)
             %   smooth beat sequence according to Dixon et al., Perceptual Smoothness

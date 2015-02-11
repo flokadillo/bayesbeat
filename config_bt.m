@@ -106,14 +106,19 @@ Params.pr = 0;
 % observation model
 Params.correct_beats = 1;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-% Params.min_tempo = 60;
-% Params.max_tempo = 215;
+Params.min_tempo = 60;
+Params.max_tempo = 215;
 
 % HMM parameters
 % --------------
 
-% Probability of tempo acceleration (and deceleration)
+% Probability of tempo acceleration (and deceleration) in the whiteley
+% model
 Params.pn = 0.001;  
+% squeezing factor for the tempo change distribution
+%  (higher values prefer a constant tempo over a tempo
+%               change from one beat to the next one)
+Params.alpha = 100;
 % Settings for Viterbi learning: tempo_tying
 %   0) p_n tied across position states (different p_n for each n)
 %   1) Global p_n for all changes (only one p_n)

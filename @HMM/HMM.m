@@ -5,8 +5,8 @@ classdef HMM
         Meff                % number of positions per meter [n_meters, 1]
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
-        pn                  % probability of a switch in tempo
-        pr                  % probability of a switch in rhythmic pattern
+%         pn                  % probability of a switch in tempo
+%         pr                  % probability of a switch in rhythmic pattern
         rhythm2meter_state  % assigns each rhythmic pattern to a meter state (1, 2, ...)
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) [2 x nMeters]
         barGrid             % number of different observation model params 
@@ -46,12 +46,8 @@ classdef HMM
             obj.M = Params.M;
             obj.N = Params.N;
             obj.R = Params.R;
-            obj.pn = Params.pn;
-            if isfield(Params, 'cluster_transitions_fln') && exist(Params.cluster_transitions_fln, 'file')
-                obj.pr = dlmread(Params.cluster_transitions_fln);
-            else
-                obj.pr = Params.pr;
-            end
+%             obj.pn = Params.pn;
+
             obj.barGrid = max(Params.whole_note_div * (meter_state2meter(1, :) ./ meter_state2meter(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -104,11 +100,11 @@ classdef HMM
             end
         end
         
-        function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm)
+        function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
+                alpha, pn, pr)
             % convert from BPM into barpositions / audio frame
             
             if strcmp(obj.tm_type, 'whiteley')
-                meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
                 position_states_per_beat = obj.Meff(1) / obj.meter_state2meter(1);
                 if strcmp(obj.pattern_size, 'bar')
                     minN = floor(position_states_per_beat .* ...
@@ -161,19 +157,20 @@ classdef HMM
                         frames_per_beat{ri} = unique(round(frames_per_beat{ri}));
                     end
                 end
-                
+                position_states_per_beat = obj.Meff(1) / obj.meter_state2meter(1);
             else
                 error('Transition model %s unknown!\n', obj.tm_type);
             end
                        
             for r_i = 1:obj.R
                 bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
-                    r_i, bpms(1), bpms(end), bpms(2)-bpms(1));
+                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution [%.1f, %.1f] bpm)\n', ...
+                    r_i, bpms(end), bpms(1), (bpms(end-1)-bpms(end)), ...
+                    (bpms(1)-bpms(2)));
             end
             
             obj.trans_model = TransitionModel(obj.Meff(obj.rhythm2meter_state), ...
-                obj.N, obj.R, obj.pn, obj.pr, position_states_per_beat, ...
+                obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
                 frames_per_beat, obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
             
@@ -189,7 +186,9 @@ classdef HMM
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
                 obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, ...
-                obj.Meff, train_data.feat_type, obj.use_silence_state);
+                obj.Meff, train_data.feat_type, obj.use_silence_state, ...
+                obj.trans_model.position_state_map, obj.trans_model.tempo_state_map, ...
+                obj.trans_model.rhythm_state_map);
             
             % Train model
             if obj.use_silence_state
