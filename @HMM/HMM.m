@@ -281,12 +281,12 @@ classdef HMM
                 obs_lik = obj.obs_model.compute_obs_lik(y);
             end
             
-            if strfind(inference_method, 'forward')
+            if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
                 [~, alpha, hidden_state_sequence, ~] = obj.forward_path(obs_lik, do_output);
                 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
                 %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
-            elseif strfind(inference_method, 'viterbi')
+            elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 fprintf('    Decoding (viterbi) .');
                 if obj.use_mex_viterbi
@@ -294,6 +294,8 @@ classdef HMM
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                 end
+            elseif strcmp(inference_method, 'HMM_viterbi_lag')
+                hidden_state_sequence = obj.viterbi_fixed_lag_decode(obs_lik, 2);
             else
                 error('inference method not specified\n');
             end
@@ -643,9 +645,14 @@ classdef HMM
             for iFrame = 1:nFrames
                 if obj.save_inference_data,
                     for iR=1:obj.R
+                        % get start and end state index of current pattern
+                        % iR
                         start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
                         end_ind = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iR);
+                        % compressed M
                         M_c = round(obj.M / x_fac);
+                        % get state indices of current pattern in
+                        % compressed states
                         start_ind_c = sub2ind([M_c, obj.N, obj.R], 1, 1, iR);
                         end_ind_c = sub2ind([M_c, obj.N, obj.R], M_c, obj.N, iR);
                         % expand delta
@@ -654,7 +661,6 @@ classdef HMM
                         else
                             delta_ex = delta(start_ind-minState+1:end_ind-minState+1);
                         end
-                        %                         frame = imresize(reshape(full(delta_ex), obj.M, obj.N), [M_c, obj.N]);
                         frame = reshape(full(delta_ex), obj.M, obj.N);
                         % average x_fac blocks
                         frame = conv2(frame, ones(x_fac, 1) ./ x_fac, 'full');
@@ -699,6 +705,87 @@ classdef HMM
             bestpath(nFrames) = round(median(maxIndex));
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
+            end
+            % add state offset
+            bestpath = bestpath + minState - 1;
+            fprintf(' done\n');
+        end
+        
+        function bestpath = viterbi_fixed_lag_decode(obj, obs_lik, lag)
+            % bestpath = viterbi_fixed_lag_decode(obj, obs_lik)
+            % Implementation of the Viterbi algorithm with fixed lag
+            % ----------------------------------------------------------------------
+            %INPUT parameter:
+            % obj                   : HMM object
+            % obslik                : observation likelihood [R x nBarGridSize x nFrames]
+            % lag
+            %
+            %OUTPUT parameter:
+            % bestpath      : MAP state sequence
+            %
+            % 12.02.2015 by Florian Krebs
+            % ----------------------------------------------------------------------
+            nFrames = size(obs_lik, 3);
+            % don't compute states that are irreachable:
+            bestpath = zeros(nFrames,1);
+            [row, col] = find(obj.trans_model.A);
+            maxState = max([row; col]);
+            minState = min([row; col]);
+            nStates = maxState + 1 - minState;
+            delta = obj.initial_prob;
+            valid_states = false(maxState, 1);
+            valid_states(unique(col)) = true;
+            delta(~valid_states) = 0;
+            delta = delta(minState:maxState);
+            A = obj.trans_model.A(minState:maxState, minState:maxState);
+            if length(delta) > 65535
+                psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
+            else
+                psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
+            end
+            perc = round(0.1*nFrames);
+            i_row = 1:nStates;
+            j_col = 1:nStates;
+            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind_stepsize = obj.barGrid * obj.R;
+            O = zeros(nStates, 1);
+            validInds = ~isnan(ind);
+            for iFrame = 1:nFrames
+                % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
+                % D = matrix of probabilities of best sequences with state i at time
+                % t-1 and state j at time t, when bserving y(1:t)
+                % create a matrix that has the same value of delta for all entries with
+                % the same state i (row)
+                % same as repmat(delta, 1, col)
+                D = sparse(i_row, j_col, delta(:), nStates, nStates);
+                [delta_max, psi_mat(:, iFrame)] = max(D * A);
+                % compute likelihood p(yt|x1:t)
+                % ind is shifted at each time frame -> all frames are used
+                O(validInds) = obs_lik(ind(validInds));
+                delta_max = O .* delta_max';
+                % increase index to new time frame
+                ind = ind + ind_stepsize;
+                % normalize
+                norm_const = sum(delta_max);
+                delta = delta_max / norm_const;
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
+                if iFrame > lag
+                    [~, best_state_i] = max(delta);
+                    % backtracing lag
+                    for i = iFrame:-1:(iFrame - lag + 1)
+                        best_state_i = psi_mat(best_state_i, i);
+                    end
+                    % propagate lag frames into future
+                    for i = (iFrame - lag + 1):iFrame
+                        [~, best_state_i] = max(A(best_state_i, :));
+                    end
+                    bestpath(iFrame) = best_state_i;
+                else
+                    [~, bestpath(iFrame)] = max(delta);
+                end
             end
             % add state offset
             bestpath = bestpath + minState - 1;
@@ -803,7 +890,10 @@ classdef HMM
         
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, do_output)
             % HMM forward path
-            store_alpha = 0;
+            store_alpha = 1;
+            % length of recording in frames
+            rec_len = 100;
+            
             nFrames = size(obs_lik, 3);
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
@@ -812,7 +902,7 @@ classdef HMM
             nStates = maxState + 1 - minState;
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if store_alpha
-                alpha = zeros(nStates, nFrames);
+                alpha = zeros(nStates, rec_len);
                 alpha(:, 1) = obj.initial_prob(minState:maxState);
                 alpha(:, 1) = A' * alpha(:, 1); % first transition ftom t=0 to t=1
             else
@@ -834,7 +924,7 @@ classdef HMM
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
             O(validInds) = obs_lik(ind(validInds));
-            %             O(validInds & (O<1e-3)) = 1e-3;
+            
             if store_alpha
                 alpha(:, 1) = O .* alpha(:, 1);
                 alpha(:, 1) = alpha(:, 1) / sum(alpha(:, 1));
@@ -848,14 +938,14 @@ classdef HMM
             ind = ind + ind_stepsize;
             if do_output, fprintf('    Forward path .'); end
             for iFrame = 2:nFrames
-                if store_alpha
+                if store_alpha && (iFrame <= rec_len)
                     alpha(:, iFrame) = A' * alpha(:, iFrame-1);
                 else
                     alpha = A' * alpha;
                 end
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
-                %                 O(validInds & (O < obj.obs_lik_floor)) = obj.obs_lik_floor;
+                O(validInds & (O < obj.obs_lik_floor)) = obj.obs_lik_floor;
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
                 if store_alpha
@@ -893,9 +983,9 @@ classdef HMM
                         % possible successor states
                         possible_successors = find(A(best_states(iFrame-1), :)) + minState - 1;
                         if strcmp(obj.tm_type, 'whiteley')
-                            m = obj.trans_model.position_state_map(possible_successors);
-                            n = obj.trans_model.tempo_state_map(possible_successors);
-                            r = obj.trans_model.rhythm_state_map(possible_successors);
+                            m = obj.trans_model.position_state_map(possible_successors)';
+                            n = obj.trans_model.tempo_state_map(possible_successors)';
+                            r = obj.trans_model.rhythm_state_map(possible_successors)';
                             %                         [m, n, r] = ind2sub([obj.M, obj.N, obj.R], possible_successors);
                             m_extended = [];
                             n_extended = [];
@@ -923,6 +1013,10 @@ classdef HMM
                         best_states(iFrame) = possible_successors(idx);
                     end
                 end
+                if store_alpha
+                    
+                end
+
             end
             if store_alpha
                 [~, marginal_best_bath] = max(alpha);
@@ -933,6 +1027,11 @@ classdef HMM
             marginal_best_bath = marginal_best_bath + minState - 1;
             best_states = best_states + minState - 1;
             if do_output, fprintf(' done\n'); end
+            if store_alpha
+                % save data to file
+                save(['/tmp/', fname, '_hmm_forward.mat'], ...
+                        'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
+            end
         end
         
         function beats = find_beat_times(obj, position_state, meter_state, beat_act)

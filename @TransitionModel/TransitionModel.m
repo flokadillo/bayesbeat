@@ -105,9 +105,9 @@ classdef TransitionModel
 %             end
             obj.num_states = obj.M * obj.N * obj.R;
             % alloc memory for
-            obj.tempo_state_map = ones(obj.num_states, 1, 'int32') * (-1);
-            obj.position_state_map = nan(obj.num_states, 1, 'int32') * (-1);
-            obj.rhythm_state_map = nan(obj.num_states, 1, 'int32') * (-1);
+            obj.tempo_state_map = ones(obj.num_states, 1) * (-1);
+            obj.position_state_map = ones(obj.num_states, 1) * (-1);
+            obj.rhythm_state_map = ones(obj.num_states, 1) * (-1);
             if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
                 % pr is a matrix RxR (R>1), do nothing
             elseif size(obj.pr, 1) == 1

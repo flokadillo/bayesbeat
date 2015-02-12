@@ -151,7 +151,7 @@ classdef ObservationModel
             barPosPerGrid = obj.M / obj.barGrid;
 %             discreteBarPos = floor((0:(obj.M - 1)) / barPosPerGrid) + 1;
             for i_state = 1:num_states
-                if ~isnan(rhythm_state_map(i_state))
+                if (rhythm_state_map(i_state)) > 0
                     obj.state2obs_idx(i_state, 1) = rhythm_state_map(i_state);
                     obj.state2obs_idx(i_state, 2) = floor((position_state_map(i_state) - ...
                         1) / barPosPerGrid) + 1;
