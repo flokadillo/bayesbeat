@@ -142,7 +142,7 @@ classdef BeatTracker < handle
                 
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
-%                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
+                %                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
                 
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);
@@ -240,19 +240,21 @@ classdef BeatTracker < handle
             end
             
             
-            %                         % save state sequence of annotations to file
-            %                         annot_fln = strrep(obj.test_data.file_list{test_file_id}, 'wav', 'beats');
-            %                         if exist(annot_fln, 'file')
-            %                             annots = load(annot_fln);
-            %                             r = obj.test_data.bar2cluster(find(obj.test_data.bar2file == test_file_id, 1));
-            %                             if isempty(r)
-            %                                 fprintf('    Cannot compute true path, file not in test_data included ...\n');
-            %                             else
-            %                                 [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter_state(r)), annots, obj.model.frame_length, size(observations, 1));
-            %                                 anns = [m, n, ones(length(m), 1) * r];
-            %                                 save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_anns.mat'], 'anns');
-            %                             end
-            %                         end
+            % save state sequence of annotations to file
+            annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
+                'wav', 'beats'), 'audio', 'annotations/beats');
+            if exist(annot_fln, 'file')
+                annots = load(annot_fln);
+                meter = max(annots(:, 2));
+                r = find(obj.model.meter_state2meter(1, :) == meter);
+                if isempty(r)
+                    fprintf('    Cannot compute true path, file not in test_data included ...\n');
+                else
+                    [m, n] = HMM.getpath(obj.model.Meff(obj.model.rhythm2meter_state(r)), annots, obj.model.frame_length, size(observations, 1));
+                    anns = [m, n, ones(length(m), 1) * r];
+                    save(['/tmp/', fname, '_anns.mat'], 'anns');
+                end
+            end
             %
             
         end

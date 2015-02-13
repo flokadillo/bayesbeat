@@ -283,7 +283,8 @@ classdef HMM
             
             if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
-                [~, alpha, hidden_state_sequence, ~] = obj.forward_path(obs_lik, do_output);
+                [~, alpha, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
+                    do_output, fname, y);
                 %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
                 %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strcmp(inference_method, 'HMM_viterbi')
@@ -549,7 +550,7 @@ classdef HMM
                 observation_model(col, (n_mu+n_sigma+1):n_rows) = ...
                     obj.obs_model.learned_params{obj.R+1, 1}.PComponents(:);
             end
-            N = obj.N;
+            N = obj.trans_model.N;
             M = obj.M;
             R = obj.R;
             P = obj.barGrid;
@@ -575,14 +576,19 @@ classdef HMM
             %                 mapping_state_substate(mapping_position_state(i_state), ...
             %                     mapping_tempo_state(i_state), mapping_rhythm_state(i_state))
             %             end
-            
+            transition_model_type = obj.tm_type;
+            feature_type = obj.obs_model.feat_type{1};
+            for i=2:feat_dim
+                feature_type = [feature_type, '_', obj.obs_model.feat_type{i}];
+            end
             %save to mat file
             save(fullfile(folder, 'robot_hmm_data.mat'), 'M', 'N', 'R', 'P', ...
                 'transition_model', 'observation_model', 'initial_prob', ...
                 'state_to_obs', 'rhythm_to_meter', 'tempo_ranges', ...
                 'num_gmm_mixtures', 'obs_feature_dim', ...
                 'mapping_position_state', 'mapping_tempo_state', ...
-                'mapping_rhythm_state', '-v7.3');
+                'mapping_rhythm_state', 'transition_model_type', ...
+                'feature_type', '-v7.3');
             fprintf('* Saved model data (Flower) to %s\n', ...
                 fullfile(folder, 'robot_hmm_data.mat'));
         end
@@ -888,12 +894,11 @@ classdef HMM
             fprintf(' done\n');
         end
         
-        function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, obs_lik, do_output)
+        function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, ...
+                obs_lik, do_output, fname, y)
             % HMM forward path
             store_alpha = 1;
-            % length of recording in frames
-            rec_len = 100;
-            
+                      
             nFrames = size(obs_lik, 3);
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
@@ -901,14 +906,7 @@ classdef HMM
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             A = obj.trans_model.A(minState:maxState, minState:maxState);
-            if store_alpha
-                alpha = zeros(nStates, rec_len);
-                alpha(:, 1) = obj.initial_prob(minState:maxState);
-                alpha(:, 1) = A' * alpha(:, 1); % first transition ftom t=0 to t=1
-            else
-                alpha = obj.initial_prob(minState:maxState);
-                alpha = A' * alpha;
-            end
+            
             perc = round(0.1*nFrames);
             if obj.use_silence_state
                 ind = sub2ind([obj.R+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
@@ -924,60 +922,41 @@ classdef HMM
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
             O(validInds) = obs_lik(ind(validInds));
-            
+            alpha = obj.initial_prob(minState:maxState);
+            alpha = A' * alpha;
+            alpha = O .* alpha;
+            alpha = alpha / sum(alpha);
+            [~, best_states(1)] = max(alpha);            
             if store_alpha
-                alpha(:, 1) = O .* alpha(:, 1);
-                alpha(:, 1) = alpha(:, 1) / sum(alpha(:, 1));
-                [~, best_states(1)] = max(alpha(:, 1));
-            else
-                alpha = O .* alpha;
-                alpha = alpha / sum(alpha);
-                [~, best_states(1)] = max(alpha);
+                % length of recording in frames
+                rec_len = 500;
+                alpha_mat = zeros(nStates, rec_len);
+                alpha_mat(:, 1) = log(alpha);
             end
             % move pointer to next observation
             ind = ind + ind_stepsize;
             if do_output, fprintf('    Forward path .'); end
             for iFrame = 2:nFrames
-                if store_alpha && (iFrame <= rec_len)
-                    alpha(:, iFrame) = A' * alpha(:, iFrame-1);
-                else
-                    alpha = A' * alpha;
-                end
+                alpha = A' * alpha;
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
                 O(validInds & (O < obj.obs_lik_floor)) = obj.obs_lik_floor;
                 % increase index to new time frame
                 ind = ind + ind_stepsize;
-                if store_alpha
-                    alpha(:, iFrame) = O .* alpha(:, iFrame);
-                    % normalize0
-                    norm_const = sum(alpha(:, iFrame));
-                    alpha(:, iFrame) = alpha(:, iFrame) / norm_const;
-                else
-                    alpha = O .* alpha;
-                    % normalize0
-                    norm_const = sum(alpha);
-                    alpha = alpha / norm_const;
-                end
+                alpha = O .* alpha;
+                % normalize0
+                norm_const = sum(alpha);
+                alpha = alpha / norm_const;
                 if rem(iFrame, perc) == 0 && do_output
                     fprintf('.');
                 end
-                
                 if rem(iFrame, obj.update_interval) == 0
                     % use global maximum as best state
-                    if store_alpha
-                        [~, best_states(iFrame)] = max(alpha(:, iFrame));
-                    else
-                        [~, best_states(iFrame)] = max(alpha);
-                    end
+                    [~, best_states(iFrame)] = max(alpha);
                 else
                     C = A(best_states(iFrame-1), :)' .* O;
                     if nnz(C) == 0
-                        if store_alpha
-                            [~, best_states(iFrame)] = max(alpha(:, iFrame));
-                        else
-                            [~, best_states(iFrame)] = max(alpha);
-                        end
+                        [~, best_states(iFrame)] = max(alpha);
                     else
                         % find best state among a restricted set of
                         % possible successor states
@@ -1005,33 +984,33 @@ classdef HMM
                             end
                         end
                         possible_successors = possible_successors - minState + 1;
-                        if store_alpha
-                            [~, idx] = max(alpha(possible_successors, iFrame));
-                        else
-                            [~, idx] = max(alpha(possible_successors));
-                        end
+                        [~, idx] = max(alpha(possible_successors));
                         best_states(iFrame) = possible_successors(idx);
                     end
                 end
-                if store_alpha
-                    
+                if store_alpha && (iFrame <= rec_len)
+                    alpha_mat(:, iFrame) = log(alpha);
                 end
 
             end
-            if store_alpha
-                [~, marginal_best_bath] = max(alpha);
-            else
-                marginal_best_bath = [];
-            end
+            marginal_best_bath = [];
             % add state offset
             marginal_best_bath = marginal_best_bath + minState - 1;
-            best_states = best_states + minState - 1;
+            
             if do_output, fprintf(' done\n'); end
             if store_alpha
                 % save data to file
+                m = obj.trans_model.position_state_map;
+                n = obj.trans_model.tempo_state_map;
+                r = obj.trans_model.rhythm_state_map;
+                obs_lik = obs_lik(:, :, 1:rec_len);
+                frame_length = obj.frame_length;
+                M = obj.M;
                 save(['/tmp/', fname, '_hmm_forward.mat'], ...
-                        'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
+                        'alpha_mat', 'm', 'n', 'r', 'obs_lik', 'best_states', ...
+                        'frame_length', 'M', 'y');
             end
+            best_states = best_states + minState - 1;
         end
         
         function beats = find_beat_times(obj, position_state, meter_state, beat_act)

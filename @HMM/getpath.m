@@ -21,7 +21,7 @@ end
 % effective number of position states of meter
 %     Meff = round(Meff*meter/4);
 
-btype = round(rem(annots(:,2),1)*10); % position of beat in a bar: 1, 2, 3, 4
+btype = annots(:, 2); % position of beat in a bar: 1, 2, 3, 4
 if length(btype) == 1 % more than one beat
     fprintf('ERROR getpath: file has only one beat\n');
     n = []; m= []; r = []; states = [];
