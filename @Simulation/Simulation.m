@@ -39,6 +39,9 @@ classdef Simulation
             obj.system.init_model();
 
             if  obj.Params.n_folds_for_cross_validation > 1
+                if ~strcmp(obj.Params.testLab, obj.Params.trainLab)
+                    error('Train and test set should be the same for cross validation\n');
+                end    
                 % do k-fold cross validation: check if lab files for folds are present
                 [fpath, fname, ~] = fileparts(obj.Params.testLab);
                 for k=1:obj.Params.n_folds_for_cross_validation
@@ -90,7 +93,7 @@ classdef Simulation
                 % train on all except k-th fold
                 test_file_ids = obj.retrain(k);
                 % do testing
-                for iFile=test_file_ids
+                for iFile=test_file_ids(:)'
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
                     fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);
@@ -112,17 +115,11 @@ classdef Simulation
                 obj.system.retrain_model(test_file_ids);
                 
             elseif obj.Params.n_folds_for_cross_validation > 1 % k-fild cross validation
-                % load lab file of fold and determine indices
-                test_file_ids = load(obj.Params.foldLab{k});
-                fln = fullfile(obj.Params.data_path, [obj.Params.train_set, '-train_ids.txt']);
-                if exist(fln, 'file')
-                    % exclude files that are not part of ok_songs
-                   ok_songs = load(fln); 
-                   idx1 = ismember(ok_songs, test_file_ids);
-                   idx2 = cumsum(ones(length(ok_songs), 1));
-                   test_file_ids = idx2(idx1);
-                end
-                obj.system.retrain_model(test_file_ids);
+                % load filenames of fold k
+                fid = fopen(obj.Params.foldLab{k}, 'r');
+                file_list = textscan(fid, '%s'); file_list = file_list{1};
+                fclose(fid);
+                test_file_ids = obj.system.retrain_model(file_list);
             else % no train/test split
                 test_file_ids = 1:length(obj.system.test_data.file_list);
             end

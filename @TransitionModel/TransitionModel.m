@@ -16,24 +16,29 @@ classdef TransitionModel
         M_per_pattern   % [1 x R] effective number of bar positions per rhythm pattern
         num_beats_per_pattern % [1 x R] number of beats per pattern
         frames_per_beat % cell arrays with tempi relative to the framerate
-                        % frames_per_beat{1} is a row vector with tempo
-                        % values in [audio frames per beat]
+                        % frames_per_beat{1} is a row vector with tempo 
+                        % values in [audio frames per beat] for pattern 1
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
         
         num_position_states_per_beat % number of position states per beat
+        num_position_states_per_pattern % cell array of length R
         state_type      % 'discrete' or 'continuous'
         evaluate_fh
         sample_fh
         use_silence_state   % [true/false] use silence stateto pause tracker
         p2s                 % prior probability to go into silence state
         pfs                 % prior probability to exit silence state
-        tempo_state_map     % [n_states, 1] contains for each state the
-        %                     corresponding tempo or Nan
-        position_state_map  % [n_states, 1] contains for each state the
-        %                     corresponding position or Nan
-        rhythm_state_map    % [n_states, 1] contains for each state the
-        %                     corresponding rhythm or Nan
+        mapping_state_tempo     % [n_states, 1] contains for each state the
+        %                           corresponding tempo
+        mapping_state_position  % [n_states, 1] contains for each state the
+        %                           corresponding position
+        mapping_state_rhythm    % [n_states, 1] contains for each state the
+        %                           corresponding rhythm
+        mapping_tempo_state_id      % [n_states, 1] contains the tempo state number
+        mapping_position_state_id   % [n_states, 1] contains the position state number
+        mapping_substates_state % [M, N, R]
+        tempo_state
         num_states
     end
     
@@ -105,9 +110,9 @@ classdef TransitionModel
 %             end
             obj.num_states = obj.M * obj.N * obj.R;
             % alloc memory for
-            obj.tempo_state_map = ones(obj.num_states, 1) * (-1);
-            obj.position_state_map = ones(obj.num_states, 1) * (-1);
-            obj.rhythm_state_map = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
             if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
                 % pr is a matrix RxR (R>1), do nothing
             elseif size(obj.pr, 1) == 1
@@ -155,9 +160,9 @@ classdef TransitionModel
                         obj.M_per_pattern(rhi)), ...
                         repmat(rhi, 1, obj.M_per_pattern(rhi)));
                     % save state mappings
-                    obj.tempo_state_map(i) = ni;
-                    obj.position_state_map(i) = mi;
-                    obj.rhythm_state_map(i) = rhi;
+                    obj.mapping_state_tempo(i) = ni;
+                    obj.mapping_state_position(i) = mi;
+                    obj.mapping_state_rhythm(i) = rhi;
                     % position of state j
                     mj = mod(mi + ni - 1, obj.M_per_pattern(rhi)) + 1; % new position
                     % --------------------------------------------------------------
@@ -236,9 +241,9 @@ classdef TransitionModel
                 val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);   
                 p = p + obj.M;
                 % save state mappings
-                obj.tempo_state_map(i) = ni;
-                obj.position_state_map(i) = mi;
-                obj.rhythm_state_map(i) = rhi;
+                obj.mapping_state_tempo(i) = ni;
+                obj.mapping_state_position(i) = mi;
+                obj.mapping_state_rhythm(i) = rhi;
                 % 2) tempo increase
                 j = j + obj.M;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
@@ -255,9 +260,9 @@ classdef TransitionModel
                 val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);   
                 p = p + obj.M;
                 % save state mappings
-                obj.tempo_state_map(i) = ni;
-                obj.position_state_map(i) = mi;
-                obj.rhythm_state_map(i) = rhi;
+                obj.mapping_state_tempo(i) = ni;
+                obj.mapping_state_position(i) = mi;
+                obj.mapping_state_rhythm(i) = rhi;
                 % 2) tempo decrease
                 j = j - obj.M;
                 ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;   
@@ -288,6 +293,8 @@ classdef TransitionModel
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
                     obj.num_states, obj.num_states);
             end
+            obj.mapping_position_state_id = obj.mapping_state_position;
+            obj.mapping_tempo_state_id = obj.mapping_state_tempo;
         end
         
         function obj = make_2015_tm(obj)
@@ -301,24 +308,41 @@ classdef TransitionModel
             % total number of states
             obj.num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
                 obj.num_beats_per_pattern(:);
+            max_n_pos_states = max(cellfun(@(x) sum(x), obj.frames_per_beat) .* ...
+                obj.num_beats_per_pattern);
+            max_n_tempo_states = max(cellfun(@(x) length(x), obj.frames_per_beat));
             % compute mapping between linear state index and bar position,
-            % tempo and rhythmic patternn sub-states
+            % tempo and rhythmic pattern sub-states
             % state index counter
-            obj.position_state_map = ones(obj.num_states, 1) * (-1);
-            obj.tempo_state_map = ones(obj.num_states, 1) * (-1);
-            obj.rhythm_state_map = ones(obj.num_states, 1, 'int32') * (-1);
+            obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_rhythm = ones(obj.num_states, 1, 'int32') * (-1);
+            obj.mapping_position_state_id = ones(obj.num_states, 1, 'int32') * (-1);
+            obj.mapping_tempo_state_id = ones(obj.num_states, 1, 'int32') * (-1);
+            obj.mapping_substates_state = ones(max_n_pos_states, ...
+                max_n_tempo_states, obj.R, 'int32') * (-1);
+            obj.num_position_states_per_pattern = cell(obj.R, 1);
             si = 1;
             for ri = 1:obj.R
+                obj.num_position_states_per_pattern{ri} = ...
+                    zeros(length(obj.frames_per_beat{ri}), 1);
                 for tempo_state_i = 1:length(obj.frames_per_beat{ri})
                     n_pos_states = obj.frames_per_beat{ri}(tempo_state_i) * ...
                         obj.num_beats_per_pattern(ri);
                     idx = si:(si+n_pos_states-1);
-                    obj.rhythm_state_map(idx) = ri;
-                    obj.tempo_state_map(idx) = obj.num_position_states_per_beat ./ ...
+                    obj.mapping_state_rhythm(idx) = ri;
+                    obj.mapping_state_tempo(idx) = obj.num_position_states_per_beat ./ ...
                         obj.frames_per_beat{ri}(tempo_state_i);
-                    obj.position_state_map(idx) = ...
+                    obj.mapping_tempo_state_id(idx) = tempo_state_i;
+                    obj.mapping_state_position(idx) = ...
                         (0:(n_pos_states - 1)) .* ...
                         obj.M_per_pattern(ri) ./ n_pos_states + 1;
+                    obj.mapping_position_state_id(idx) = 1:n_pos_states;
+                    obj.num_position_states_per_pattern{ri}(tempo_state_i) = ...
+                        n_pos_states;
+                    for i = 1:n_pos_states
+                        obj.mapping_substates_state(i, tempo_state_i, ri) = idx(i);
+                    end
                     si = si + length(idx);
                 end
             end

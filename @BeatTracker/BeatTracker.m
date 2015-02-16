@@ -185,17 +185,33 @@ classdef BeatTracker < handle
                 tempo_max_per_cluster, obj.Params.alpha, obj.Params.pn, pr);
         end
         
-        function retrain_model(obj, exclude_test_file_id)
+        function test_file_ids = retrain_model(obj, test_files_to_exclude)
             fprintf('    Retraining observation model ');
-            if length(exclude_test_file_id) == 1
+            if length(test_files_to_exclude) == 1
+                % leave one out: get pattern idx of test file to only
+                % retrain the remaining patterns
                 r_i = unique(obj.train_data.bar2cluster(obj.train_data.bar2file == exclude_test_file_id));
             else
+                % retrain all patterns 
                 r_i = 1:obj.model.R;
             end
-            file_idx = ismember(1:length(obj.train_data.file_list), exclude_test_file_id);
+            % Get file indices of test files within the training set
+            file_idx = zeros(length(obj.train_data.file_list), 1);
+            for test_id = 1:length(test_files_to_exclude)
+                for train_id = 1:length(obj.train_data.file_list)
+                    if strfind(obj.train_data.file_list{train_id}, ...
+                            test_files_to_exclude{test_id});
+                        file_idx(train_id) = 1;
+                        break;
+                    end
+                end
+            end
+            test_file_ids = find(file_idx)';
             % exclude test files from training:
             obj.model = ...
-                obj.model.retrain_observation_model(obj.train_data.feats_file_pattern_barPos_dim(~file_idx, :, :, :), r_i);
+                obj.model.retrain_observation_model(...
+                obj.train_data.feats_file_pattern_barPos_dim(~file_idx, :, ...
+                :, :), r_i);
             fprintf('done\n');
         end
         
