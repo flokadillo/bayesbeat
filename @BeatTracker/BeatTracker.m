@@ -143,7 +143,7 @@ classdef BeatTracker < handle
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
                 %                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
-                
+                fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 else
@@ -192,7 +192,7 @@ classdef BeatTracker < handle
                 % retrain the remaining patterns
                 r_i = unique(obj.train_data.bar2cluster(obj.train_data.bar2file == exclude_test_file_id));
             else
-                % retrain all patterns 
+                % retrain all patterns
                 r_i = 1:obj.model.R;
             end
             % Get file indices of test files within the training set

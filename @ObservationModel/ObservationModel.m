@@ -155,7 +155,6 @@ classdef ObservationModel
                 end
             end
             if obj.use_silence_state
-                obj.state2obs_idx(end+1, 1) = obj.R+1;
                 obj.state2obs_idx(end, 2) = 1;
             end
             

@@ -52,8 +52,8 @@ if exist('config_fln', 'var')
 end
 % start training
 sim = sim.train_system();
-tic;
 fprintf('\n');
+tic;
 % start simulation
 sim.do_sim;
 sim = sim.set_comp_time(toc/60);

@@ -1,4 +1,4 @@
-function Params = config_bt(base_path)
+function Params = config_hmm_viterbi(base_path)
 % [Params] = config_bt
 %   specifies parameters for beat tracking algorithm
 % ----------------------------------------------------------------------
@@ -43,7 +43,7 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
@@ -64,11 +64,11 @@ Params.use_mex_viterbi = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1280;
+Params.M = 640;
 % Maximum tempo state 
 Params.N = 23;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 8;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -103,9 +103,13 @@ Params.pr = 0;
 % onset detection function to correct for the rough discretisation of the
 % observation model
 Params.correct_beats = 1;
+% Squeezing factor for the tempo change distribution in the 2015 TM
+%  (higher values prefer a constant tempo over a tempo
+%               change from one beat to the next one)
+Params.alpha = 100;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-Params.min_tempo = 60;
-Params.max_tempo = 215;
+% Params.min_tempo = 60;
+% Params.max_tempo = 215;
 
 % HMM parameters
 % --------------
@@ -117,6 +121,8 @@ Params.pn = 0.001;
 %   1) Global p_n for all changes (only one p_n)
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
+% Type of transition model and state organisation ('whiteley' or '2015')
+Params.transition_model_type = '2015';
 
 
 % PF parameters
@@ -191,7 +197,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+    num2str(Params.R), 'R-dancestyle.mat']);
 
 % Test data
 % ----------

@@ -206,8 +206,8 @@ classdef HMM
             
             if obj.use_silence_state
                 % always start in the silence state
-                obj.initial_prob = zeros(n_states+1, 1);
-                obj.initial_prob(n_states+1) = 1;
+                obj.initial_prob = zeros(n_states, 1);
+                obj.initial_prob(end) = 1;
             else
                 if obj.init_n_gauss > 0
                     obj.initial_prob = zeros(n_states, 1);
@@ -283,10 +283,8 @@ classdef HMM
             
             if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
-                [~, alpha, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
+                [~, ~, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
                     do_output, fname, y);
-                %                 dlmwrite(['./data/filip/', fname, '-alpha.txt'], single(alpha(:, 1:200)));
-                %                 dlmwrite(['./data/filip/', fname, '-best_states.txt'], uint32(psi(1:200)));
             elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 fprintf('    Decoding (viterbi) .');
@@ -577,6 +575,7 @@ classdef HMM
             %                     mapping_tempo_state(i_state), mapping_rhythm_state(i_state))
             %             end
             transition_model_type = obj.tm_type;
+            proximity_matrix = obj.trans_model.proximity_matrix;
             feature_type = obj.obs_model.feat_type{1};
             for i=2:feat_dim
                 feature_type = [feature_type, '_', obj.obs_model.feat_type{i}];
@@ -588,12 +587,10 @@ classdef HMM
                 'num_gmm_mixtures', 'obs_feature_dim', ...
                 'mapping_position_state', 'mapping_tempo_state', ...
                 'mapping_rhythm_state', 'transition_model_type', ...
-                'feature_type', '-v7.3');
+                'feature_type','proximity_matrix', '-v7.3');
             fprintf('* Saved model data (Flower) to %s\n', ...
                 fullfile(folder, 'robot_hmm_data.mat'));
         end
-        
-        
     end
     
     methods (Access=protected)
@@ -898,8 +895,11 @@ classdef HMM
                 obs_lik, do_output, fname, y)
             % HMM forward path
             store_alpha = 0;
-            do_best_state_selection = 1;
-            num_pos = obj.trans_model.num_position_states_per_pattern;
+            if obj.max_shift == 0
+                do_best_state_selection = 0;
+            else
+                do_best_state_selection = 1;
+            end
             nFrames = size(obs_lik, 3);
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
@@ -962,80 +962,8 @@ classdef HMM
                         % find best state among a restricted set of
                         % possible successor states
                         possible_successors = find(A(best_states(iFrame-1), :)) + minState - 1;
-%                                                 if strcmp(obj.tm_type, 'whiteley')
-                        if (length(possible_successors) == 1) && do_best_state_selection
-                            m_id = obj.trans_model.mapping_position_state_id(possible_successors)';
-                            n_id = obj.trans_model.mapping_tempo_state_id(possible_successors)';
-                            r_id = obj.trans_model.mapping_state_rhythm(possible_successors)';
-                            %                         if strcmp(obj.tm_type, 'whiteley')
-                            % try shifts to both obj.max_shift to the left
-                            % and right for the position and one tempo up
-                            % and down
-                            m_extended = zeros(1, obj.max_shift * 2 + 3);
-                            n_extended = zeros(1, obj.max_shift * 2 + 3);
-                            r_extended = zeros(1, obj.max_shift * 2 + 3);
-                            for i_s = find(r_id<=obj.R) % loop over all possible successors
-                                % allow position shift for each possible
-                                % successor
-                                % define local neighborhood
-                                n_pos = num_pos{r_id(i_s)}(n_id(i_s));
-                                % positions before current one
-                                pos_win = (m_id(i_s) - obj.max_shift):(m_id(i_s) - 1);
-                                idx = (pos_win < 1);
-                                pos_win(idx) = (n_pos - sum(idx) + 1):n_pos;
-                                m_extended(1:obj.max_shift) = pos_win;
-                                % positions after current one
-                                pos_win = (m_id(i_s) + 1):(m_id(i_s) + obj.max_shift);
-                                idx = (pos_win > n_pos);
-                                pos_win(idx) = 1:sum(idx);
-                                m_extended((obj.max_shift + 1):(2 *...
-                                    obj.max_shift)) = pos_win;
-                                % original successor state
-                                m_extended((2 * obj.max_shift + 1)) = m_id(i_s);
-                                m_curr = obj.trans_model.mapping_state_position(...
-                                    possible_successors);
-                                n_extended(1:(2 * obj.max_shift + 1)) = n_id(i_s);
-                                % tempo up: find closest position state
-                                if n_id(i_s) < length(num_pos{r_id(i_s)})
-                                    n = n_id(i_s) + 1;
-                                    positions_with_tempo_n = ...
-                                        obj.trans_model.mapping_state_position(...
-                                        (obj.trans_model.mapping_tempo_state_id == n) & ...
-                                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
-                                    [~, m_extended(2 * obj.max_shift + 2)] = ...
-                                        min(abs(positions_with_tempo_n - m_curr));
-                                    n_extended(2 * obj.max_shift + 2) = n;
-                                end
-                                % tempo down: find closest position state
-                                if n_id(i_s) > 1
-                                    n = n_id(i_s) - 1;
-                                    positions_with_tempo_n = ...
-                                        obj.trans_model.mapping_state_position(...
-                                        (obj.trans_model.mapping_tempo_state_id == n) & ...
-                                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
-                                    [~, m_extended(2 * obj.max_shift + 3)] = ...
-                                        min(abs(positions_with_tempo_n - m_curr));
-                                    n_extended(2 * obj.max_shift + 3) = n;
-                                end
-                                % no pattern shift allowed
-                                r_extended(1:(2 * obj.max_shift + 3)) = r_id(i_s);
-                                % remove zero states
-                                idx = (m_extended > 0);
-                                m_extended = m_extended(idx);
-                                n_extended = n_extended(idx);
-                                r_extended = r_extended(idx);
-                            end
-                            possible_successors = zeros(length(m_extended), 1);
-                            for i_s = 1:length(m_extended)
-                                possible_successors(i_s) = ...
-                                    obj.trans_model.mapping_substates_state(...
-                                    m_extended(i_s), n_extended(i_s), ...
-                                    r_extended(i_s));
-                            end
-                            if sum(r_id > obj.R) > 0
-                                error('Silence state not yet supported!');
-                                possible_successors = [possible_successors, sub2ind([obj.M, obj.N, obj.R+1], 1, 1, obj.R+1)];
-                            end
+                        if do_best_state_selection
+                            possible_successors = obj.find_successors2(possible_successors);
                         end
                         possible_successors = possible_successors - minState + 1;
                         [~, idx] = max(alpha(possible_successors));
@@ -1283,6 +1211,100 @@ classdef HMM
             end
         end
         
+        function possible_successors = find_successors(obj, successors)
+            m_id = obj.trans_model.mapping_position_state_id(successors)';
+            n_id = obj.trans_model.mapping_tempo_state_id(successors)';
+            r_id = obj.trans_model.mapping_state_rhythm(successors)';
+            % try shifts to both obj.max_shift to the left
+            % and right for the position and one tempo up
+            % and down
+            m_extended = zeros(1, obj.max_shift * 2 + 3);
+            n_extended = zeros(1, obj.max_shift * 2 + 3);
+            r_extended = zeros(1, obj.max_shift * 2 + 3);
+            num_pos = obj.trans_model.num_position_states_per_pattern;
+            % -------------------------------------------------
+            % old method
+            for i_s = find(r_id<=obj.R) % loop over all possible
+                %                                 successors excluding the silence state
+                % allow position shift for each possible
+                % successor
+                % define local neighborhood
+                n_pos = num_pos{r_id(i_s)}(n_id(i_s));
+                % positions before current one
+                pos_win = (m_id(i_s) - obj.max_shift):(m_id(i_s) - 1);
+                idx = (pos_win < 1);
+                pos_win(idx) = (n_pos - sum(idx) + 1):n_pos;
+                m_extended(1:obj.max_shift) = pos_win;
+                %  positions after current one
+                pos_win = (m_id(i_s) + 1):(m_id(i_s) + obj.max_shift);
+                idx = (pos_win > n_pos);
+                pos_win(idx) = 1:sum(idx);
+                m_extended((obj.max_shift + 1):(2 *...
+                    obj.max_shift)) = pos_win;
+                % original successor state
+                m_extended((2 * obj.max_shift + 1)) = m_id(i_s);
+                m_curr = obj.trans_model.mapping_state_position(...
+                    successors);
+                n_extended(1:(2 * obj.max_shift + 1)) = n_id(i_s);
+                % tempo up: find closest position state
+                if n_id(i_s) < length(num_pos{r_id(i_s)})
+                    n = n_id(i_s) + 1;
+                    positions_with_tempo_n = ...
+                        obj.trans_model.mapping_state_position(...
+                        (obj.trans_model.mapping_tempo_state_id == n) & ...
+                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
+                    [~, m_extended(2 * obj.max_shift + 2)] = ...
+                        min(abs(positions_with_tempo_n - m_curr));
+                    n_extended(2 * obj.max_shift + 2) = n;
+                end
+                % tempo down: find closest position state
+                if n_id(i_s) > 1
+                    n = n_id(i_s) - 1;
+                    positions_with_tempo_n = ...
+                        obj.trans_model.mapping_state_position(...
+                        (obj.trans_model.mapping_tempo_state_id == n) & ...
+                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
+                    [~, m_extended(2 * obj.max_shift + 3)] = ...
+                        min(abs(positions_with_tempo_n - m_curr));
+                    n_extended(2 * obj.max_shift + 3) = n;
+                end
+                % no pattern shift allowed
+                r_extended(1:(2 * obj.max_shift + 3)) = r_id(i_s);
+                % remove zero states
+                idx = (m_extended > 0);
+                m_extended = m_extended(idx);
+                n_extended = n_extended(idx);
+                r_extended = r_extended(idx);
+            end
+            possible_successors = zeros(length(m_extended), 1);
+            for i_s = 1:length(m_extended)
+                possible_successors(i_s) = ...
+                    obj.trans_model.mapping_substates_state(...
+                    m_extended(i_s), n_extended(i_s), ...
+                    r_extended(i_s));
+            end
+            if sum(r_id > obj.R) > 0
+                error('Silence state not yet supported!');
+                possible_successors = [possible_successors, sub2ind([obj.M, obj.N, obj.R+1], 1, 1, obj.R+1)];
+            end
+        end
+        
+        function possible_successors = find_successors2(obj, successors)
+            r_id = obj.trans_model.mapping_state_rhythm(successors)';
+            % do not use transitions that go into the silence state
+            n_valid_successors = sum(r_id <= obj.R);
+            extended_states = zeros(1, n_valid_successors * 6);
+            p = 1;
+            for i_s = find(r_id <= obj.R) % loop over all possible
+                extended_states(p:p+5)= obj.trans_model.proximity_matrix(...
+                    successors(i_s), :);
+                p = p + 6;
+            end
+            extended_states = unique(extended_states(...
+                extended_states > 0));
+            possible_successors = [successors, ...
+                extended_states];
+        end
     end
     
     methods (Static)
