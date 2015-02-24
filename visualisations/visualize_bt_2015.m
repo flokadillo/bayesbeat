@@ -24,7 +24,8 @@ function [] = visualize_bt_2015( data_fln, anns_file, movie_fln )
 if exist(data_fln, 'file')
     if strcmp(ext, '.mat')
         load(data_fln); % load alpha_mat, m, n, r, best_states
-        [R, ~, ~] = size(obs_lik);
+        R = 4;
+%         [R, ~, ~] = size(obs_lik);
     elseif strcmp(ext, '.h5')
         alpha_mat = log(h5read(data_fln, '/alpha_mat'));
         best_states = h5read(data_fln, '/best_states');
@@ -32,7 +33,7 @@ if exist(data_fln, 'file')
         frame_length = h5read(data_fln, '/frame_length');
         m = h5read(data_fln, '/m');
         n = h5read(data_fln, '/n');
-        r = h5read(data_fln, '/r') + 1;
+        r = h5read(data_fln, '/r');
         y = h5read(data_fln, '/y');
         R = 4;
     end
@@ -126,7 +127,7 @@ for iFrame = 1:5:nFrames
         end
     end
     h_sp(end) = subplot(2 * n_rows + 1, n_cols, [nPlots-1 nPlots]);
-    if iFrame > 50
+    if (iFrame > 50) && (iFrame < nFrames - 50)
         plot(y(iFrame-49:iFrame+50))
         hold on;
         scatter(50, y(iFrame), 50, 'b');

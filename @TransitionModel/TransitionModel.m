@@ -492,8 +492,8 @@ classdef TransitionModel
                         positions_at_beat{ri, bi} - 1;
                 end
                 positions_before_beat{ri, 1} =  ...
-                    positions_before_beat{ri, obj.num_beats_per_pattern(ri)} + ...
-                    obj.frames_per_beat{ri};
+                    positions_at_beat{ri, obj.num_beats_per_pattern(ri)} + ...
+                    obj.frames_per_beat{ri} - 1;
             end
             % transition counter
             p = 1;

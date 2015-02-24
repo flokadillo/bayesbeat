@@ -189,7 +189,7 @@ else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
 %     btype = ones(size(beats, 1), 1);
-    meter = 1;
+    meter = [1; 4];
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
 

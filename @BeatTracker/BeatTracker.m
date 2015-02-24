@@ -74,15 +74,16 @@ classdef BeatTracker < handle
         function init_train_data(obj)
             fprintf('* Set up training data ...\n');
             obj.train_data = Data(obj.Params.trainLab, 1);
-            if strcmp(obj.Params.pattern_size, 'beat')
-                % no meter information available, one pattern
-                % corresponds to 1/4 note
-                obj.train_data.meter_state2meter = [1; 4];
-                obj.train_data.rhythm2meter_state = 1;
-                obj.train_data.rhythm_names = {'beat'};
-            end
-            if isfield(obj.Params, 'clusterIdFln') && strcmp(obj.Params.pattern_size, 'bar')
-                obj.train_data = obj.train_data.read_pattern_bars(obj.Params.clusterIdFln, obj.Params.pattern_size);
+%             if strcmp(obj.Params.pattern_size, 'beat')
+%                 % no meter information available, one pattern
+%                 % corresponds to 1/4 note
+%                 obj.train_data.meter_state2meter = [1; 4];
+%                 obj.train_data.rhythm2meter_state = 1;
+%                 obj.train_data.rhythm_names = {'beat'};
+%             end
+            if isfield(obj.Params, 'clusterIdFln') 
+                obj.train_data = obj.train_data.read_pattern_bars(...
+                    obj.Params.clusterIdFln, obj.Params.pattern_size);
             else
                 return;
             end

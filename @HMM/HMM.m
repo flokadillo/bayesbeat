@@ -56,7 +56,8 @@ classdef HMM
             obj.meter_state2meter = meter_state2meter;
             % effective number of bar positions per meter_state
             obj.Meff = round((meter_state2meter(1, :) ./ meter_state2meter(2, :)) ...
-                * (Params.M ./ max(meter_state2meter(1, :) ./ meter_state2meter(2, :))));
+                * (Params.M ./ (max(meter_state2meter(1, :) ./ ...
+                meter_state2meter(2, :)))));
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -516,8 +517,7 @@ classdef HMM
             % saves hmm to hdf5 format to be read into flower.
             % save transition matrix
             transition_model = obj.trans_model.A;
-            % save initial distribution
-            initial_prob = obj.initial_prob;
+            
             % save observation model
             % so far only two mixtures implemented
             n_mix = 2;
@@ -553,29 +553,28 @@ classdef HMM
             R = obj.R;
             P = obj.barGrid;
             
-            % state 2 obs index
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
             rhythm_to_meter = obj.meter_state2meter(:, obj.rhythm2meter_state);
             
             tempo_ranges = zeros(2, obj.R);
-            tempo_ranges(1, :) = obj.trans_model.minN .* rhythm_to_meter(2, :) *...
-                60 / (obj.M * obj.frame_length);
-            tempo_ranges(2, :) = obj.trans_model.maxN .* rhythm_to_meter(2, :) *...
-                60 / (obj.M * obj.frame_length);
+            tempo_ranges(1, :) = obj.trans_model.minN *...
+                60 / (obj.Meff * obj.frame_length);
+            tempo_ranges(2, :) = obj.trans_model.maxN *...
+                60 / (obj.Meff * obj.frame_length);
             
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;
-            mapping_position_state = obj.trans_model.mapping_state_position;
-            mapping_tempo_state = obj.trans_model.mapping_state_tempo;
-            mapping_rhythm_state = obj.trans_model.mapping_state_rhythm;
-            %             mapping_state_substate = ones(obj.M, obj.trans_model.N, obj.R, ...
-            %                  'int32') * (-1);
-            %             for i_state = 1:obj.trans_model.num_states
-            %                 mapping_state_substate(mapping_position_state(i_state), ...
-            %                     mapping_tempo_state(i_state), mapping_rhythm_state(i_state))
-            %             end
+            % transpose to be consistent with C row-major orientation. 
+            initial_prob = obj.initial_prob;
+            mapping_position_state = obj.trans_model.mapping_state_position';
+            mapping_tempo_state = obj.trans_model.mapping_state_tempo';
+            mapping_rhythm_state = obj.trans_model.mapping_state_rhythm';
+            proximity_matrix = obj.trans_model.proximity_matrix';
+            observation_model = observation_model;
+            state_to_obs = uint8(obj.obs_model.state2obs_idx);
+            
             transition_model_type = obj.tm_type;
-            proximity_matrix = obj.trans_model.proximity_matrix;
+            
             feature_type = obj.obs_model.feat_type{1};
             for i=2:feat_dim
                 feature_type = [feature_type, '_', obj.obs_model.feat_type{i}];
@@ -894,7 +893,7 @@ classdef HMM
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, ...
                 obs_lik, do_output, fname, y)
             % HMM forward path
-            store_alpha = 0;
+            store_alpha = 1;
             if obj.max_shift == 0
                 do_best_state_selection = 0;
             else
@@ -930,7 +929,7 @@ classdef HMM
             [~, best_states(1)] = max(alpha);
             if store_alpha
                 % length of recording in frames
-                rec_len = 500;
+                rec_len = nFrames;
                 alpha_mat = zeros(nStates, rec_len);
                 alpha_mat(:, 1) = log(alpha);
             end
@@ -951,7 +950,7 @@ classdef HMM
                 if rem(iFrame, perc) == 0 && do_output
                     fprintf('.');
                 end
-                if rem(iFrame, obj.update_interval) == 0
+                if (rem(iFrame, obj.update_interval) == 0) || (iFrame < 50)
                     % use global maximum as best state
                     [~, best_states(iFrame)] = max(alpha);
                 else
@@ -1314,6 +1313,8 @@ classdef HMM
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
             initial_prob, obs_lik, state2obs_idx, ...
             valid_states, validstate_to_state);
+        
+        [] = combine_models(model_file_1, model_file_2)
     end
     
     
