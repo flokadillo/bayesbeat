@@ -557,10 +557,10 @@ classdef HMM
             rhythm_to_meter = obj.meter_state2meter(:, obj.rhythm2meter_state);
             
             tempo_ranges = zeros(2, obj.R);
-            tempo_ranges(1, :) = obj.trans_model.minN *...
-                60 / (obj.Meff * obj.frame_length);
-            tempo_ranges(2, :) = obj.trans_model.maxN *...
-                60 / (obj.Meff * obj.frame_length);
+            tempo_ranges(1, :) = (obj.trans_model.minN *...
+                60) ./ (obj.Meff(obj.rhythm2meter_state) * obj.frame_length);
+            tempo_ranges(2, :) = (obj.trans_model.maxN *...
+                60) ./ (obj.Meff(obj.rhythm2meter_state) * obj.frame_length);
             
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;

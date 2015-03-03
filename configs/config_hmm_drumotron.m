@@ -68,7 +68,7 @@ Params.M = 768;
 % Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 3;
+Params.R = 4;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -90,10 +90,10 @@ Params.silence_lab = '~/diss/data/beats/lab_files/robo_silence.lab';
 % In online mode (forward path), the best state is chosen among a set of
 % possible successor state. This set contains position states within a window
 % of +/- max_shift frames
-Params.online.max_shift = 10;
+Params.online.max_shift = 1;
 % In online mode, we reset the best state sequence to the global best state
 % each update_interval
-Params.online.update_interval = 500;
+Params.online.update_interval = 200;
 % To avoid overfitting and prevent the obs_lik to become zero, we set a
 % floor
 Params.online.obs_lik_floor = 1e-7;
