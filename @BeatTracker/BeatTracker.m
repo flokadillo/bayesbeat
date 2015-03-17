@@ -138,7 +138,10 @@ classdef BeatTracker < handle
                 else
                     [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
                     tempo_min_per_cluster = min(tempo_min_per_cluster);
+                    % restrict ranges to 40-300 BPM (ibi 1.5-0.2sec)
+                    tempo_min_per_cluster(tempo_min_per_cluster < 40) = 40;
                     tempo_max_per_cluster = max(tempo_max_per_cluster);
+                    tempo_max_per_cluster(tempo_max_per_cluster > 300) = 300;
                 end
                 
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...

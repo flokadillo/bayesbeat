@@ -105,7 +105,9 @@ Params.pr = 0;
 % onset detection function to correct for the rough discretisation of the
 % observation model
 Params.correct_beats = 0;
-% Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
+% Set tempo limits (same for all rhythmic patterns). If no ranges are given, 
+% they are learned from data. If tempi beyond [30, 300] BPM are found, the
+% tempo range is restricted to [40, 300] BPM
 % Params.min_tempo = 60;
 % Params.max_tempo = 215;
 
