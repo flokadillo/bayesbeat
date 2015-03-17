@@ -893,7 +893,7 @@ classdef HMM
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, ...
                 obs_lik, do_output, fname, y)
             % HMM forward path
-            store_alpha = 1;
+            store_alpha = 0;
             if obj.max_shift == 0
                 do_best_state_selection = 0;
             else

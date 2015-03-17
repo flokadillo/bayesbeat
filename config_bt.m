@@ -65,10 +65,10 @@ Params.use_mex_viterbi = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1280;
+Params.M = 1600;
 % 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
 % set to nan if you want to use the maximum number of tempo states possible
-Params.N = 23;
+Params.N = 30;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Number of position grid points per whole note. This is important for the
@@ -104,10 +104,10 @@ Params.pr = 0;
 % Correct beat position afterwards by shifting it to a loacl max of the
 % onset detection function to correct for the rough discretisation of the
 % observation model
-Params.correct_beats = 1;
+Params.correct_beats = 0;
 % Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-Params.min_tempo = 60;
-Params.max_tempo = 215;
+% Params.min_tempo = 60;
+% Params.max_tempo = 215;
 
 % HMM parameters
 % --------------
@@ -193,7 +193,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_3_4';
+Params.train_set = 'ballroom_boeck_rwc_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
@@ -207,7 +207,7 @@ Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', 
 % ----------
 
 % Test dataset
-Params.test_set = 'boeck_3_4';
+Params.test_set = 'rwc_2_3_4';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/boeck/train12.wav';

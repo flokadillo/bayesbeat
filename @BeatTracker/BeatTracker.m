@@ -103,9 +103,9 @@ classdef BeatTracker < handle
                 obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
             % process silence data
             if obj.Params.use_silence_state
-                if length(obj.Params.feat_type) > 1
-                    error('\nERROR: BeatTracker.init_train_data: So far, only one feature dimension supported\n', obj.Params.feat_type{1});
-                end
+%                 if length(obj.Params.feat_type) > 1
+%                     error('\nERROR: BeatTracker.init_train_data: So far, only one feature dimension supported\n', obj.Params.feat_type{1});
+%                 end
                 fid = fopen(obj.Params.silence_lab, 'r');
                 silence_files = textscan(fid, '%s\n'); silence_files = silence_files{1};
                 fclose(fid);
@@ -250,13 +250,12 @@ classdef BeatTracker < handle
             % load feature
             observations = obj.feature.load_feature(obj.test_data.file_list{test_file_id}, obj.Params.save_features_to_file);
             % compute observation likelihoods
-            tic;
+            time_before_inference = toc;
             results = obj.model.do_inference(observations, fname, obj.inferenceMethod, do_output);
             if do_output
-                fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
+                fprintf('    Real time factor: %.2f\n', (toc - time_before_inference) / ...
+                    (size(observations, 1) * obj.feature.frame_length));
             end
-            
-            
             % save state sequence of annotations to file
             annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
                 'wav', 'beats'), 'audio', 'annotations/beats');
@@ -287,13 +286,13 @@ classdef BeatTracker < handle
                 system(['mkdir ', save_dir]);
             end
             BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats.txt']));
-            BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
-            BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
-            BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
-                obj.model.rhythm_names);
-            if strfind(obj.inferenceMethod, 'HMM')
-                BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
-            end
+%             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
+%             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
+%             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
+%                 obj.model.rhythm_names);
+%             if strfind(obj.inferenceMethod, 'HMM')
+%                 BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+%             end
         end
     end
     

@@ -43,7 +43,7 @@ Params.save_inference_data = 0;
 % If reorganize_bars_into_cluster=true, then reorganise features into
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
-Params.reorganize_bars_into_cluster = 1; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
+Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
@@ -64,18 +64,18 @@ Params.use_mex_viterbi = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 640;
+Params.M = 1600;
 % Maximum tempo state 
-Params.N = 23;
+Params.N = nan;
 % Number of rhythmic pattern states
-Params.R = 8;
+Params.R = 2;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
-Params.frame_length = 0.02;
+Params.frame_length = 0.01;
 % Model initial distribution over tempo states by mixture of init_n_gauss
 % Gaussians.
 Params.init_n_gauss = 0;
@@ -102,7 +102,7 @@ Params.pr = 0;
 % Correct beat position afterwards by shifting it to a loacl max of the
 % onset detection function to correct for the rough discretisation of the
 % observation model
-Params.correct_beats = 1;
+Params.correct_beats = 0;
 % Squeezing factor for the tempo change distribution in the 2015 TM
 %  (higher values prefer a constant tempo over a tempo
 %               change from one beat to the next one)
@@ -174,8 +174,12 @@ Params.observationModelType = 'MOG';
 % Params.feat_type{1} = 'sprflx2d0';
 % Params.feat_type{2} = 'sprflx2d1';
 %Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
+%   Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
+%   Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
+Params.feat_type{1} = 'sprflx-madmom1';
+Params.feat_type{2} = 'sprflx-madmom2';
+% Params.feat_type{1} = 'sprflx-madmom-50-1';
+% Params.feat_type{2} = 'sprflx-madmom-50-2';
 % Params.feat_type{1} = 'rnn_orig';
 % Params.feat_type{1} = 'rnn_hainsworth';
 % Params.feat_type{1} = 'sprflx-online';
@@ -197,13 +201,13 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 %       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-dancestyle.mat']);
+    num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'boeck_3_4';
+Params.test_set = 'ballroom';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/boeck/train12.wav';
