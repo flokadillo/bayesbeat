@@ -150,11 +150,9 @@ classdef BeatTracker < handle
                             'corrected tempo range to 300\n']);
                         tempo_max_per_cluster(tempo_max_per_cluster > 300) = 300;
                     end
-                end
-                
+                end                
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
-                %                 obj.model = obj.model.make_transition_model(floor(min(tempo_min_per_cluster, [], 1)), ceil(max(tempo_max_per_cluster, [], 1)));
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);
