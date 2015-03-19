@@ -139,9 +139,17 @@ classdef BeatTracker < handle
                     [tempo_min_per_cluster, tempo_max_per_cluster] = obj.train_data.get_tempo_per_cluster();
                     tempo_min_per_cluster = min(tempo_min_per_cluster);
                     % restrict ranges to 40-300 BPM (ibi 1.5-0.2sec)
-                    tempo_min_per_cluster(tempo_min_per_cluster < 40) = 40;
+                    if sum(tempo_min_per_cluster < 40) > 0
+                        fprintf(['   WARNING: tempo below 50 detected, ', ...
+                            'corrected tempo range to 50\n']);
+                        tempo_min_per_cluster(tempo_min_per_cluster < 50) = 50;
+                    end
                     tempo_max_per_cluster = max(tempo_max_per_cluster);
-                    tempo_max_per_cluster(tempo_max_per_cluster > 300) = 300;
+                    if sum(tempo_max_per_cluster > 300) > 0
+                        fprintf(['   WARNING: tempo above 300 detected, ', ...
+                            'corrected tempo range to 300\n']);
+                        tempo_max_per_cluster(tempo_max_per_cluster > 300) = 300;
+                    end
                 end
                 
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
