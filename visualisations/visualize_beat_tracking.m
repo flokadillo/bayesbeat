@@ -1,4 +1,4 @@
-function [] = visualize_beat_tracking( data_fln, movie_fln )
+function [] = visualize_beat_tracking( data_fln,audiofile,FR)
 % VISUALIZE_BEAT_TRACKING visualize (filtering) posterior probability of the hidden
 % states given the observations
 %
@@ -16,7 +16,7 @@ function [] = visualize_beat_tracking( data_fln, movie_fln )
 % OUTPUT
 % video
 % -----------------------------------------------------------------------
-addpath('/home/florian/diss/src/matlab/libs/matlab_utils/export_fig')
+%addpath('/home/florian/diss/src/matlab/libs/matlab_utils/export_fig')
 close all
 % thresh =-20;
 % -----------------------------------------------------------------------
@@ -24,7 +24,7 @@ close all
 % -----------------------------------------------------------------------
 synth_data_ok = 0; hmm_data_ok = 0; pf_data_ok = 0; anns_data_ok = 0;
 [path, fname, ~] = fileparts(data_fln);
-if isempty(path), path = '~/diss/src/matlab/beat_tracking/bayes_beat/temp'; end
+if isempty(path), path = './'; end
 fln = fullfile(path, [fname, '_synth.mat']);
 if exist(fln, 'file')
     load(fln);
@@ -112,11 +112,11 @@ set(gca,'YDir','normal')
 nPlots = R * 2;
 h_sp = zeros(nPlots, 1);
 if exist('movie_fln', 'var')
-    movie_fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', movie_fln);
+    movie_fln = fullfile('./', movie_fln);
 else
-    movie_fln = fullfile('~/diss/src/matlab/beat_tracking/bayes_beat/temp', [fname, '.avi']);
+    movie_fln = fullfile('./', [fname, '.avi']);
 end
-aviobj = avifile(movie_fln, 'fps', 1/frame_length);
+aviobj = avifile(movie_fln, 'fps', 1/(FR*frame_length));
 % aviobj = VideoWriter(movie_fln, 'Motion JPEG AVI');
 % aviobj.FrameRate = 1/(2*frame_length);
 % open(aviobj);
@@ -132,7 +132,7 @@ y_pos = [0.61; 0.17];
 % visualize
 % -----------------------------------------------------------------------
 nFrames = min([1000, nFrames]);
-for iFrame = 1:1:nFrames
+for iFrame = 1:FR:nFrames
 % for iFrame = [1, 10, 100, 1000]
 %     important_pix = find(logP_data(:, iFrame));
 %     max_h = max(logP_data(important_pix, iFrame));
@@ -215,12 +215,17 @@ for iR=1:R
         %         ax=get(h_sp(plot_id+1),'Position');
         
         % Position and length of the plots !
-        set(h_sp(plot_id), 'Position', [0.1 y_pos(iR) 0.75 0.3]); % [xmin ymin xlenght ylength]);
-        set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.09 0.75 0.08]); % [xmin ymin xlenght ylength]);
+        set(h_sp(plot_id), 'Position', [0.1 y_pos(iR)-0.4 0.75 0.7]); % [xmin ymin xlenght ylength]);
+        set(h_sp(plot_id+1), 'Position', [0.1 y_pos(iR)-0.4-0.09 0.75 0.08]); % [xmin ymin xlenght ylength]);
     end
     
 end
 F = getframe(hf);
+[size1,size2,size3]=size(F.cdata);
+if size1 ~= 400 | size2~= 500
+    test=1;
+    F.cdata=zeros(400,500,3);
+end
 aviobj = addframe(aviobj,F);
 %     writeVideo(aviobj, F);
 %     fln = ['./temp/02_kmeans_', num2str(iFrame), '.pdf'];
@@ -230,7 +235,7 @@ close(hf);
 aviobj = close(aviobj);
 
 % prepare audio file
-fln = fullfile('~/diss/data/beats/boeck', [fname, '.wav']);
+fln = fullfile('./', [fname, '.wav']);
 if exist(fln)
     [y, fs] = wavread(fln );
     y = y(1:nFrames*frame_length*fs);

@@ -11,15 +11,19 @@ function Params = ex4_config_bt(base_path)
 % 06.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 
+% system name
+Params.system = 'BeatTracker';
+Params.dataset = 'CMCMDa_small';
+
 % Path settings
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    Params.base_path = 'E:\UPFWork\PhD\Code\BayesBeat';
 end
-Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
-Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'examples/ex4/results');
+Params.base_path = 'E:\UPFWork\PhD\Code\BayesBeat';
+Params.data_path = fullfile(Params.base_path, 'data\CMCMDa_small');
+Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -46,13 +50,13 @@ Params.inferenceMethod = 'PF';
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 768;
+Params.M = 1600;
 % Maximum tempo state 
-Params.N = 11;
+Params.N = 16;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 4;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [3, 4; 4, 4];
+Params.meters = [3, 5, 7, 8; 4, 8, 8, 8];   % Make sure its in increasing order, bug in code otherwise!
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -74,7 +78,7 @@ Params.pr = 0;
 % -------------
 
 % Number of particles
-Params.nParticles = 1000;
+Params.nParticles = 6000;
 % Standard deviation of tempo transition. Note that the tempo n is normalised
 % by dividing by M, so the actual sigma is sigmaN * M.
 Params.sigmaN = 0.0001; 
@@ -87,7 +91,7 @@ Params.res_int = 30;
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
 Params.resampling_scheme = 0;
-
+Params.resampling_scheme_name = {'SISR', 'APF', 'MPF', 'AMPF'};
 Params.do_viterbi_filtering = 0;
 
 % APF parameters
@@ -127,14 +131,9 @@ Params.featureDim = length(Params.feat_type);
 % Train data
 % ----------
 
-% Train dataset
-Params.train_set = 'test_3_4';
-% Path to lab file
-Params.trainLab =  fullfile(Params.base_path, 'examples/ex4/test_3_4.lab');
-
 % Test data
 % ----------
 
-Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
+% Params.testLab = 'examples\ex3\testList.lab';
 
 end

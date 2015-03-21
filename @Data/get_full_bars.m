@@ -3,8 +3,8 @@ function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
 %  returns complete bars within a sequence of beat numbers
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% beats                     : [nBeats x 3]
-%                               first col: beat times, second col metrical position
+% beats                     : [nBeats x 3] 
+%                               first col: beat times, second col metrical position 
 % tolInt                    : pauses are detected if the interval between
 %                               two beats is bigger than tolInt times the last beat period
 %                               [default 1.8]
@@ -25,22 +25,14 @@ end
 
 btype = beats(:, 3);
 nBeats = length(btype);
-% find most frequent occuring maximum beat type
-frequency = histc(btype, 1:max(btype));
-for i_meter = max(btype):-1:2
-    % the beat id of the main meter should appear frequently
-    if frequency(i_meter) >= (frequency(1) - 10)
-        meter = i_meter;
-        break;
-    end
-end
+meter = max(btype);
 
 % 1) check for pauses
 period = diff(beats(:, 1));
 ratioPeriod = period(2:end , 1) ./ period(1:end-1 , 1);
 btype(find(ratioPeriod>tolInt)+1) = 99;
-if verbose,
-    fprintf('%i pauses detected, ', sum(ratioPeriod>tolInt));
+if verbose, 
+   fprintf('%i pauses detected, ', sum(ratioPeriod>tolInt)); 
 end
 % 2) check for missing or additional beats
 array = diff(btype);
@@ -54,8 +46,8 @@ beatIdx(barStartIdx) = 1;
 beatIdx = conv(beatIdx, ones(meter+1, 1));
 beatIdx = beatIdx(1:nBeats);
 beatIdx(beatIdx~=0) = 1;
-if verbose,
-    fprintf('%i beats excluded\n', sum(beatIdx==0));
+if verbose, 
+   fprintf('%i beats excluded\n', sum(beatIdx==0)); 
 end
 
 end

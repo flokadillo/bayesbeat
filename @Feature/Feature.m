@@ -14,27 +14,17 @@ classdef Feature
     
     methods
         function obj = Feature(feat_type, frame_length)
-            if nargin == 0 
-                obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
+            if nargin == 0
+                obj.feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
                 obj.frame_length = 0.02;
             else
-                if isempty(feat_type)
-                    obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
-                    fprintf('    WARNING: loaded model does not have field feat_type. Assuming lo230/hi250_superflux.mvavg\n');
-                else
-                    obj.feat_type = feat_type;
-                end
+                obj.feat_type = feat_type;
                 obj.frame_length = frame_length;
             end
-            obj.feat_dim = length(obj.feat_type);
+            obj.feat_dim = length(feat_type);
         end
         
-        function observations = load_feature(obj, input_fln, save_it)
-            if exist('save_it', 'var')
-                param.save_it = save_it;
-            else
-                param.save_it = 1; % save feature to folder ./beat_activations
-            end
+        function observations = load_feature(obj, input_fln)
             % parse input_data
             obj.input_fln = input_fln;
             [fpath, fname, ~] = fileparts(input_fln);
@@ -46,7 +36,8 @@ classdef Feature
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
-                    fprintf('    Extracting %s from %s\n', obj.feat_type{iDim}, fname);
+                    fprintf('    Extracting features from %s\n', fname);
+                    param.save_it = 1; % save feature to folder ./beat_activations
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
                     % post processing
@@ -81,6 +72,8 @@ classdef Feature
                     else
                         error('Feature %s invalid' ,obj.feat_type{iDim});
                     end
+                    
+                    
                 end
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001
@@ -123,36 +116,30 @@ classdef Feature
         
         function activations_resampled = change_frame_rate(activations, fr_source, fr_target)
             %   change framerate of feature sequence
+            
             % convert time index
             dimension = size(activations, 2);
-            len_source_sec = length(activations) / fr_source;
-            numframes_target = round(len_source_sec * fr_target);
+            len_source = length(activations) / fr_source;
+            numframes_target = round(len_source * fr_target);
             framelength_target = 1 / fr_target;
             t = (0:length(activations)-1) / fr_source;
             if abs(fr_source - fr_target) > 0.001
-                if (len_source_sec - numframes_target*fr_target) > 0.001 % add samples
+                if (len_source - numframes_target*fr_target) > 0.001 % add samples
                     delta_t = 1/fr_source;
                     num_f = ceil((numframes_target*framelength_target-t(end)) / delta_t);
                     act = 0.5*ones(num_f,1);
                     activations = [activations; act];
                     t = [t t(end)+(1:num_f)*delta_t];
                 end
+                
                 t2 = (0:numframes_target-1)*framelength_target;
                 a1 = zeros(numframes_target, dimension);
-                if fr_source > fr_target
-                    % target vector smaller than source vector, use only max
-                    % values within a certain window
-                    for i=1:numframes_target-1
-                        a1(i, :) = max(activations((((t-t2(i)) > -0.001) & ((t-t2(i+1)) < -0.001)), :));
-                    end
-                else
-                    % target vector bigger than source vector, interpolate!
-                    for i = 1:dimension
-                        a1(:, i) = interp1(t, activations, t2);
-                    end
+                for i=1:numframes_target-1
+                    a1(i, :) = max(activations((((t-t2(i)) > -0.001) & ((t-t2(i+1)) < -0.001)), :));
                 end
                 a1(end, :) = mean(activations);
                 activations_resampled = a1;
+                
             else
                 % no conversion needed - return source values:
                 activations_resampled = activations;
@@ -185,15 +172,11 @@ classdef Feature
                 fr = [];
             end
             c = textscan(fid, '%s %d', 1);
-            if ~strcmp(c{1}, 'DIMENSION:')
-                % file has no header 'DIMENSION'
-                frewind(fid);
-                % ignore first line
-                c = textscan(fid, '%s %f', 1);
-            end
-            act = textscan(fid, '%f');
+            act = textscan(fid, '%f', c{2});
             act = act{1};
             fclose(fid);
+            
+            
         end
         
         %         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);

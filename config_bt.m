@@ -29,7 +29,7 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
-Params.n_depends_on_r = 1;
+Params.n_depends_on_r = 0;
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
 % n_folds_for_cross_validation
@@ -46,17 +46,12 @@ Params.save_inference_data = 0;
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
-Params.inferenceMethod = 'HMM_viterbi';
+Params.inferenceMethod = 'HMM_forward';
 % Number of iterations of Viterbi training (currently only for HMMs)
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '~/diss/src/matlab/beat_tracking/bayes_beat/data/big_hmm_carnatic_beats.mat';
-% Save extracted feature to a folder called "beat_activations" relative to
-% the audio folder
-Params.save_features_to_file = 1;
-% Use mex implementation of viterbi decoding
-Params.use_mex_viterbi = 1;
+% Params.model_fln = '/home/florian/diss/projects/ismir_2014/src/big_hmm.mat';
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -65,12 +60,11 @@ Params.use_mex_viterbi = 1;
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 1600;
-% 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
-% set to nan if you want to use the maximum number of tempo states possible
+Params.M = 768*2;
+% Maximum tempo state 
 Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 1;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -82,7 +76,7 @@ Params.frame_length = 0.02;
 % Gaussians.
 Params.init_n_gauss = 0;
 % Use one state to detect silence
-Params.use_silence_state = 0;
+Params.use_silence_state = 1;
 % Probability of entering the silence state
 Params.p2s = 0.00001; % 0.00001
 % Probability of leaving the silence state
@@ -101,34 +95,21 @@ Params.online.update_interval = 1000;
 Params.online.obs_lik_floor = 1e-7;
 % Probability of rhythmic pattern change
 Params.pr = 0;
-% Correct beat position afterwards by shifting it to a loacl max of the
-% onset detection function to correct for the rough discretisation of the
-% observation model
 Params.correct_beats = 0;
-% Set tempo limits (same for all rhythmic patterns). If no ranges are given, 
-% they are learned from data. If tempi beyond [30, 300] BPM are found, the
-% tempo range is restricted to [40, 300] BPM
-% Params.min_tempo = 60;
-% Params.max_tempo = 215;
+% Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
+Params.min_tempo = 70;
+Params.max_tempo = 100;
 
 % HMM parameters
 % --------------
 
-% Probability of tempo acceleration (and deceleration) in the whiteley
-% model
-Params.pn = 0.001;  
-% squeezing factor for the tempo change distribution
-%  (higher values prefer a constant tempo over a tempo
-%               change from one beat to the next one)
-Params.alpha = 100;
+% Probability of tempo acceleration (and deceleration)
+Params.pn = 0.01;  
 % Settings for Viterbi learning: tempo_tying
 %   0) p_n tied across position states (different p_n for each n)
 %   1) Global p_n for all changes (only one p_n)
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
-% Type of transition model and state organisation ('whiteley' or '2015')
-Params.transition_model_type = 'whiteley';
-
 
 
 % PF parameters
@@ -174,16 +155,13 @@ Params.n_initial_clusters = 32;
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
-% Params.observationModelType = 'RNN';
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-% Params.feat_type{1} = 'sprflx2d0';
-% Params.feat_type{2} = 'sprflx2d1';
-%Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'rnn_orig';
-% Params.feat_type{1} = 'rnn_hainsworth';
+%Params.feat_type{2} = 'rnn';
+%Params.feat_type{1} = 'superflux';
+Params.feat_type{1} = 'sprflx';
+%  Params.feat_type{1} = 'lo230_superflux.mvavg';
+%  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-online';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
@@ -195,25 +173,23 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_boeck_rwc_3_4';
+Params.train_set = 'yoshimi_take_1';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
-%   Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
+%  Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
+%      Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
 % Path to file where cluster to bar assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
-    num2str(Params.R), 'R-meter.mat']);
+    num2str(Params.R), 'R-none.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'rwc_2_3_4';
+Params.test_set = 'yoshimi_take_2';
 % Path to lab file (.lab) or to test song (.wav)
-Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-% Params.testLab = '~/diss/data/beats/boeck/train12.wav';
-% Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
-% Params.testLab = '~/diss/projects/ismir_beats_2014/lab_files/hainsworth_orig.lab';
+% Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
+Params.testLab = '~/diss/data/beats/robo_beat/audio/yoshimi_take_2_norm.wav';
 
 end

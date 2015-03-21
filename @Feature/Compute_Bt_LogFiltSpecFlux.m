@@ -54,72 +54,60 @@ if param.min_f == 0 && param.max_f > 40000 % use Sebastian's superflux
 else
     % Load audio file
     % ----------------------------------------------------------------------
-    if exist('audioread', 'file')
-        [x, fs] = audioread(fln);
-    else
-        [~, ~, ext] = fileparts(fln);
-        if strcmp(ext, '.flac')
-            fprintf('    Converting flac to wav ...\n');
-            if ~exist(strrep(fln, 'flac', 'wav'), 'file') 
-                fprintf('    Converting flac to wav ...\n');
-		system(['flac -df --output-name="', ...
-                    strrep(strrep(fln, 'flac', 'wav'), '~', '${HOME}'), ...
-                    '" "', strrep(fln, '~', '${HOME}'), '"']);
-            end
-            fln = strrep(fln, 'flac', 'wav');
-        end
-        [x, fs] = wavread(fln);
-    end
+    % [x, fs] = audioread(fln);
+    % Simplified audio reading... Ajay
+    % [x, fs] = wavmp3read(fln);
+    [x, fs] = wavread(fln);
     if fs ~= 44100
         x = resample(x, 44100, fs);
         fs = 44100;
     end
     if size(x, 2) == 2
-        % convert to mono
-        x = mean(x, 2);
+       % convert to mono
+       x = mean(x, 2); 
     end
     % STFT parameter
     % ----------------------------------------------------------------------
     param.fftsize = 2048;
     param.hopsize = 441; % 10 ms -> fr = 100
     winsize = param.fftsize - 1;
-    param.norm = 1;
+    param.norm = 1; 
     type = 0; % 1=complex, use smaller windows at beginning and end
     online = 0; % 1=time frame corresponds to right part of window
     [S, t, f] = Feature.STFT(x, winsize, param.hopsize, param.fftsize, fs, type, online, 0, param.norm);
     S = S'; % make S = [N x K]
     fr = 1 / mean(diff(t));
     magnitude = abs(S);
-    
+
     % reduce to 82 bands
     load('filterbank82_sb.mat'); % load fb [1024x82]
     magnitude = magnitude * fb;
-    
+
     % extract specified frequency bands
     if isfield(param, 'min_f')
-        
+
         % find corresponding frequency bin in Hz
         [~, min_ind] = min(abs(f - param.min_f));
         [~, max_ind] = min(abs(f - param.max_f));
-        
+
         % find corresponding frequency band of the filterbank
         min_ind = find(fb(max([min_ind, 2]), :));
         % fb only uses frequencies up to 16.75 kHz (bin 778)
         [~, max_ind] = max(fb(min([778, max_ind]), :));
-        
+
         magnitude = magnitude(:, min_ind:max_ind);
     end
-    
+
     % logarithmic amplitude
     param.lambda = 10221;
     magnitude = log10(param.lambda * magnitude + 1);
-    
+
     % compute flux
     difforder = 1;
     Sdif = magnitude - [magnitude(1:difforder,:); magnitude(1:end-difforder,:)]; % Sdif(n) = S(n) - S(n-difforder);
-    
+
     % halfway rectifying
-    Sdif = (Sdif+abs(Sdif)) / 2;
+    Sdif = (Sdif+abs(Sdif)) / 2;    
     % sum over frequency bands
     DetFunc = sum(Sdif,2);
 end
@@ -142,8 +130,8 @@ end
 
 % adjust framerate of features
 if abs(1/fr - param.frame_length) > 0.001
-    DetFunc = Feature.change_frame_rate(DetFunc, round(1000*fr)/1000, 1/param.frame_length );
-    fr = 1/param.frame_length;
+   DetFunc = Feature.change_frame_rate(DetFunc, round(1000*fr)/1000, 1/param.frame_length );
+   fr = 1/param.frame_length;
 end
 DetFunc = DetFunc(:);
 
@@ -156,7 +144,7 @@ if param.save_it
         pathstr = fullfile(pathstr, 'beat_activations');
     end
     if ~exist(pathstr, 'dir')
-        system(['mkdir ', pathstr]);
+       system(['mkdir ', pathstr]); 
     end
     save_fln = fullfile(pathstr, fname);
     fid=fopen(save_fln,'w');

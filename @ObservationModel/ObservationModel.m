@@ -25,10 +25,7 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter_state, ...
-                meter_state2meter, M, N, R, barGrid, Meff, feat_type, ...
-                use_silence_state, position_state_map, tempo_state_map, ...
-                rhythm_state_map)
+        function obj = ObservationModel(dist_type, rhythm2meter_state, meter_state2meter, M, N, R, barGrid, Meff, feat_type, use_silence_state)
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
@@ -41,9 +38,7 @@ classdef ObservationModel
             bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
             obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
             obj.use_silence_state = use_silence_state;
-            % create mapping from states to gmms
-            obj = obj.make_state2obs_idx(position_state_map, tempo_state_map, ...
-                rhythm_state_map);
+            obj = obj.make_state2obs_idx;
             obj.feat_type = feat_type;
         end
                       
@@ -84,11 +79,14 @@ classdef ObservationModel
             % 21.03.2013 by Florian Krebs
             % ------------------------------------------------------------------------
             nFrames = size(observations, 1);
-            obsLik = ones(obj.R, obj.barGrid, nFrames) * (-1);
+            obsLik = zeros(obj.R, obj.barGrid, nFrames);
             for iR = 1:obj.R
                 barPos = obj.barGrid_eff(obj.rhythm2meter_state(iR));
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...
                     obj.learned_params(iR, 1:barPos));
+% 		temp = obsLik(iR, 1:barPos, :);
+% 		temp(temp < eps) = eps;
+% 		obsLik(iR, 1:barPos, :) = temp;
             end
             if obj.use_silence_state
                 obsLik(obj.R+1, 1, 1:nFrames) = obj.lik_func_handle(observations, ...
@@ -138,23 +136,25 @@ classdef ObservationModel
            obj.learned_params = learned_params; 
         end
         
-        function obj = make_state2obs_idx(obj, position_state_map, tempo_state_map, ...
-                rhythm_state_map)
+        function obj = make_state2obs_idx(obj)
             %{
             Computes state2obs_idx, which specifies which states are tied (share the same parameters) 
             %}
-            num_states = length(position_state_map);
-            obj.state2obs_idx = nan(num_states, 2);
+            nStates = obj.M * obj.N * obj.R;
+            obj.state2obs_idx = nan(nStates, 2);
             barPosPerGrid = obj.M / obj.barGrid;
-%             discreteBarPos = floor((0:(obj.M - 1)) / barPosPerGrid) + 1;
-            for i_state = 1:num_states
-                if (rhythm_state_map(i_state)) > 0
-                    obj.state2obs_idx(i_state, 1) = rhythm_state_map(i_state);
-                    obj.state2obs_idx(i_state, 2) = floor((position_state_map(i_state) - ...
-                        1) / barPosPerGrid) + 1;
+            discreteBarPos = floor(((1:obj.M) - 1)/barPosPerGrid) + 1;
+            for iR=1:obj.R
+                Meff_iR = obj.Meff(obj.rhythm2meter_state(iR));
+                r = ones(Meff_iR, 1) * iR;
+                for iN = 1:obj.N
+                    ind = sub2ind([obj.M, obj.N, obj.R], (1:Meff_iR)', repmat(iN, Meff_iR, 1), r);
+                    obj.state2obs_idx(ind, 1) = r;
+                    obj.state2obs_idx(ind, 2) = discreteBarPos(1:Meff_iR);
                 end
             end
             if obj.use_silence_state
+                obj.state2obs_idx(end+1, 1) = obj.R+1;
                 obj.state2obs_idx(end, 2) = 1;
             end
             

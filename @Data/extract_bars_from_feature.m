@@ -27,7 +27,7 @@ function [Output] = extract_bars_from_feature(source, feature_type, whole_note_d
 
 % ####################### PARAMETERS ######################################
 % set parameters
-addpath('~/diss/src/matlab/libs/matlab_utils');
+% addpath('~/diss/src/matlab/libs/matlab_utils');
 if nargin == 2, 
     whole_note_div = 64;
     frame_length = 0.02;
@@ -189,7 +189,7 @@ else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
 %     btype = ones(size(beats, 1), 1);
-    meter = [1; 4];
+    meter = 1;
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;
 

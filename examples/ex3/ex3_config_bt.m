@@ -18,10 +18,10 @@ Params.system = 'BeatTracker';
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    Params.base_path = 'E:\UPFWork\PhD\Code\BayesBeat';
 end
-Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'examples/ex3/results');
+Params.data_path = fullfile(Params.base_path, 'data\CMCMDa_v2');
+Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -48,13 +48,13 @@ Params.inferenceMethod = 'HMM_viterbi';
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
-Params.M = 768;
+Params.M = 1200;
 % Maximum tempo state 
 Params.N = 11;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 4;
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [3, 4; 4, 4];
+Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -106,13 +106,15 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'test_3_4';
+Params.train_set = 'train1';
 % Path to lab file
-Params.trainLab =  'examples/ex3/test_3_4.lab';
+Params.trainLab = 'examples\ex3\trainList.lab';
 
 % Test data
 % ----------
 
-Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
+% Params.testLab = fullfile(Params.base_path, 'data/audio/05_11007_1-01_Nee_Bhakthi.wav');
+% Params.testLab = 'examples\ex3\testList.lab';
+
 
 end

@@ -1,8 +1,9 @@
 % Train a HMM model from data
 
 % specify a simulation id
+sim_id = 99;
 % load config file, specify base directory of beat tracker
-Params = ex4_config_bt('~/diss/src/matlab/beat_tracking/bayes_beat');
+Params = ex4_config_bt('~/Documents/experiments/repository/matlabTools/bayes_beat');
 
 % CLUSTERING THE DATASET
 
@@ -13,7 +14,7 @@ Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
 % TRAIN THE MODEL
 
 % create beat tracker object
-BT = BeatTracker(Params);
+BT = BeatTracker(Params, sim_id);
 % set up training data
 BT.init_train_data();
 % set up test_data
@@ -29,4 +30,4 @@ BT.train_model();
 results = BT.do_inference(1);
 % save results
 [~, fname, ~] = fileparts(Params.testLab);
-BT.save_results(results, Params.results_path, fname);
+BT.save_results(results, fullfile(Params.results_path, num2str(sim_id)), fname);

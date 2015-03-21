@@ -42,19 +42,24 @@ classdef PF < handle
         train_dataset                % dataset, which PF was trained on
         pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
         use_silence_state           % state that describes non-musical content
+        n_depends_on_r              % Flag to say if tempo depends on the style/pattern/rhythm
     end
     
     methods
         function obj = PF(Params, rhythm2meter_state, rhythm_names)
-            addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
-            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
+            % addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
+            % addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             obj.M = Params.M;
             obj.N = Params.N;
             obj.R = Params.R;
             obj.T = size(Params.meters, 2);
             obj.nParticles = Params.nParticles;
             obj.sigma_N = Params.sigmaN;
-            obj.pr = Params.pr;
+            if isfield(Params, 'cluster_transitions_fln') && exist(Params.cluster_transitions_fln, 'file')
+                obj.pr = dlmread(Params.cluster_transitions_fln);
+            else
+                obj.pr = Params.pr;
+            end
             obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -75,9 +80,15 @@ classdef PF < handle
             obj.pattern_size = Params.pattern_size;
             obj.resampling_interval = Params.res_int;
             obj.use_silence_state = Params.use_silence_state;
-            rng('shuffle');
-            %             % Matlab 2010
-            %             RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            obj.n_depends_on_r = Params.n_depends_on_r;
+            tempVar = ver('matlab');
+            if str2double(tempVar.Release(3:6)) < 2011
+                % Matlab 2010
+                disp('MATLAB 2010');
+                RandStream.setDefaultStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            else
+                rng('shuffle');
+            end       
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
@@ -108,8 +119,8 @@ classdef PF < handle
             end
             if sum(nParts) < obj.nParticles
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) * (obj.R-1) + 1;
-                obj.initial_n(c:end) = (r_n(c:end) + 0.5)' .* (obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end));
-                obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* (obj.Meff(obj.rhythm2meter_state(obj.initial_r(c:end)))-1)' + 1;
+                obj.initial_n(c:end) = (r_n(c:end) + 0.5)' .* reshape((obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end)),1,obj.nParticles-sum(nParts));
+                obj.initial_m(c:end) = (r_m(c:end) + 0.5) .* reshape((obj.Meff(obj.rhythm2meter_state(obj.initial_r(c:end)))-1),obj.nParticles-sum(nParts),1) + 1;
             end
         end
         
@@ -125,8 +136,17 @@ classdef PF < handle
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
             end
             if max(obj.maxN) > obj.N
+               fprintf('    N should be %i instead of %i -> corrected\n', max(obj.maxN), obj.N); 
                obj.N = ceil(max(obj.maxN));
             end
+            if ~obj.n_depends_on_r % no dependency between n and r
+                obj.minN = ones(1, obj.R) * min(obj.minN);
+                obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                obj.N = max(obj.maxN);
+                fprintf('    Tempo limited to %i - %i bpm\n', round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
+                    round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
+            end
+            % Transition function to propagate particles
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
         end
         
@@ -325,8 +345,8 @@ classdef PF < handle
         end
         
         function obj = pf(obj, obs_lik, fname)
-            addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
-            addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
+            %addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
+            %addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
             
             nFrames = size(obs_lik, 3);
             if obj.save_inference_data
@@ -371,10 +391,22 @@ classdef PF < handle
 
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
-                %                 obj = obj.propagate_particles_pf(iFrame, 'm');
+                % Not using the propagate function
+                % obj = obj.propagate_particles_pf(iFrame, 'm');
                 m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
-                m(:, iFrame) = mod(m(:, iFrame) - 1, obj.Meff(obj.rhythm2meter_state(r(:, iFrame-1)))') + 1;
+                m(:, iFrame) = mod(m(:, iFrame) - 1, reshape(obj.Meff(obj.rhythm2meter_state(r(:, iFrame-1))),obj.nParticles,1)) + 1;
+                % Pattern transitions to be handled here
+                % randsample(rStates, 1, true, transMat(rS,:))
                 r(:, iFrame) = r(:, iFrame-1);
+                % Change the ones for which the bar changed
+                newBars = find(m(:, iFrame) < m(:, iFrame-1));
+                for rInd = 1:length(newBars)
+                    r(newBars(rInd), iFrame) = ...
+                        randsample(obj.R, 1, true, obj.pr(r(newBars(rInd),iFrame-1),:));
+                end
+                %if sum(abs(r(newBars, iFrame) - r(newBars, iFrame-1)) > 1.1)
+                %    disp('Impossible pattern change! Check code!!')
+                %end
                 
                 if obj.do_viterbi_filtering
                     [m, n, r, weight] = obj.viterbi_filtering(m, n, r, weight);
@@ -382,7 +414,7 @@ classdef PF < handle
                 
                 % evaluate particle at iFrame-1
                 obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
-                weight = weight(:) + log(obs);
+                weight = weight(:) + log(obs(:));
 
                 % Normalise importance weights
                 % ------------------------------------------------------------
@@ -413,14 +445,15 @@ classdef PF < handle
                     n(:, 1:iFrame) = n(newIdx, 1:iFrame);
                 end
                 
-                % transition from iFrame-1 to iFrame
-                %                 obj = obj.propagate_particles_pf(iFrame, 'n');
+                % transition of n from iFrame-1 to iFrame
+                % obj = obj.propagate_particles_pf(iFrame, 'n');
+                % Not using the propagate function
                 n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-                out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
+                out_of_range = n(:, iFrame)' > reshape(obj.maxN(r(:, iFrame)),1,obj.nParticles);
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
-                out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
+                out_of_range = n(:, iFrame)' < reshape(obj.minN(r(:, iFrame)),1,obj.nParticles);
                 n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-               
+                
                 if strcmp(obj.inferenceMethod, 'PF_viterbi')
                     obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
                     obj.particles_grid.n(:, iFrame) =  obj.particles.n(:, iFrame);
@@ -448,13 +481,13 @@ classdef PF < handle
                 fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters(n_clusters>0)));
             end
             if obj.save_inference_data
-                save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_pf.mat'], ...
+                save(['./', fname, '_pf.mat'], ...
                     'logP_data_pf');
             end
         end
         
         function beats = find_beat_times(obj, positionPath, meterPath)
-            % [beats] = findBeatTimes(positionPath, meterPath, param_g)
+             % [beats] = findBeatTimes(positionPath, meterPath, param_g)
             %   Find beat times from sequence of bar positions of the HMM beat tracker
             % ----------------------------------------------------------------------
             %INPUT parameter:
@@ -472,55 +505,47 @@ classdef PF < handle
             % 29.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             numframes = length(positionPath);
-            meter = obj.meter_state2meter(:, meterPath);
-            % TODO: implement for changes in meter
-            if round(median(meter(1, :))) == 3 % 3/4
-                numbeats = 3;
-                denom = 4;
-            elseif round(median(meter(1, :))) == 4 % 4/4
-                numbeats = 4;
-                denom = 4;
-            elseif round(median(meter(1, :))) == 8 % 8/8
-                numbeats = 8;
-                denom = 8;
-            elseif round(median(meter(1, :))) == 9 % 9/8
-                numbeats = 9;
-                denom = 8;
-            else
-                error('Meter %i not supported yet!\n', median(meterPath));
+            meter = zeros(2, length(meterPath));
+            meter(:, meterPath>0) = obj.meter_state2meter(:, meterPath(meterPath>0));
+            % TODO: if beat is shortly before the audio start we should
+            % add one beat at the beginning. E.g. m-sequence starts with
+            % m=2
+            for iT=1:size(obj.meter_state2meter, 2)
+                beatpositions{iT} = round(linspace(1, obj.Meff(iT), obj.meter_state2meter(1, iT) + 1));
+                beatpositions{iT} = beatpositions{iT}(1:end-1);
             end
-            
-            beatpositions =  round(linspace(1, obj.Meff(median(meterPath)), numbeats+1));
-            beatpositions = beatpositions(1:end-1);
-            %             beatpositions = [1; round(obj.M/4)+1; round(obj.M/2)+1; round(3*obj.M/4)+1];
-            
-            beats = [];
+
             beatno = [];
-            beatco = 0;
+            bar_number = 0;
+            beats = [];
             for i = 1:numframes-1
-                for b = 1:numbeats
-                    if positionPath(i) == beatpositions(b)
-                        beats = [beats; i];
-                        beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
-                    elseif ((positionPath(i) > beatpositions(b)) && (positionPath(i+1) > beatpositions(b)) && (positionPath(i) > positionPath(i+1)))
-                        % transition of two bars
-                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
-                    elseif ((positionPath(i) < beatpositions(b)) && (positionPath(i+1) > beatpositions(b)))
-                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions(b));
-                        beats = [beats; round(bt)];
-                        beatno = [beatno; beatco + b/10];
-                        if b == numbeats, beatco = beatco + 1; end
+                if meterPath(i) == 0
+                    continue;
+                end
+                for beat_pos = 1:length(beatpositions{meterPath(i)})
+                    if positionPath(i) == beatpositions{meterPath(i)}(beat_pos)
+                        % current frame = beat frame
+                        beats = [beats; [i, bar_number, beat_pos]];
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
+                        break;
+                    elseif ((positionPath(i+1) > beatpositions{meterPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
+                        % bar transition between frame i and frame i+1
+                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{meterPath(i)}(beat_pos));
+                        beats = [beats; [round(bt), bar_number, beat_pos]];                        
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
+                        break;
+                    elseif ((positionPath(i) < beatpositions{meterPath(i)}(beat_pos)) && (beatpositions{meterPath(i)}(beat_pos) < positionPath(i+1)))
+                        % beat position lies between frame i and frame i+1
+                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{meterPath(i)}(beat_pos));
+                        beats = [beats; [round(bt), bar_number, beat_pos]];  
+                        if beat_pos == meter(1, i), bar_number = bar_number + 1; end
+                        break;
                     end
                 end
             end
             % if positionPath(i) == beatpositions(b), beats = [beats; i]; end
             
-            beats = beats * obj.frame_length;
-            beats = [beats beatno];
+            beats(:, 1) = beats(:, 1) * obj.frame_length;
         end
         
         function obj = propagate_particles_pf(obj, new_frame, variable)
@@ -537,6 +562,8 @@ classdef PF < handle
                 obj.particles.m(:, new_frame) = mod(obj.particles.m(:, new_frame) - 1, obj.Meff(obj.rhythm2meter_state(obj.particles.r(:, new_frame-1)))') + 1;
                 
                 % update r
+                % TODO: 
+                % randsample(rStates, 1, true, transMat(rS,:))
                 obj.particles.r(:, new_frame) = obj.particles.r(:, new_frame-1);
             end
             
@@ -565,8 +592,8 @@ classdef PF < handle
             % adjust the range of each state variable to make equally
             % important for the clustering
             points = zeros(obj.nParticles, length(state_dims)+1);
-            points(:, 1) = (sin(states(:, 1)' * 2 * pi ./ obj.Meff(obj.rhythm2meter_state(states(:, 3)))) + 1) * obj.state_distance_coefficients(1);
-            points(:, 2) = (cos(states(:, 1)' * 2 * pi ./ obj.Meff(obj.rhythm2meter_state(states(:, 3)))) + 1) * obj.state_distance_coefficients(1);
+            points(:, 1) = (sin(states(:, 1)' * 2 * pi ./ reshape(obj.Meff(obj.rhythm2meter_state(states(:, 3))),1,obj.nParticles)) + 1) * obj.state_distance_coefficients(1);
+            points(:, 2) = (cos(states(:, 1)' * 2 * pi ./ reshape(obj.Meff(obj.rhythm2meter_state(states(:, 3))),1,obj.nParticles)) + 1) * obj.state_distance_coefficients(1);
             points(:, 3) = states(:, 2) * obj.state_distance_coefficients(2);
             points(:, 4) =(states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
             

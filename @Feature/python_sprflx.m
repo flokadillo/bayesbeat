@@ -13,11 +13,7 @@ function [onset_feat, fr] = python_sprflx(fln, save_it)
 % ----------------------------------------------------------------------
 
 % read wav file
-if exist('audioread', 'file')
-    [x, fs] = audioread(fln);
-else
-    [x, fs] = wavread(fln);
-end
+[x, fs] = audioread(fln);
 touched = 0;
 % convert to 44.1 kHz
 if fs ~= 44100
@@ -39,7 +35,7 @@ setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); % set env path (PY
 if status == 0
     onset_feat = str2num(onset_feat);
 else
-    error('    ERROR Feature.python_sprflx\n');
+   error('    ERROR Feature.python_sprflx\n'); 
 end
 
 
@@ -54,7 +50,7 @@ end
 if save_it,
     [fpath, fname, ~] = fileparts(fln);
     if ~exist(fullfile(fpath, 'beat_activations'), 'dir')
-        system(['mkdir ', fullfile(fpath, 'beat_activations')]);
+       system(['mkdir ', fullfile(fpath, 'beat_activations')]);
     end
     save_fln = fullfile(fpath, 'beat_activations', [fname, '.sprflx']);
     fid=fopen(save_fln,'w');

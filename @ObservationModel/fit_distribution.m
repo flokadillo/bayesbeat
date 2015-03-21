@@ -1,5 +1,7 @@
 function params = fit_distribution(obj, dataPerClusterAndPosition)
 warning('off');
+fprintf('* Set up observation model .');
+warning('off');
 if strcmp(obj.dist_type,'histogram') || strcmp(obj.dist_type,'multivariateHistogram'),
     for  m=1:length(ClusterIdx)
         RhytPat.centerbins = (logspace(0, 1, nHistBins)-1) / 10;
@@ -9,7 +11,7 @@ end
 
 %Init = generate_init_params_gmdistribution(dataPerClusterAndPosition);
 
-[nFiles, nPatterns, nPos, featDim] = size(dataPerClusterAndPosition);
+[~, nPatterns, nPos, ~] = size(dataPerClusterAndPosition);
 
 params = cell(nPatterns, nPos);
 
@@ -17,13 +19,8 @@ for iPattern=1:nPatterns % all clusters
     fprintf('.');
     
     for iPos=1:nPos
-        if nFiles == 1
-            % resulting featureValues should be a matrix [nValues x featDim]
-            % if files are squeezed out we have to transpose
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :))');
-        else
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
-        end
+        
+        featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
         
         if isempty(featureValues), 
             break; 
@@ -64,5 +61,6 @@ for iPattern=1:nPatterns % all clusters
         
     end
 end
+fprintf(' done\n');
 warning('on');
 end

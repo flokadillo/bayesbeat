@@ -18,7 +18,7 @@ Params.system = 'BeatTracker';
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    Params.base_path = '/home/florian/diss/src/matlab/beat_tracking/bayesbeat-bitbucket';
 end
 Params.results_path = fullfile(Params.base_path, 'examples/ex1/results');
 Params.temp_path = fullfile(Params.base_path, 'temp');

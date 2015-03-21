@@ -52,24 +52,17 @@ elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
     data = load('-ascii', filename);
 elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
     % Load beat annotations
-    fid = fopen(filename, 'r');
-    temp = textscan(fid, '%f64%s', 'delimiter', '\t');
-    data = temp{1};
+    temp = load('-ascii', filename);
+    data = temp(:, 1);
     if size(temp, 2) == 2
-        % get bar id and beat number
-        temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
-        'UniformOutput', 0);
-	if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
-        	bar_id = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
-        	beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
-	else % no bar_id given, set bar_id to nan
-		beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
-		bar_id = nan(size(beat_number));
-% 		fprintf('WARNING: no bar_id found in %s, set to nan\n', filename);
-	end
-        data = [data, bar_id, beat_number];
+        % Modified to be suitable for CM annotations: Ajay
+%         data = [data, floor(temp(:, 2))];
+%         data = [data, round(rem(temp(:, 2), 1)*10)];
+        % Get the bar number
+        mask = (temp(:,2) == 1);
+        barNum = cumsum(mask);
+        data = [data barNum temp(:,2)];
     end
-    fclose(fid);
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile
     data = load('-ascii', filename);
