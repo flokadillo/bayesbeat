@@ -1,0 +1,291 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <link rel="stylesheet" href="file:////usr/local/MATLAB/R2011a/toolbox/matlab/helptools/private/helpwin.css">
+      <title>MATLAB File Help: RhythmCluster</title>
+   </head>
+   <body>
+      <!--Single-page help-->
+      <table border="0" cellspacing="0" width="100%">
+         <tr class="subheader">
+            <td class="headertitle">MATLAB File Help: RhythmCluster</td>
+            <td class="subheader-left"><a href="matlab:open @RhythmCluster/RhythmCluster.m">View code for RhythmCluster</a></td>
+            <td class="subheader-right"><a href="matlab:helpwin">Default Topics</a></td>
+         </tr>
+      </table>
+      <div class="title">RhythmCluster</div>
+      <div class="helptext"><pre><!--helptext -->  WORKFLOW:
+ 
+  if patterns are given via labels
+  1) <span class="helptopic">RhythmCluster</span>
+  2) make_cluster_assignment_file</pre></div><!--after help -->
+      <!--Class-->
+      <div class="sectiontitle">Class Details</div>
+      <table class="class-details">
+         <tr>
+            <td class="class-detail-label">Superclasses</td>
+            <td><a href="matlab:helpwin('handle')">handle</a></td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Sealed</td>
+            <td>false</td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Construct on load</td>
+            <td>false</td>
+         </tr>
+      </table>
+      <!--Constructors-->
+      <div class="sectiontitle"><a name="constructors"></a>Constructor Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.RhythmCluster')">RhythmCluster</a></td>
+            <td class="m-help">obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)&nbsp;</td>
+         </tr>
+      </table>
+      <!--Properties-->
+      <div class="sectiontitle"><a name="properties"></a>Property Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.bar2file')">bar2file</a></td>
+            <td class="m-help">[1 x nBars] vector&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.bar_2_cluster')">bar_2_cluster</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.bar_2_meter')">bar_2_meter</a></td>
+            <td class="m-help">[nBars x 2]&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.cluster_transition_matrix')">cluster_transition_matrix</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.cluster_transitions_fln')">cluster_transitions_fln</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.clusters_fln')">clusters_fln</a></td>
+            <td class="m-help">fln where cluster ids are stored&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.data_per_bar')">data_per_bar</a></td>
+            <td class="m-help">[nBars x feat_dim*bar_grid]&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.data_per_song')">data_per_song</a></td>
+            <td class="m-help">[nSongs x feat_dim*bar_grid]&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.data_save_path')">data_save_path</a></td>
+            <td class="m-help">beat_ann_list       % list of beat annotation files&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.dataset')">dataset</a></td>
+            <td class="m-help">training dataset on which clustering is performed&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.exclude_songs_fln')">exclude_songs_fln</a></td>
+            <td class="m-help">vector of file ids that contain more than one bar and have supported meter&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.feat_matrix_fln')">feat_matrix_fln</a></td>
+            <td class="m-help">fln where feature values of dataset are stored&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.feature')">feature</a></td>
+            <td class="m-help">feature object&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.file_2_cluster')">file_2_cluster</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.file_2_meter')">file_2_meter</a></td>
+            <td class="m-help">[nFiles x 2]&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.n_clusters')">n_clusters</a></td>
+            <td class="m-help">number of clusters&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.pattern_size')">pattern_size</a></td>
+            <td class="m-help">size of one rhythmical pattern {'beat', 'bar'}&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.rhythm2meter')">rhythm2meter</a></td>
+            <td class="m-help">[nRhythms x 2]&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.train_file_list')">train_file_list</a></td>
+            <td class="m-help">list of training files&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.train_lab_fln')">train_lab_fln</a></td>
+            <td class="m-help">lab file with training data files&nbsp;</td>
+         </tr>
+      </table>
+      <!--Methods-->
+      <div class="sectiontitle"><a name="methods"></a>Method Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.addlistener')">addlistener</a></td>
+            <td class="m-help">Add listener for event.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.compute_cluster_transitions')">compute_cluster_transitions</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.delete')">delete</a></td>
+            <td class="m-help">Delete a handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.do_clustering')">do_clustering</a></td>
+            <td class="m-help">type = 'bars' : cluster data_per_bar&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.eq')">eq</a></td>
+            <td class="m-help">== (EQ)   Test handle equality.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.findobj')">findobj</a></td>
+            <td class="m-help">Find objects matching specified conditions.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.findprop')">findprop</a></td>
+            <td class="m-help">Find property of MATLAB handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.ge')">ge</a></td>
+            <td class="m-help">&gt;= (GE)   Greater than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.gt')">gt</a></td>
+            <td class="m-help">&gt; (GT)   Greater than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">Sealed 
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.isvalid')">isvalid</a></td>
+            <td class="m-help">Test handle validity.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.le')">le</a></td>
+            <td class="m-help">&lt;= (LE)   Less than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.load_feats_per_bar')">load_feats_per_bar</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.load_feats_per_song')">load_feats_per_song</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.lt')">lt</a></td>
+            <td class="m-help">&lt; (LT)   Less than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.make_cluster_assignment_file')">make_cluster_assignment_file</a></td>
+            <td class="m-help">[bar2rhythm] = make_cluster_assignment_file(trainLab)&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.make_feats_per_bar')">make_feats_per_bar</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.make_feats_per_song')">make_feats_per_song</a></td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.ne')">ne</a></td>
+            <td class="m-help">~= (NE)   Not equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name"><a href="matlab:helpwin('RhythmCluster.notify')">notify</a></td>
+            <td class="m-help">Notify listeners of event.&nbsp;</td>
+         </tr>
+      </table>
+   </body>
+</html>
