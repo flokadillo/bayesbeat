@@ -20,7 +20,6 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
-Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 Params.results_path = fullfile(Params.base_path, 'examples/ex2/results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 

@@ -129,8 +129,6 @@ Params.tempo_tying = 1;
 % Type of transition model and state organisation ('whiteley' or '2015')
 Params.transition_model_type = 'whiteley';
 
-
-
 % PF parameters
 % -------------
 
@@ -174,17 +172,10 @@ Params.n_initial_clusters = 32;
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
-% Params.observationModelType = 'RNN';
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-% Params.feat_type{1} = 'sprflx2d0';
-% Params.feat_type{2} = 'sprflx2d1';
-%Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'rnn_orig';
-% Params.feat_type{1} = 'rnn_hainsworth';
-% Params.feat_type{1} = 'sprflx-online';
+Params.feat_type{1} = 'lo230_superflux.mvavg';
+Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 

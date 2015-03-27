@@ -11,15 +11,15 @@ classdef ObservationModel
         barGrid_eff         % number of distributions to fit per meter
         dist_type           % type of parametric distribution
         obs_prob_fun_handle %
-        learned_params      % cell array of learned parameters [nPatterns x nBarPos] 
-        learned_params_all  % same as learned parameters but for all files (this is useful for 
-                            % leave-one-out validation; in this case learned_params contains 
-                            % parameters for all except one files)
+        learned_params      % cell array of learned parameters [nPatterns x nBarPos]
+        learned_params_all  % same as learned parameters but for all files (this is useful for
+        % leave-one-out validation; in this case learned_params contains
+        % parameters for all except one files)
         lik_func_handle     % function handle to likelihood function
         state2obs_idx       % specifies which states are tied (share the same parameters)
-                            % [nStates, 2]. first columns is the rhythmic
-                            % pattern indicator, second one the bar
-                            % position (e.g., 1, 2 .. 64 )
+        % [nStates, 2]. first columns is the rhythmic
+        % pattern indicator, second one the bar
+        % position (e.g., 1, 2 .. 64 )
         use_silence_state
         feat_type           % cell array (features (extension) to be used)
     end
@@ -27,8 +27,7 @@ classdef ObservationModel
     methods
         function obj = ObservationModel(dist_type, rhythm2meter_state, ...
                 meter_state2meter, M, N, R, barGrid, Meff, feat_type, ...
-                use_silence_state, position_state_map, tempo_state_map, ...
-                rhythm_state_map)
+                use_silence_state, position_state_map, rhythm_state_map)
             obj.rhythm2meter_state = rhythm2meter_state;
             obj.meter_state2meter = meter_state2meter;
             obj.dist_type = dist_type;
@@ -42,13 +41,12 @@ classdef ObservationModel
             obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
             obj.use_silence_state = use_silence_state;
             % create mapping from states to gmms
-            obj = obj.make_state2obs_idx(position_state_map, tempo_state_map, ...
-                rhythm_state_map);
+            obj = obj.make_state2obs_idx(position_state_map, rhythm_state_map);
             obj.feat_type = feat_type;
         end
-                      
+        
         params = fit_distribution(obj, data_file_pattern_barpos_dim)
-         
+        
         function obj = train_model(obj, train_data)
             % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
             obj.learned_params = obj.fit_distribution(train_data.feats_file_pattern_barPos_dim);
@@ -100,16 +98,16 @@ classdef ObservationModel
         
         function mean_params = comp_mean_params(obj)
             % mean_params: [R x barGrid x featDim]
-%             [R, barpos] = size(obj.learned_params);
+            %             [R, barpos] = size(obj.learned_params);
             feat_dims = obj.learned_params{1, 1}.NDimensions;
             mean_params = zeros(obj.R, obj.barGrid, feat_dims);
             for iR=1:obj.R
-               for b=1:obj.barGrid
-                   if ~isempty(obj.learned_params{iR, b})
+                for b=1:obj.barGrid
+                    if ~isempty(obj.learned_params{iR, b})
                         mean_params(iR, b, :)=obj.learned_params{iR, b}.PComponents * obj.learned_params{iR, b}.mu;
-                   end
-               end
-            end           
+                    end
+                end
+            end
         end
         
         function plot_learned_patterns(obj)
@@ -127,26 +125,25 @@ classdef ObservationModel
                     data = data / max(data);
                     data = data + fdim;
                     stairs([data, data(end)], 'Color', col(fdim, :));
-%                     stairs([means(:, nDim-iDim+1); means(end, nDim-iDim+1)], 'k', 'LineWidth', 2)
                 end
                 title(sprintf('cluster %i', c));
                 xlim([1 length(data)+1])
-            end 
+            end
         end
         
         function obj = set_learned_params(obj, learned_params)
-           obj.learned_params = learned_params; 
+            obj.learned_params = learned_params;
         end
         
-        function obj = make_state2obs_idx(obj, position_state_map, tempo_state_map, ...
+        
+        function obj = make_state2obs_idx(obj, position_state_map, ...
                 rhythm_state_map)
-            %{
-            Computes state2obs_idx, which specifies which states are tied (share the same parameters) 
-            %}
+            % Computes state2obs_idx, which specifies which states are tied
+            % (share the same parameters)
+            %
             num_states = length(position_state_map);
             obj.state2obs_idx = nan(num_states, 2);
             barPosPerGrid = obj.M / obj.barGrid;
-%             discreteBarPos = floor((0:(obj.M - 1)) / barPosPerGrid) + 1;
             for i_state = 1:num_states
                 if (rhythm_state_map(i_state)) > 0
                     obj.state2obs_idx(i_state, 1) = rhythm_state_map(i_state);
@@ -158,7 +155,7 @@ classdef ObservationModel
                 obj.state2obs_idx(end, 2) = 1;
             end
             
-        end 
+        end
     end
     
 end

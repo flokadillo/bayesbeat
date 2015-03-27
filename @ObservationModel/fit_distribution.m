@@ -20,11 +20,12 @@ for iPattern=1:nPatterns % all clusters
         if nFiles == 1
             % resulting featureValues should be a matrix [nValues x featDim]
             % if files are squeezed out we have to transpose
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :))');
+            featureValues = cell2mat(squeeze(...
+                dataPerClusterAndPosition(:, iPattern, iPos, :))');
         else
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
+            featureValues = cell2mat(squeeze(...
+                dataPerClusterAndPosition(:, iPattern, iPos, :)));
         end
-        
         if isempty(featureValues), 
             break; 
         end

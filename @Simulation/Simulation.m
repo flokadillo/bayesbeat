@@ -1,7 +1,10 @@
 classdef Simulation
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
-    
+    % This file contains all relevant code for the Simulation class, which
+    % can be used to run simulations of various systems. It supports k-fold
+    % cross validation, leave one out testing.
+    % ----------------------------------------------------------------------
+    % 26.7.2012 by Florian Krebs
+    % ----------------------------------------------------------------------
     properties
         nFolds              % number of folds (= number of times parameter training is performed)
         sim_id              % id of simulation (= name of folder in the results dir)
@@ -13,7 +16,6 @@ classdef Simulation
     
     methods
         function obj = Simulation(config_fun, sim_id, config_path)
-
             if exist('config_path', 'var')
                 addpath(config_path);
                 obj.Params = eval(config_fun);
@@ -37,11 +39,11 @@ classdef Simulation
             obj.system.init_test_data();
             % initialize probabilistic model
             obj.system.init_model();
-
+            
             if  obj.Params.n_folds_for_cross_validation > 1
                 if ~strcmp(obj.Params.testLab, obj.Params.trainLab)
                     error('Train and test set should be the same for cross validation\n');
-                end    
+                end
                 % do k-fold cross validation: check if lab files for folds are present
                 [fpath, fname, ~] = fileparts(obj.Params.testLab);
                 for k=1:obj.Params.n_folds_for_cross_validation
@@ -80,15 +82,10 @@ classdef Simulation
         function obj = train_system(obj)
             % train model
             obj.system.train_model();
-            % save model to simulation folder
-            hmm = obj.system.model;
-            save(fullfile(obj.sim_dir, 'model.mat'), 'hmm');
-            fprintf('    Saved model to %s\n', fullfile(obj.sim_dir, 'model.mat'));
         end
-               
+        
         function do_sim(obj)
             fileCount = 1;
-%             profile on
             for k=1:obj.nFolds
                 % train on all except k-th fold
                 test_file_ids = obj.retrain(k);
@@ -104,12 +101,10 @@ classdef Simulation
                     fileCount = fileCount + 1;
                 end
             end
-%             profile viewer
         end
         
         function test_file_ids = retrain(obj, k)
             % Retrain is used to only update parts of the parameters
-            
             if obj.Params.n_folds_for_cross_validation == 1 % leave one out
                 test_file_ids = k;
                 obj.system.retrain_model(test_file_ids);

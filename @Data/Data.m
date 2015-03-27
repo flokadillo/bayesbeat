@@ -1,6 +1,6 @@
 classdef Data < handle
     % Data Class (represents training and test data)
-    properties
+    properties 
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
         bar2file                        % specifies for each bar the file id [nBars x 1]
@@ -25,13 +25,13 @@ classdef Data < handle
         feat_type                       % cell array (features (extension) to be used)
     end
     
-    
-    methods
-        
+
+    methods      
         function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
             % lab_fln:  text file with filenames and path
-            % train:    [0, 1] indicates whether
+            % train:    [0, 1] indicates whether training should be
+            %           performed or not
             if exist(lab_fln, 'file')
                 [fpath, obj.dataset, ext] = fileparts(lab_fln);
                 if strcmpi(ext, '.lab')
@@ -56,9 +56,9 @@ classdef Data < handle
             end
             % replace paths by absolute paths
             for i_file = 1:length(obj.file_list)
-                if strcmp(obj.file_list{i_file}(1), '~') || strcmp(obj.file_list{i_file}(1), '/')
-                    % ok, absolute path given
-                else
+                if ~strcmp(obj.file_list{i_file}(1), '~') || ...
+                        ~strcmp(obj.file_list{i_file}(1), filesep) || ...
+                        ~strcmp(obj.file_list{i_file}(2), ':')  % For windows
                     obj.file_list{i_file} = fullfile(pwd, obj.file_list{i_file});
                 end
             end
@@ -101,7 +101,7 @@ classdef Data < handle
                 end
             end
             if ismember(obj.rhythm2meter_state, 0)
-                error('Data.read_pattern_bars: could not assign meter state to rhythm\n');
+               error('Data.read_pattern_bars: could not assign meter state to rhythm\n'); 
             end
         end
         
@@ -157,35 +157,25 @@ classdef Data < handle
             tempo_min_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             tempo_max_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
-                %                 [fpath, fname, ~] = fileparts(obj.file_list{iFile});
                 [obj.beats{iFile}, error ] = Data.load_annotations_bt(obj.file_list{iFile}, 'beats');
-                %                 tempo_fln = fullfile(strrep(fpath, 'audio', 'annotations/bpm'), [fname, '.bpm']);
                 if error
                     error('Beats file not found\n');
                 end
                 beat_periods = sort(diff(obj.beats{iFile}(:, 1)), 'descend');
                 % ignore the biggest and smallest 10 percent of the beat
                 % periods
-                beat_periods = beat_periods(max([floor(length(beat_periods)/10), 1]):min([floor(length(beat_periods)*9/10), length(beat_periods)]));
-                
-                % so far, only the first bar of each file is used and assigned the style to the whole file
+                beat_periods = beat_periods(max([floor(length(...
+                    beat_periods) / 10), 1]):min([floor(length(...
+                    beat_periods) * 9 / 10), length(beat_periods)]));
                 styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
                 if ~isempty(styleId)
                     tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);
                     tempo_max_per_cluster(iFile, styleId) = 60/min(beat_periods);
-                    %                     tempo_per_cluster(iFile, styleId(1)) = tempo;
                 end
             end
             if sum(isnan(max(tempo_max_per_cluster))) > 0 % cluster without tempo
                 error('cluster without bar assignment\n');
-                %rhythm_id = find(isnan(tempo_max_per_cluster));
-                %for i_r=rhythm_id(:)
-                %		file_id = unique(obj.bar2file(obj.bar2cluster==i_r));
-                %			tempo_min_per_cluster(file_id, i_r) = 60/max(beat_periods);
-                %                    tempo_max_per_cluster(iFile, styleId(1)) = 60/min(beat_periods);
-                %end
             end
-            
         end
         
         function obj = extract_feats_per_file_pattern_barPos_dim(obj, whole_note_div, barGrid_eff, ...
@@ -204,14 +194,12 @@ classdef Data < handle
                         featureType{iDim}, whole_note_div, frame_length, obj.pattern_size, 1);
                     temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
                         obj.bar2cluster, obj.bar2file);
-                    
                 end
                 [n_files, ~, bar_grid_max] = size(temp{1});
                 dataPerFile = cell(n_files, obj.n_clusters, bar_grid_max, featureDim);
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
-                
                 obj.barpos_per_frame = TrainData.bar_pos_per_frame;
                 for i=1:length(TrainData.pattern_per_frame)
                     obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
@@ -227,7 +215,6 @@ classdef Data < handle
         end
         
         
-        
         function obj = read_beats(obj)
             % reads beats and downbeats from file and stores them in the
             % data object
@@ -241,7 +228,7 @@ classdef Data < handle
             end
         end
         
-        
+     
         function belief_func = make_belief_functions(obj, model)
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
@@ -281,8 +268,7 @@ classdef Data < handle
                     states = sub2ind([model.M, model.N, model.R], m(:), n(:), r(:));
                     idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
                     i_rows(idx) = iBeat;
-                    j_cols(idx) = states;
-                    
+                    j_cols(idx) = states;                   
                     % -----------------------------------------------------
                     % Variant 2: Tolerance win constant in time over tempi
                     % -----------------------------------------------------
@@ -295,36 +281,16 @@ classdef Data < handle
                     %	i_rows(p:p+length(states)-1) = iBeat;
                     %	p = p + length(states);
                     %   end
-                    
                 end
                 %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
                 belief_func{i_file, 1} = round(obj.beats{i_file}(:, 1) / model.frame_length);
                 belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
                 belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
-        end
-        
-        %         function feats_silence = extract_feature(obj, fln )
-        %             if exist(fln, 'file')
-        %                 addpath('~/diss/src/matlab/libs/matlab_utils');
-        %                 [feats_silence, fr] = readActivations(fln);
-        %                 if (abs(1/fr - obj.frame_length) > 0.001)
-        %                     % adjusting framerate:
-        %                     [ feats_silence ] = ChangeFramerateOfActivations( obj.feats_silence, fr, 1/obj.frame_length );
-        %                 end
-        %             else
-        %                 error('Silence file %s not found\n', feat_fln);
-        %             end
-        %         end
-        
-        
-        
+        end  
     end
     
     methods (Static)
-        
-        
-        
         function make_k_folds(lab_fln, K)
             if exist(lab_fln, 'file')
                 fid = fopen(lab_fln, 'r');
@@ -334,7 +300,6 @@ classdef Data < handle
                 error('Lab file %s not found\n', lab_fln);
             end
             [fpath, fname, ext] = fileparts(lab_fln);
-            %             Indices = crossvalind('Kfold', length(file_list), K);
             C = cvpartition(length(file_list), 'Kfold', K);
             for i=1:K
                 fln = fullfile(fpath, [fname, '-fold', num2str(i), ext]);

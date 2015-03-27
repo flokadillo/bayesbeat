@@ -14,13 +14,14 @@ classdef Feature
     
     methods
         function obj = Feature(feat_type, frame_length)
-            if nargin == 0 
-                obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
+            if nargin == 0
+                obj.feat_type = {'lo230_superflux.mvavg', ...
+                    'hi250_superflux.mvavg'};
                 obj.frame_length = 0.02;
             else
                 if isempty(feat_type)
-                    obj.feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
-                    fprintf('    WARNING: loaded model does not have field feat_type. Assuming lo230/hi250_superflux.mvavg\n');
+                    obj.feat_type = {'lo230_superflux.mvavg', ...
+                        'hi250_superflux.mvavg'};
                 else
                     obj.feat_type = feat_type;
                 end
@@ -28,6 +29,7 @@ classdef Feature
             end
             obj.feat_dim = length(obj.feat_type);
         end
+        
         
         function observations = load_feature(obj, input_fln, save_it)
             if exist('save_it', 'var')
@@ -42,11 +44,13 @@ classdef Feature
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
-                fln = fullfile(fpath, 'beat_activations', [fname, '.', obj.feat_type{iDim}]);
+                fln = fullfile(fpath, 'beat_activations', [fname, '.', ...
+                    obj.feat_type{iDim}]);
                 if exist(fln,'file') % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
-                    fprintf('    Extracting %s from %s\n', obj.feat_type{iDim}, fname);
+                    fprintf('    Extracting %s from %s\n', ...
+                        obj.feat_type{iDim}, fname);
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
                     % post processing
@@ -66,25 +70,30 @@ classdef Feature
                     if strfind(obj.feat_type{iDim}, 'lo230_superflux')
                         param.min_f = 0;
                         param.max_f = 230;
-                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                        [detfunc{iDim}, fr{iDim}] = ...
+                            obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
                     elseif strfind(obj.feat_type{iDim}, 'hi250_superflux')
                         param.min_f = 250;
                         param.max_f = 44100;
-                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                        [detfunc{iDim}, fr{iDim}] = ...
+                            obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
                     elseif strfind(obj.feat_type{iDim}, 'superflux')
                         param.min_f = 0;
                         param.max_f = 44100;
-                        [detfunc{iDim}, fr{iDim}] = obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
+                        [detfunc{iDim}, fr{iDim}] = ...
+                            obj.Compute_Bt_LogFiltSpecFlux(input_fln, param);
                     elseif strfind(obj.feat_type{iDim}, 'sprflx')
                         % sebastian's superflux
-                        [detfunc{iDim}, fr{iDim}] = obj.python_sprflx(input_fln, param.save_it);
+                        [detfunc{iDim}, fr{iDim}] = ...
+                            obj.python_sprflx(input_fln, param.save_it);
                     else
                         error('Feature %s invalid' ,obj.feat_type{iDim});
                     end
                 end
                 % adjust framerate of features
                 if abs(1/fr{iDim} - obj.frame_length) > 0.001
-                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, round(1000*fr{iDim})/1000, 1/obj.frame_length );
+                    detfunc{iDim} = obj.change_frame_rate(detfunc{iDim}, ...
+                        round(1000*fr{iDim})/1000, 1/obj.frame_length );
                     fr{iDim} = 1/obj.frame_length;
                 end
                 detfunc{iDim} = detfunc{iDim}(:);
@@ -109,6 +118,7 @@ classdef Feature
             end
         end
         
+        
         function observations = load_all_features(obj, file_list)
             n_files = length(file_list);
             observations = cell(n_files, 1);
@@ -121,7 +131,8 @@ classdef Feature
     
     methods(Static)
         
-        function activations_resampled = change_frame_rate(activations, fr_source, fr_target)
+        function activations_resampled = change_frame_rate(activations, ...
+                fr_source, fr_target)
             %   change framerate of feature sequence
             % convert time index
             dimension = size(activations, 2);
@@ -132,7 +143,8 @@ classdef Feature
             if abs(fr_source - fr_target) > 0.001
                 if (len_source_sec - numframes_target*fr_target) > 0.001 % add samples
                     delta_t = 1/fr_source;
-                    num_f = ceil((numframes_target*framelength_target-t(end)) / delta_t);
+                    num_f = ceil((numframes_target*framelength_target-t(end)) ...
+                        / delta_t);
                     act = 0.5*ones(num_f,1);
                     activations = [activations; act];
                     t = [t t(end)+(1:num_f)*delta_t];
@@ -143,7 +155,8 @@ classdef Feature
                     % target vector smaller than source vector, use only max
                     % values within a certain window
                     for i=1:numframes_target-1
-                        a1(i, :) = max(activations((((t-t2(i)) > -0.001) & ((t-t2(i+1)) < -0.001)), :));
+                        a1(i, :) = max(activations((((t-t2(i)) > -0.001) ...
+                            & ((t-t2(i+1)) < -0.001)), :));
                     end
                 else
                     % target vector bigger than source vector, interpolate!
@@ -158,6 +171,7 @@ classdef Feature
                 activations_resampled = activations;
             end
         end
+        
         
         function [ act, fr ] = read_activations( fln )
             % [ act ] = readactivations( fln )
@@ -196,8 +210,6 @@ classdef Feature
             fclose(fid);
         end
         
-        %         [DetFunc, fr] = Compute_LogFiltSpecFlux(fln, save_it, param);
-        
         [DetFunc, fr] = Compute_Bt_LogFiltSpecFlux(wavFileName, param);
         
         [DetFunc, fr] = python_sprflx(wavFileName, save_it);
@@ -208,7 +220,6 @@ classdef Feature
         
         [] = convert_mat_to_feat_file(fpath, output_ext, input_fr);
         
-        %         [DetFunc, fr] = compute_LogFiltSpecFlux2(fln, save_it, param);
     end
     
 end

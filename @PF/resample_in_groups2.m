@@ -33,6 +33,7 @@ if length(tot_w) - length(bad_groups) > n_max_clusters
     bad_groups = unique([bad_groups; groups_sorted(n_max_clusters+1:end)]);
 end
 
+%determine indices of particles for each cluster
 id_per_group = accumarray(groups, (1:length(weights))', [], @(x) {x});
 id_per_group(bad_groups) = [];
 id_per_group = cell2mat(id_per_group);
@@ -40,7 +41,7 @@ id_per_group = cell2mat(id_per_group);
 n_groups = length(tot_w) - length(bad_groups);
 % cumulative sum of particles per group. Each group should have an
 % approximative equal number of particles.
-parts_per_group = diff(round(linspace(0, length(weights), n_groups+1)));
+parts_per_group = diff(round(linspace(0, length(weights), n_groups+1)));%targeted number of particles per cluster
 parts_per_group(end) = length(weights) - sum(parts_per_group(1:end-1));
 w_norm = exp(weights - tot_w(groups)); % subtract in log domain and convert to linear
 if exist('warp_fun', 'var')

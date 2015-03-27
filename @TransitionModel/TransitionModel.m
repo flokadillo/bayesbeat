@@ -7,40 +7,37 @@ classdef TransitionModel
     properties (SetAccess=private)
         A               % sparse transition matrix [nStates x nStates]
         M               % number of max bar positions
-        %         Meff            % number of positions for each meter
         N               % number of tempo states
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
+        rhythm2meter_state    % assigns each rhythmic pattern to a meter state
+        minN            % min tempo (n_min) for each rhythmic pattern
+        maxN            % max tempo (n_max) for each rhythmic pattern
+        state_type      % 'discrete' or 'continuous'
+        use_silence_state % [true/false] use silence stateto pause tracker
         alpha           % squeezing factor for the tempo change distribution
         M_per_pattern   % [1 x R] effective number of bar positions per rhythm pattern
         num_beats_per_pattern % [1 x R] number of beats per pattern
         frames_per_beat % cell arrays with tempi relative to the framerate
-        % frames_per_beat{1} is a row vector with tempo
-        % values in [audio frames per beat] for pattern 1
-        minN            % min tempo (n_min) for each rhythmic pattern
-        maxN            % max tempo (n_max) for each rhythmic pattern
-        
+                        % frames_per_beat{1} is a row vector with tempo
+                        % values in [audio frames per beat] for pattern 1
         num_position_states_per_beat % number of position states per beat
         num_position_states_per_pattern % cell array of length R
-        state_type      % 'discrete' or 'continuous'
-        evaluate_fh
-        sample_fh
-        use_silence_state   % [true/false] use silence stateto pause tracker
         p2s                 % prior probability to go into silence state
         pfs                 % prior probability to exit silence state
         mapping_state_tempo     % [n_states, 1] contains for each state the
-        %                           corresponding tempo
+                                %  corresponding tempo
         mapping_state_position  % [n_states, 1] contains for each state the
-        %                           corresponding position
+                                %  corresponding position
         mapping_state_rhythm    % [n_states, 1] contains for each state the
-        %                           corresponding rhythm
+                                % corresponding rhythm
         mapping_tempo_state_id      % [n_states, 1] contains the tempo state number
         mapping_position_state_id   % [n_states, 1] contains the position state number
         mapping_substates_state % [M, N, R]
         proximity_matrix        % [n_states, 6] states id of neighboring states
-        %   in the order left, left down, right down,
-        %   right, right up, left up
+                                %   in the order left, left down, right down,
+                                %   right, right up, left up
         tempo_state
         num_states
     end
@@ -62,10 +59,7 @@ classdef TransitionModel
             obj.num_position_states_per_beat = position_states_per_beat;
             obj.num_beats_per_pattern = round(M_per_pattern ./ ...
                 position_states_per_beat);
-            %             obj.rhythm2meter_state = rhythm2meter_state;
             obj.frames_per_beat = frames_per_beat;
-            %             obj.minN = minN;
-            %             obj.maxN = maxN;
             
             % save silence state variables
             if exist('use_silence_state', 'var')
@@ -98,19 +92,15 @@ classdef TransitionModel
             fprintf('done\n');
         end
         
+        
         function obj = make_whiteleys_tm(obj, do_output)
             % This function creates a transition matrix as proposed by
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
-            
             % set up pattern transition matrix
             if obj.use_silence_state
                 silence_state_id = obj.M * obj.N *obj.R + 1;
             end
-            % check if N is big enough to cover given tempo range
-            %             if max(maxN) > N
-            %                 error('N should be %i instead of %i\n', max(maxN), N);
-            %             end
             obj.num_states = obj.M * obj.N * obj.R;
             % alloc memory for
             obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
@@ -153,7 +143,6 @@ classdef TransitionModel
             p = 1;
             % memory allocation:
             ri = zeros(obj.num_states*3,1); cj = zeros(obj.num_states*3,1); val = zeros(obj.num_states*3,1);
-            
             for rhi = 1:obj.R
                 if do_output, fprintf('.'); end;
                 mi=1:obj.M_per_pattern(rhi);
@@ -224,7 +213,6 @@ classdef TransitionModel
                     end
                 end
             end
-            
             % --------------------------------------------------------------
             % set probabilities for states with min and max tempo (borders of state space)
             j_r = (0:obj.R-1) * obj.N * obj.M;
@@ -304,7 +292,6 @@ classdef TransitionModel
             % This function creates a transition function with the following
             % properties: each tempostate has a different number of position
             % states
-            
             % only allow transition with probability above threshold
             threshold = eps;
             
@@ -334,8 +321,6 @@ classdef TransitionModel
                 max_n_tempo_states, obj.R, 'int32') * (-1);
             obj.num_position_states_per_pattern = cell(obj.R, 1);
             obj.proximity_matrix = ones(obj.num_states, 6, 'int32') * (-1);
-            %             temp = ones(max_pos_states_of_pattern, ...
-            %                 max_n_tempo_states, obj.R, 'int32') * (-1);
             si = 1;
             for ri = 1:obj.R
                 obj.num_position_states_per_pattern{ri} = ...
@@ -563,9 +548,7 @@ classdef TransitionModel
         function error = transition_model_is_corrupt(obj, dooutput)
             if nargin == 1, dooutput = 0; end
             error = 1;
-            
             if dooutput, fprintf('*   Checking the Transition Matrix ... '); end
-            
             % sum over columns j
             sum_over_j = full(sum(obj.A, 2));
             % find corrupt states: sum_over_j should be either 0 (if state is
@@ -591,7 +574,6 @@ classdef TransitionModel
                     m = obj.mapping_position_state_id(corrupt_states_i(1));
                     n = obj.mapping_tempo_state_id(corrupt_states_i(1));
                     r = obj.mapping_state_rhythm(corrupt_states_i(1));
-                    %                     [m, n, r] =  ind2sub([obj.M obj.M obj.R], corrupt_states_i(1));
                     fprintf('    State %i (%i - %i - %i) has transition TO: \n', ...
                         corrupt_states_i(1), m, n, r);
                     trans_states = find(obj.A(corrupt_states_i(1), :));

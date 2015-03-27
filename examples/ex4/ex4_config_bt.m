@@ -11,6 +11,7 @@ function Params = ex4_config_bt(base_path)
 % 06.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 
+Params.system = 'BeatTracker';
 % Path settings
 if exist('base_path', 'var')
     Params.base_path = base_path;

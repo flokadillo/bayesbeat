@@ -27,7 +27,6 @@ function [Output] = extract_bars_from_feature(source, feature_type, whole_note_d
 
 % ####################### PARAMETERS ######################################
 % set parameters
-addpath('~/diss/src/matlab/libs/matlab_utils');
 if nargin == 2, 
     whole_note_div = 64;
     frame_length = 0.02;
@@ -64,42 +63,12 @@ else
     % beat length patterns, assume quarter note beats
     bar_grid_max = round(whole_note_div / 4);
 end
-
-% if strcmp(pattern_size, 'bar')
-%     bar_grid_max = 0;
-%     for iFile=1:nFiles
-%         [ meter, error ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
-%         if error
-%             [ beats, error ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
-%             meter = max(beats(:, 3));
-%         end
-%         if length(meter) == 1
-%            bar_grid_max = max([bar_grid_max; whole_note_div * meter / 4]);
-%            Output.file2meter(iFile, 1) = meter;
-%            Output.file2meter(iFile, 2) = 4;
-%            fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
-%            
-%         else
-%            bar_grid_max = max([bar_grid_max; ceil(whole_note_div * meter(1) / meter(2))]);
-%            Output.file2meter(iFile, :) = meter;
-%         end
-%         
-%     end
-% else
-%     bar_grid_max = round(whole_note_div / 4);
-% end
 nchar = 0;
 %main loop over all files
 for iFile=1:nFiles
     [~, fname, ~] = fileparts(listing(iFile).name);
     fprintf(repmat('\b', 1, nchar));
     nchar = fprintf('      %i/%i) %s', iFile, nFiles, fname);
-%     [ meter, error1 ] = Data.load_annotations_bt(listing(iFile).name, 'meter');
-%     [ beats, error2 ] = Data.load_annotations_bt(listing(iFile).name, 'beats');
-%     if error1 % no meter file, read meter from beats file assuming quarter note beats
-%         meter = max(beats(:, 3));
-%         
-%     end
     if isempty(beats_all{iFile})
         if dooutput, fprintf('Error loading annotations, skipping %s\n', fname); end
         continue;
@@ -110,7 +79,6 @@ for iFile=1:nFiles
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
     b1 = find(beats_all{iFile}(:, 3) == 1);
-    
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
             fprintf(repmat('\b', 1, nchar));
@@ -120,13 +88,7 @@ for iFile=1:nFiles
     else
         % effective number of bar positions (depending on meter)
         if strcmp(pattern_size, 'bar')
-%             if length(meter) == 1
-%                 bar_grid_eff = whole_note_div * meter / 4;
-%                 meter(2) = 4;
-%                 fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
-%             else
                 bar_grid_eff = ceil(whole_note_div * Output.file2meter(iFile, 1) ./ Output.file2meter(iFile, 2));
-%             end
         else
             % beat-length patterns: suppose quarter beats 
             bar_grid_eff = whole_note_div / 4;
@@ -188,7 +150,6 @@ if strcmp(pattern_size, 'bar')
 else
     nBars = size(beats, 1) - 1;
     barStartIdx = 1:nBars;
-%     btype = ones(size(beats, 1), 1);
     meter = [1; 4];
 end
 beatsBarPos = ((0:meter(1)) * whole_note_div / meter(2)) + 1;

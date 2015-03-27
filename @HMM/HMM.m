@@ -5,16 +5,12 @@ classdef HMM
         Meff                % number of positions per meter [n_meters, 1]
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
-        %         pn                  % probability of a switch in tempo
-        %         pr                  % probability of a switch in rhythmic pattern
         rhythm2meter_state  % assigns each rhythmic pattern to a meter state (1, 2, ...)
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) [2 x nMeters]
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
         frames_per_beat     % frames_per_beat for each rhythmic pattern
         % cell array of values for each r
-        %         minN                % min tempo (n_min) for each rhythmic pattern
-        %         maxN                % max tempo (n_max) for each rhythmic pattern
         frame_length        % audio frame length in [sec]
         dist_type           % type of parametric distribution
         trans_model         % transition model
@@ -26,7 +22,6 @@ classdef HMM
         save_inference_data % save intermediate output of particle filter for visualisation
         inferenceMethod
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
-        viterbi_learning_iterations
         n_depends_on_r      % no dependency between n and r
         rhythm_names        % cell array of rhythmic pattern names
         train_dataset       % dataset, which HMM was trained on [string]
@@ -42,12 +37,9 @@ classdef HMM
     
     methods
         function obj = HMM(Params, meter_state2meter, rhythm2meter_state, rhythm_names)
-            
             obj.M = Params.M;
             obj.N = Params.N;
             obj.R = Params.R;
-            %             obj.pn = Params.pn;
-            
             obj.barGrid = max(Params.whole_note_div * (meter_state2meter(1, :) ./ meter_state2meter(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
@@ -174,7 +166,6 @@ classdef HMM
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
                 frames_per_beat, obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
-            
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');
@@ -188,9 +179,8 @@ classdef HMM
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
                 obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, ...
                 obj.Meff, train_data.feat_type, obj.use_silence_state, ...
-                obj.trans_model.mapping_state_position, obj.trans_model.mapping_state_tempo, ...
+                obj.trans_model.mapping_state_position, ...
                 obj.trans_model.mapping_state_rhythm);
-            
             % Train model
             if obj.use_silence_state
                 obj.obs_model = obj.obs_model.train_model(train_data);
@@ -204,7 +194,6 @@ classdef HMM
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
             n_states = obj.trans_model.num_states;
-            
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
@@ -266,7 +255,6 @@ classdef HMM
         end
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
-            
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
                 % normalize
@@ -281,7 +269,6 @@ classdef HMM
             else
                 obs_lik = obj.obs_model.compute_obs_lik(y);
             end
-            
             if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
                 [~, ~, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
@@ -340,10 +327,7 @@ classdef HMM
             init = zeros(obj.N * obj.R, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
-            %    log_prob = zeros(n_files);
-            
             for i_file=1:n_files
-                % for i_file=326
                 [~, fname, ~] = fileparts(train_data.file_list{i_file});
                 fprintf('  %i/%i) %s', i_file, n_files, fname);
                 % make belief function
@@ -352,34 +336,20 @@ classdef HMM
                 observations = features.load_feature(train_data.file_list{i_file});
                 obs_lik = obj.obs_model.compute_obs_lik(observations);
                 first_frame = max([belief_func{1}(1), 1]);
-                %                 end_frame = min([belief_func{1}(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames
-                % plot assignment from hiden states to observations before
-                % training iteration
-                %                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), train_data.barpos_per_frame{i_file}(first_frame:end_frame), ...
-                %                     train_data.pattern_per_frame{i_file}(first_frame:end_frame));
-                
                 best_path = obj.viterbi_iteration(obs_lik, belief_func);
                 if isempty(best_path)
                     continue;
                 end
                 % plot assignment from hidden states to observations after
                 % training iteration
-                %                 obj.visualise_hidden_states(observations(first_frame:end_frame, :), best_path);
-                %  log_prob(i_file) = compute_posterior(best_path, obs_lik, first_frame, obj);
-                %                 fprintf('    log_prob=%.2f\n', log_prob(i_file));
                 [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
-                
-                % %                 % compute beat times and bar positions of beats
+                % compute beat times and bar positions of beats
                 t_path = obj.rhythm2meter_state(r_path);
                 beats = obj.find_beat_times(m_path, t_path, n_path);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
-                %   BeatTracker.save_beats(beats, ['temp/', fname, '.beats.txt']);
-                
                 if min(n_path) < 5
                     fprintf('    Low tempo detected at file (n=%i), doing nothing\n', min(n_path));
-                    %     continue;
                 end
-                
                 % save pattern id per bar
                 if isempty(train_data.bar_start_id) % no downbeats annotations available
                     bar2cluster = [];
@@ -454,8 +424,12 @@ classdef HMM
             end
             % find min and max tempo states for each pattern
             for r_i = find(~isnan(obj.pr(:, 1)))'
-                obj.minN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'first');
-                obj.maxN(r_i) = find(sum(obj.trans_model.tempo_transition_probs((r_i-1)*obj.N + 1:r_i*obj.N, :), 2), 1, 'last');
+                obj.minN(r_i) = find(sum(...
+                    obj.trans_model.tempo_transition_probs((r_i-1)*obj.N ...
+                    + 1:r_i*obj.N, :), 2), 1, 'first');
+                obj.maxN(r_i) = find(sum(...
+                    obj.trans_model.tempo_transition_probs((r_i-1)*obj.N ...
+                    + 1:r_i*obj.N, :), 2), 1, 'last');
             end
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN);
@@ -513,11 +487,11 @@ classdef HMM
             linkaxes([hAxes1,hAxes2,hAxes3], 'x');
         end
         
+        
         function save_hmm_data_to_hdf5(obj, folder)
             % saves hmm to hdf5 format to be read into flower.
             % save transition matrix
             transition_model = obj.trans_model.A;
-            
             % save observation model
             % so far only two mixtures implemented
             n_mix = 2;
@@ -525,7 +499,6 @@ classdef HMM
             n_mu = n_mix * feat_dim;
             n_sigma = feat_dim * feat_dim * n_mix;
             n_rows = n_mix + n_mu + n_sigma;
-            
             observation_model = zeros(obj.R * obj.obs_model.barGrid, n_rows);
             for i_r=1:obj.R
                 for i_pos=1:obj.obs_model.barGrid_eff(obj.obs_model.rhythm2meter_state(i_r))
@@ -552,7 +525,6 @@ classdef HMM
             M = obj.M;
             R = obj.R;
             P = obj.barGrid;
-            
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
             rhythm_to_meter = obj.meter_state2meter(:, obj.rhythm2meter_state);
             
@@ -564,7 +536,7 @@ classdef HMM
             
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;
-            % transpose to be consistent with C row-major orientation. 
+            % transpose to be consistent with C row-major orientation.
             initial_prob = obj.initial_prob;
             mapping_position_state = obj.trans_model.mapping_state_position';
             mapping_tempo_state = obj.trans_model.mapping_state_tempo';
@@ -670,6 +642,7 @@ classdef HMM
                         frame = frame(x_fac:x_fac:end, :);
                         logP_data(start_ind_c:end_ind_c, iFrame-1) = log(frame(:));
                         [~, best_state(iFrame-1)] = max(delta);
+                        best_state(iFrame-1) = best_state(iFrame-1) + minState - 1;
                     end
                 end
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
@@ -696,10 +669,9 @@ classdef HMM
             if obj.save_inference_data,
                 % save for visualization
                 M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
-                save(['~/diss/src/matlab/beat_tracking/bayes_beat/temp/', fname, '_hmm.mat'], ...
+                save(['./', fname, '_hmm.mat'], ...
                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
             end
-            
             % Backtracing
             bestpath = zeros(nFrames,1);
             [ m, bestpath(nFrames)] = max(delta);
@@ -846,13 +818,10 @@ classdef HMM
             ind_stepsize = obj.barGrid * obj.R;
             % start index at the first belief function
             ind = ind + ind_stepsize * (start_frame-1);
-            
             fprintf('    Decoding (viterbi training) .');
-            
             for iFrame = 1:nFrames
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
-                %                 if sum(belief_func{1} == iFrame+start_frame-1)
                 if ismember(iFrame+start_frame-1, belief_func{1})
                     delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+start_frame-1, minState:maxState);
                     delta_max = delta_max / sum(delta_max);
@@ -890,6 +859,7 @@ classdef HMM
             fprintf(' done\n');
         end
         
+        
         function [marginal_best_bath, alpha, best_states, minState] = forward_path(obj, ...
                 obs_lik, do_output, fname, y)
             % HMM forward path
@@ -906,7 +876,6 @@ classdef HMM
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
             A = obj.trans_model.A(minState:maxState, minState:maxState);
-            
             perc = round(0.1*nFrames);
             if obj.use_silence_state
                 ind = sub2ind([obj.R+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
@@ -972,7 +941,6 @@ classdef HMM
                 if store_alpha && (iFrame <= rec_len)
                     alpha_mat(:, iFrame) = log(alpha);
                 end
-                
             end
             marginal_best_bath = [];
             % add state offset
@@ -1003,7 +971,6 @@ classdef HMM
             % meter_state                : sequence of meter states
             %                           NOTE: so far only median of sequence is used !
             % beat_act                 : beat activation for correction
-            
             %
             %OUTPUT parameter:
             %
@@ -1100,8 +1067,6 @@ classdef HMM
             method_type = 2;
             tol_bpm = 20; % tolerance in +/- bpm for tempo variable
             % compute tol_win in [frames]
-            %             tol_win_m = floor(tol_beats * obj.Meff(1) / obj.meter_state2meter(1, 1));
-            %             tol_win_n = floor(obj.Meff(1) .* obj.frame_length * tol_bpm ./ (obj.meter_state2meter(1, 1) .* 60));
             % belief_func:
             % col1: frames where annotation is available,
             % col2: sparse vector that is one for possible states
@@ -1109,9 +1074,6 @@ classdef HMM
             n_states = obj.M * obj.N * obj.R;
             counter = 1;
             for i_file = file_ids(:)'
-                % find rhythm of current piece (so far, only one (the first) per piece is used!)
-                %                 rhythm_id = train_data.bar2cluster(find(train_data.bar2file==i_file, 1));
-                
                 % find meter of current piece (so far, only one (the first) per piece is used!)
                 if train_data.meter(i_file) == 0 % no meter annotation available
                     possible_meter_states = 1:size(obj.meter_state2meter, 2); % all meters are possible
@@ -1152,9 +1114,9 @@ classdef HMM
                     for iM_beats=beats_m % loop over beat types
                         for iBeat=1:n_beats_i % loop over beats of file i
                             if method_type == 1
-                                %                             % -----------------------------------------------------
-                                %                             % Variant 1: tolerance win constant in beats over tempi
-                                %                             % -----------------------------------------------------
+                                % -----------------------------------------------------
+                                % Variant 1: tolerance win constant in beats over tempi
+                                % -----------------------------------------------------
                                 m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
                                 m = repmat(m_support, 1, obj.N * length(r_state));
                                 n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
@@ -1167,7 +1129,6 @@ classdef HMM
                                 % -----------------------------------------------------
                                 % Variant 2: Tolerance win constant in time over tempi
                                 % -----------------------------------------------------
-                                
                                 for n_i = obj.minN(r_state):obj.maxN(r_state)
                                     tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
                                     m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
@@ -1179,28 +1140,16 @@ classdef HMM
                                     end
                                 end
                             end
-                            %                             % tempo
-                            %                             n_valid = (ibi(iBeat)-tol_win_n):(ibi(iBeat)+tol_win_n);
-                            %                             n_valid(n_valid>obj.N) = obj.N;
-                            %                             m_support = mod((iM_beats(iBeat)-tol_win_m:iM_beats(iBeat)+tol_win_m) - 1, M_i) + 1;
-                            %                             m = repmat(m_support, 1, length(n_valid) * length(r_states));
-                            %                             n = repmat(n_valid, length(r_states) * length(m_support), 1);
-                            %                             r = repmat(r_states(:), length(n_valid) * length(m_support), 1);
-                            %                             states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-                            % %                             idx = (iBeat-1)*(tol_win_m*2+1)*obj.N*length(r_states)+1:(iBeat)*(tol_win_m*2+1)*obj.N*length(r_states);
-                            %                             i_rows(p:p+length(m)-1) = iBeat;
-                            %                             j_cols(p:p+length(m)-1) = states;
-                            %                             p = p + length(m);
                         end
                     end
                 end
-                %                 [~, idx, ~] = unique([i_rows, j_cols], 'rows');
                 belief_func{counter, 1} = round(train_data.beats{i_file}(:, 1) / obj.frame_length);
                 belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
                 belief_func{counter, 2} = logical(sparse(i_rows(i_rows>0), j_cols(i_rows>0), s_vals(i_rows>0), n_beats_i, n_states));
                 counter = counter + 1;
             end
         end
+        
         
         function obs_lik = rnn_format_obs_prob(obj, y)
             obs_lik = zeros(size(y, 2), obj.barGrid, size(y, 1));
@@ -1209,6 +1158,7 @@ classdef HMM
                 obs_lik(iR, 2:end, :) = repmat((1-y(:, iR))/(obj.barGrid-1), 1, obj.barGrid-1)';
             end
         end
+        
         
         function possible_successors = find_successors(obj, successors)
             m_id = obj.trans_model.mapping_position_state_id(successors)';
@@ -1313,8 +1263,6 @@ classdef HMM
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
             initial_prob, obs_lik, state2obs_idx, ...
             valid_states, validstate_to_state);
-        
-        [] = combine_models(model_file_1, model_file_2)
     end
     
     

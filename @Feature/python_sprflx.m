@@ -11,7 +11,6 @@ function [onset_feat, fr] = python_sprflx(fln, save_it)
 %
 % 19.12.2013 by Florian Krebs
 % ----------------------------------------------------------------------
-
 % read wav file
 if exist('audioread', 'file')
     [x, fs] = audioread(fln);
@@ -25,14 +24,12 @@ if fs ~= 44100
     fs = 44100;
     touched = 1;
 end
-
 % convert to mono
 if size(x, 2) == 2
     x = x(:, 1); % mic = channel 1, pickup = channel 2
     touched = 1;
 end
 if touched, audiowrite(fln, x, fs); end
-
 fr = 50;
 setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); % set env path (PYTHONPATH) for this session
 [status, onset_feat] = system(['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 ', fln]);
@@ -41,16 +38,6 @@ if status == 0
 else
     error('    ERROR Feature.python_sprflx\n');
 end
-
-
-% % moving average
-% % construct kernel
-% kernel_winsize = 50; % 50 frames are 1 second with fr=50
-% kernel = ones(kernel_winsize, 1) ./ kernel_winsize;
-% % convolution
-% mv_avg = conv(onset_feat(:), kernel);
-% onset_feat = onset_feat(:)-mv_avg(kernel_winsize:end); % subtract mean of last kernel_winsize
-
 if save_it,
     [fpath, fname, ~] = fileparts(fln);
     if ~exist(fullfile(fpath, 'beat_activations'), 'dir')
@@ -63,6 +50,4 @@ if save_it,
     fclose(fid);
     fprintf(' - saved to %s\n', save_fln);  % file is saved in ComputeDetFunc
 end
-
-
 end
