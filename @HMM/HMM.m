@@ -95,9 +95,8 @@ classdef HMM
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
                 alpha, pn, pr)
-            % convert from BPM into barpositions / audio frame
-            
             if strcmp(obj.tm_type, 'whiteley')
+                % convert from BPM into barpositions / audio frame
                 position_states_per_beat = obj.Meff(1) / obj.meter_state2meter(1);
                 if strcmp(obj.pattern_size, 'bar')
                     minN = floor(position_states_per_beat .* ...
@@ -108,13 +107,11 @@ classdef HMM
                     minN = floor(obj.M * obj.frame_length * min_tempo_bpm ./ 60);
                     maxN = ceil(obj.M * obj.frame_length * max_tempo_bpm ./ 60);
                 end
-                
                 if max(maxN) ~= obj.N
                     fprintf('    N should be %i instead of %i -> corrected\n', ...
                         max(maxN), obj.N);
                     obj.N = max(maxN);
-                end
-                
+                end                
                 if ~obj.n_depends_on_r % no dependency between n and r
                     minN = ones(1, obj.R) * min(minN);
                     maxN = ones(1, obj.R) * max(maxN);
@@ -123,15 +120,16 @@ classdef HMM
                 for ri = 1:obj.R
                     frames_per_beat{ri} = position_states_per_beat ./ ...
                         (minN(ri):maxN(ri));
-                end
-                
+                end                
             elseif strcmp(obj.tm_type, '2015')
                 % number of frames per beat (slowest tempo)
                 % (python: max_tempo_states)
-                max_frames_per_beat = ceil(60 ./ (min_tempo_bpm * obj.frame_length));
+                max_frames_per_beat = ceil(60 ./ (min_tempo_bpm * ...
+                    obj.frame_length));
                 % number of frames per beat (fastest tempo)
                 % (python: min_tempo_states)
-                min_frames_per_beat = floor(60 ./ (max_tempo_bpm * obj.frame_length));
+                min_frames_per_beat = floor(60 ./ (max_tempo_bpm * ...
+                    obj.frame_length));
                 % compute number of position states
                 if isnan(obj.N)
                     % use max number of tempi and position states:

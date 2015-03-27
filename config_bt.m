@@ -51,12 +51,23 @@ Params.inferenceMethod = 'HMM_viterbi';
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '~/diss/src/matlab/beat_tracking/bayes_beat/data/big_hmm_carnatic_beats.mat';
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
 % Use mex implementation of viterbi decoding
 Params.use_mex_viterbi = 1;
+% Save beat times and corresponding position within a bar (.beats.txt)
+Params.save_beats = 1;
+% Save only downbeats (.downbeats.txt)
+Params.save_downbeats = 0;
+% Save median tempo (.bpm.txt)
+Params.save_tempo = 0;
+% Save rhythm (.rhythm.txt)
+Params.save_rhythm = 0;
+% Save time_signature (.meter.txt)
+Params.save_meter = 0;
+
+
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -105,11 +116,13 @@ Params.pr = 0;
 % onset detection function to correct for the rough discretisation of the
 % observation model
 Params.correct_beats = 0;
-% Set tempo limits (same for all rhythmic patterns). If no ranges are given, 
-% they are learned from data. If tempi beyond [30, 300] BPM are found, the
-% tempo range is restricted to [40, 300] BPM
-% Params.min_tempo = 60;
-% Params.max_tempo = 215;
+% Learn tempo ranges from data
+Params.learn_tempo_ranges = 1;
+% Set tempo limits (same for all rhythmic patterns). If 
+% learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
+% a certain range given by min_tempo and max_tempo [BPM]
+Params.min_tempo = 60;
+Params.max_tempo = 230;
 
 % HMM parameters
 % --------------

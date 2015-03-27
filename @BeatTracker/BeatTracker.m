@@ -15,7 +15,6 @@ classdef BeatTracker < handle
     
     methods
         function obj = BeatTracker(Params, sim_id)
-            
             % parse probabilistic model
             if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
                 if exist(Params.model_fln, 'file')
@@ -48,8 +47,23 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'max_tempo')
                 obj.Params.max_tempo = 220;
             end
-            
+            if ~isfield(obj.Params, 'save_beats')
+                obj.Params.save_beats = 1;
+            end
+            if ~isfield(obj.Params, 'save_downbeats')
+                obj.Params.save_downbeats = 0;
+            end
+            if ~isfield(obj.Params, 'save_tempo')
+                obj.Params.save_tempo = 0;
+            end
+            if ~isfield(obj.Params, 'save_rhythm')
+                obj.Params.save_rhythm = 0;
+            end
+            if ~isfield(obj.Params, 'save_meter')
+                obj.Params.save_meter = 0;
+            end            
         end
+        
         
         function init_model(obj)
             if isfield(obj.Params, 'model_fln') && ~isempty(obj.Params.model_fln)
@@ -81,14 +95,14 @@ classdef BeatTracker < handle
             end
             
         end
-
-
+        
+        
         function init_train_data(obj)
             fprintf('* Set up training data ...');
             obj.train_data = Data(obj.Params.trainLab, 1);
             if ~isfield(obj.Params, 'clusterIdFln'), return;  end
             obj.train_data = obj.train_data.read_pattern_bars(...
-                    obj.Params.clusterIdFln, obj.Params.pattern_size);
+                obj.Params.clusterIdFln, obj.Params.pattern_size);
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
@@ -133,7 +147,7 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
-                if Params.learn_tempo_ranges
+                if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
                         obj.train_data.get_tempo_per_cluster();
@@ -150,7 +164,7 @@ classdef BeatTracker < handle
                         obj.Params.R);
                     tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, ...
                         obj.Params.R);
-                end                
+                end
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
                 fprintf('* Set up observation model\n');
@@ -158,7 +172,7 @@ classdef BeatTracker < handle
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 else
                     obj.model = obj.model.make_observation_model(obj.train_data);
-                end             
+                end
                 obj.model = obj.model.make_initial_distribution(...
                     [tempo_min_per_cluster; tempo_max_per_cluster]);
                 
@@ -184,7 +198,7 @@ classdef BeatTracker < handle
             end
         end
         
-
+        
         function obj = train_transition_model(obj, tempo_min_per_cluster, ...
                 tempo_max_per_cluster)
             if isfield(obj.Params, 'cluster_transitions_fln') && ...
@@ -247,7 +261,7 @@ classdef BeatTracker < handle
                 save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
             end
         end
-
+        
         
         function results = do_inference(obj, test_file_id, do_output)
             if ~exist('do_output', 'var')
@@ -289,45 +303,51 @@ classdef BeatTracker < handle
             end
         end
         
+        
         function load_model(obj, fln)
             temp = load(fln);
             names = fieldnames(temp);
             obj.model = temp.(names{1});
         end
         
+        
         function [] = save_results(obj, results, save_dir, fname)
             if ~exist(save_dir, 'dir')
                 system(['mkdir ', save_dir]);
             end
-            BeatTracker.save_beats(results{1}, fullfile(save_dir, [fname, '.beats.txt']));
-<<<<<<< HEAD
-%             BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
-%             BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
-%             BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
-%                 obj.model.rhythm_names);
-%             if strfind(obj.inferenceMethod, 'HMM')
-%                 BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
-%             end
-=======
-            BeatTracker.save_tempo(results{2}, fullfile(save_dir, [fname, '.bpm']));
-            BeatTracker.save_meter(results{3}, fullfile(save_dir, [fname, '.meter']));
-            BeatTracker.save_rhythm(results{4}, fullfile(save_dir, [fname, '.rhythm']), ...
-                obj.model.rhythm_names);
-            if strfind(obj.inferenceMethod, 'HMM')
-                BeatTracker.save_best_path(results{5}, fullfile(save_dir, [fname, '.best_path']));
+            if obj.Params.save_beats
+                BeatTracker.save_beats(results{1}, fullfile(save_dir, ...
+                    [fname, '.beats.txt']));
             end
->>>>>>> feature/ajay_andre_extensions
+            if obj.Params.save_downbeats
+                BeatTracker.save_downbeats(results{1}, fullfile(save_dir, ...
+                    [fname, '.downbeats.txt']));
+            end
+            if obj.Params.save_tempo
+                BeatTracker.save_tempo(results{2}, fullfile(save_dir, ...
+                    [fname, '.bpm.txt']));
+            end
+            if obj.Params.save_meter
+                BeatTracker.save_meter(results{3}, fullfile(save_dir, ...
+                    [fname, '.meter.txt']));
+            end
+            if obj.Params.save_rhythm
+                BeatTracker.save_rhythm(results{4}, fullfile(save_dir, ...
+                    [fname, '.rhythm.txt']), obj.model.rhythm_names);
+            end
         end
     end
     
     methods(Static)
         function [] = save_beats(beats, save_fln)
             fid = fopen(save_fln, 'w');
-<<<<<<< HEAD
             fprintf(fid, '%.3f\t%i\n', beats');
-=======
-            fprintf(fid, '%.3f\t%i.%i\n', beats');
->>>>>>> feature/ajay_andre_extensions
+            fclose(fid);
+        end
+        
+        function [] = save_downbeats(beats, save_fln)
+            fid = fopen(save_fln, 'w');
+            fprintf(fid, '%.3f\n', beats(beats(:, 2) == 1)');
             fclose(fid);
         end
         
@@ -346,23 +366,15 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
+        
         function [] = save_meter(meter, save_fln)
             m = unique(meter', 'rows')';
             fid = fopen(save_fln, 'w');
             fprintf(fid, '%i/%i\n', m(1), m(2));
             fclose(fid);
         end
+               
         
-        function [] = save_best_path(best_path, save_fln)
-            fid = fopen(save_fln, 'w');
-            fprintf(fid, '%i\n', best_path);
-            fclose(fid);
-        end
-<<<<<<< HEAD
-        
-=======
-       
->>>>>>> feature/ajay_andre_extensions
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)
             %   smooth beat sequence according to Dixon et al., Perceptual Smoothness
@@ -376,24 +388,19 @@ classdef BeatTracker < handle
             %
             % 11.06.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            
             if win < 1
                 smoothedBeats = inputBeats;
                 return
             end
             d = diff(inputBeats);
-            
             % to correct for missing values at the ends, the sequence d is extended by
             % defining
             d = [d(1+win:-1:2); d; d(end-1:-1:end-win)];
             dSmooth = zeros(length(d), 1);
-            
             for iBeat = 1+win:length(d)-win
                 dSmooth(iBeat) = sum(d(iBeat-win:iBeat+win)) / (2*win+1);
             end
             dSmooth=dSmooth(win+1:end-win);
-            % plot(d, 'r');
-            
             smoothedBeats = inputBeats;
             smoothedBeats(2:end) = inputBeats(1) + cumsum(dSmooth);
             
