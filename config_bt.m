@@ -20,6 +20,12 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
+if exist(Params.base_path, 'dir')
+    addpath(Params.base_path)
+else
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+
 Params.data_path = fullfile(Params.base_path, 'data');
 Params.results_path = fullfile(Params.base_path, 'results');
 Params.temp_path = fullfile(Params.base_path, 'temp');

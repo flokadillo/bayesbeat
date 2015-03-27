@@ -56,9 +56,10 @@ classdef Data < handle
             end
             % replace paths by absolute paths
             for i_file = 1:length(obj.file_list)
-                if ~strcmp(obj.file_list{i_file}(1), '~') || ...
-                        ~strcmp(obj.file_list{i_file}(1), filesep) || ...
-                        ~strcmp(obj.file_list{i_file}(2), ':')  % For windows
+                absolute_path_present = strcmp(obj.file_list{i_file}(1), '~') ...
+                    || strcmp(obj.file_list{i_file}(1), filesep) || ...
+                        strcmp(obj.file_list{i_file}(2), ':');  % For windows
+                if ~absolute_path_present
                     obj.file_list{i_file} = fullfile(pwd, obj.file_list{i_file});
                 end
             end

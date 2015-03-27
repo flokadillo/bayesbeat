@@ -285,10 +285,19 @@ classdef HMM
                 error('inference method not specified\n');
             end
             % decode state index into sub indices
-            %             [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], hidden_state_sequence(:)');
-            m_path = obj.trans_model.mapping_state_position(hidden_state_sequence)';
-            n_path = obj.trans_model.mapping_state_tempo(hidden_state_sequence)';
-            r_path = obj.trans_model.mapping_state_rhythm(hidden_state_sequence)';
+            if isfield(obj.trans_model, 'mapping_state_position')
+                m_path = obj.trans_model.mapping_state_position(...
+                    hidden_state_sequence)';
+                n_path = obj.trans_model.mapping_state_tempo(...
+                    hidden_state_sequence)';
+                r_path = obj.trans_model.mapping_state_rhythm(...
+                    hidden_state_sequence)';
+            else
+                % For compatibility to old models (created before 2015)
+                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], ...
+                    hidden_state_sequence(:)');
+            end
+
             
             t_path = zeros(length(r_path), 1);
             % strip of silence state
