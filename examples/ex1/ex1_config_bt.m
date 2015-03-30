@@ -49,6 +49,6 @@ Params.frame_length = 0.02;
 
 % Test data
 % ----------
- Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
+ Params.testLab = fullfile(Params.base_path, 'examples/audio/train1.flac');
 
 end

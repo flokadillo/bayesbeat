@@ -1,8 +1,10 @@
-% Use the beat tracker with a predefined (and trained) model
+% Use the beat tracker with a predefined (and trained) model. Please make 
+% sure to add the path to your local copy of the
+% bayes_beat package in the config file ex1_config_bt.m.
 
 % specify a simulation id. The script will create a subirectory "sim_id" in 
 % the results folder to save the results
-sim_id = 99;
+sim_id = 1;
 % load config file
 Params = ex1_config_bt;
 % create beat tracker object

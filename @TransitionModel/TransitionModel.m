@@ -106,10 +106,11 @@ classdef TransitionModel
             obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
-            if (size(obj.pr, 1) == obj.R) && (obj.R > 1)
-                % pr is a matrix RxR (R>1), do nothing
-            elseif size(obj.pr, 1) == 1
+            if (length(obj.pr(:)) == 1) && (obj.R > 1)
+                % expand pr to a matrix [R x R]
+                % transitions to other patterns
                 pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                % pattern self transitions
                 pr_mat(logical(eye(obj.R))) = (1-obj.pr);
             elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
                 % ok, do nothing

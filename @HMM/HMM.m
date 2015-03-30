@@ -21,6 +21,7 @@ classdef HMM
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
         save_inference_data % save intermediate output of particle filter for visualisation
         inferenceMethod
+        viterbi_learning_iterations
         tempo_tying         % 0 = tempo only tied across position states, 1 = global p_n for all changes, 2 = separate p_n for tempo increase and decrease
         n_depends_on_r      % no dependency between n and r
         rhythm_names        % cell array of rhythmic pattern names

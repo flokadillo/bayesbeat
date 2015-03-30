@@ -21,8 +21,10 @@ classdef BeatTracker < handle
                     c = load(Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
+                    obj.model = obj.convert_to_new_model_format(obj.model);
                     obj.init_model_fln = Params.model_fln;
-                    obj.feature = Feature(obj.model.obs_model.feat_type, obj.model.frame_length);
+                    obj.feature = Feature(obj.model.obs_model.feat_type, ...
+                        obj.model.frame_length);
                 else
                     error('Model file %s not found', model_fln);
                 end
@@ -32,6 +34,9 @@ classdef BeatTracker < handle
             obj.inferenceMethod = Params.inferenceMethod;
             if exist('sim_id', 'var')
                 obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+                if ~exist(obj.sim_dir, 'dir')
+                    system(['mkdir ', obj.sim_dir]);
+                end
             end
             if isfield(Params, 'temp_path')
                 obj.temp_path = Params.temp_path;
@@ -64,6 +69,12 @@ classdef BeatTracker < handle
             end            
             if ~isfield(obj.Params, 'save_features_to_file')
                 obj.Params.save_features_to_file = 0;
+            end
+            if ~isfield(obj.Params, 'transition_model_type')
+                obj.Params.transition_model_type = '2015';
+            end
+            if ~isfield(obj.Params, 'alpha')
+                obj.Params.alpha = 100;
             end
         end
         
@@ -179,7 +190,7 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution(...
                     [tempo_min_per_cluster; tempo_max_per_cluster]);
                 
-                
+                fln = fullfile(obj.sim_dir, 'model.mat');
                 switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
@@ -407,6 +418,10 @@ classdef BeatTracker < handle
             smoothedBeats = inputBeats;
             smoothedBeats(2:end) = inputBeats(1) + cumsum(dSmooth);
             
+        end
+        
+        function new_model = convert_to_new_model_format(old_model)
+            new_model = convert_old_model_to_new(old_model);           
         end
         
     end

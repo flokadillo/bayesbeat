@@ -20,8 +20,12 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
+if ~exist(Params.base_path, 'dir')
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+addpath(Params.base_path)
 Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'examples/ex3/results');
+Params.results_path = fullfile(Params.base_path, 'examples/ex3');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -53,8 +57,6 @@ Params.M = 768;
 Params.N = 11;
 % Number of rhythmic pattern states
 Params.R = 2;
-% Meters that are modelled by the system, e.g., [9, 3; 8 4] 
-Params.meters = [3, 4; 4, 4];
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 

@@ -51,6 +51,9 @@ classdef RhythmCluster < handle
                 pattern_size = 'bar';
             end
             obj.feature = Feature(feat_type, frame_length);
+            if ~exist(data_save_path, 'dir')
+                system(['mkdir ', data_save_path]);
+            end
             obj.data_save_path = data_save_path;
             if exist('pattern_size', 'var')
                 obj.pattern_size = pattern_size;
@@ -236,7 +239,7 @@ classdef RhythmCluster < handle
                     error(['ERROR RhythmCluster.do_clustering: Number of ',...
                         'meters in data does not match number of meters', ...
                         'specified in the function input argument']);
-                end 
+                end
             end
             meters = unique(meter_per_item, 'rows');
             if size(meters, 1) == 1 % only one meter
@@ -310,7 +313,7 @@ classdef RhythmCluster < handle
                     obj.dataset, '-', num2str(obj.feature.feat_dim), ...
                     'd-', num2str(obj.n_clusters), 'R-kmeans.mat']);
             else % assign the cluster idx of the song to each bar which
-                 % belongs to that song
+                % belongs to that song
                 % read index of valid songs
                 if exist(obj.exclude_songs_fln, 'file')
                     % TODO: Why read this from file? Can it be saved within
@@ -430,7 +433,8 @@ classdef RhythmCluster < handle
                 exclude_songs = exclude_songs{1};
                 ok_songs = find(~ismember(obj.train_file_list, exclude_songs));
             end
-            meter = zeros(length(ok_songs), 1);
+            meter = zeros(length(ok_songs), 2);
+            meters = []; % unique meters present in the data [T x 2]
             fileCounter = 0;
             nBars = zeros(length(ok_songs), 1);
             obj.file_2_cluster = zeros(length(ok_songs), 1);
@@ -444,12 +448,23 @@ classdef RhythmCluster < handle
                     error('Downbeat annotations missing for %s\n', ...
                         obj.train_file_list{ok_songs(iFile)});
                 end
-                meter(fileCounter+1) = max(beats(:, 3));
-                
+                % load meter from file
+                meter(fileCounter + 1, :) = Data.load_annotations_bt(...
+                    obj.train_file_list{ok_songs(iFile)}, 'meter');
                 % get pattern id of file
                 switch lower(clusterType)
                     case 'meter'
-                        patternId = meter(fileCounter+1);
+                        if isempty(meters)
+                            meter_present = 0;
+                        else
+                            meter_present = ismember(meters, ...
+                                meter(fileCounter + 1, :), 'rows');
+                        end
+                        if sum(meter_present) == 0
+                            meters = [meters; meter(fileCounter + 1, :)];
+                        end
+                        patternId = find(ismember(meters, ...
+                            meter(fileCounter + 1, :), 'rows'));
                     case 'dancestyle'
                         style = Data.load_annotations_bt(...
                             obj.train_file_list{ok_songs(iFile)}, 'dancestyle');
@@ -468,6 +483,14 @@ classdef RhythmCluster < handle
                     case 'none'
                         patternId = 1;
                 end
+                if strcmp(obj.pattern_size, 'bar')
+                    obj.rhythm2meter(patternId, :) = ...
+                        meter(fileCounter + 1, :);
+                elseif strcmp(obj.pattern_size, 'beat')
+                    obj.rhythm2meter(patternId, :) = [1, 4];
+                else
+                    error('Patternsize unknown!')
+                end
                 fileCounter = fileCounter + 1;
                 % determine number of bars
                 if strcmp(obj.pattern_size, 'beat')
@@ -478,36 +501,14 @@ classdef RhythmCluster < handle
                 bar2rhythm = [bar2rhythm; ones(nBars(iFile), 1) * patternId];
                 obj.bar2file = [obj.bar2file; ones(nBars(iFile), 1) * ok_songs(iFile)];
             end
-            if strcmp(clusterType, 'meter')
-                % conflate patternIds
-                meters = unique(bar2rhythm);
-                temp = 1:length(meters);
-                temp2(meters) = temp;
-            end
             obj.n_clusters = max(bar2rhythm);
-            obj.rhythm2meter = zeros(obj.n_clusters, 2);
-            for iR=1:obj.n_clusters
-                % find a bar/file that represents rhythm iR
-                file_id = obj.bar2file(find(bar2rhythm==iR, 1));
-                meter = Data.load_annotations_bt(...
-                    strrep(obj.train_file_list{file_id}, 'audio', ...
-                    'annotations/meter'), 'meter');
-                % TODO: what to do if meter of training data does not match
-                % meter of system ?
-                % BUG HERE: The meters have to be ordered in the increasing
-                % order, fails otherwise!
-                if strcmp(obj.pattern_size, 'bar')
-                    obj.rhythm2meter(iR, :) = meter;
-                elseif strcmp(obj.pattern_size, 'beat')
-                    obj.rhythm2meter(iR, :) = [1, 4];
-                else
-                    error('Meter of training data is not supported by the system')
-                end
-            end
+            % BUG HERE?: The meters have to be ordered in the increasing
+            % order, fails otherwise! Check!
             obj.bar_2_cluster = bar2rhythm;
             obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, ...
                 '-', num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), ...
                 'R-', clusterType, '.mat']);
+            ca_fln = obj.clusters_fln;
             if ~exist('rhythm_names', 'var')
                 for i = unique(bar2rhythm(:))'
                     rhythm_names{i} = [clusterType, num2str(i)];
@@ -535,38 +536,38 @@ classdef RhythmCluster < handle
         function [] = plot_patterns(cidx, ctrs, bar_pos, pattern_scope, ...
                 plotting_path)
             plot_cols = ceil(sqrt(obj.n_clusters));
-                h = figure( 'Visible','off');
-                set(h, 'Position', [100 100 obj.n_clusters*100 obj.n_clusters*100]);
-                items_per_cluster = hist(cidx, obj.n_clusters);
-                col = hsv(obj.feature.feat_dim);
-                for c = 1:obj.n_clusters
-                    subplot(ceil(obj.n_clusters/plot_cols), plot_cols, c)
-                    hold on
-                    for fdim = 1:obj.feature.feat_dim
-                        data = ctrs(c, (fdim-1)*bar_pos+1:fdim*bar_pos);
-                        data = data - min(data);
-                        data = data / max(data);
-                        data = data + fdim;
-                        stairs([data, data(end)], 'Color', col(fdim, :));
-                    end
-                    if obj.feature.feat_dim == 1
-                        y_label = obj.feature.feat_type{1};
-                    else
-                        y_label = sprintf('Bottom: %s', ...
-                            strrep(obj.feature.feat_type{1}, '_', '\_'));
-                    end
-                    ylabel(sprintf('%s', y_label));
-                    xlabel('bar position')
-                    title(sprintf('cluster %i (%i %s)', c, ...
-                        items_per_cluster(c), pattern_scope));
-                    xlim([1 length(data)])
+            h = figure( 'Visible','off');
+            set(h, 'Position', [100 100 obj.n_clusters*100 obj.n_clusters*100]);
+            items_per_cluster = hist(cidx, obj.n_clusters);
+            col = hsv(obj.feature.feat_dim);
+            for c = 1:obj.n_clusters
+                subplot(ceil(obj.n_clusters/plot_cols), plot_cols, c)
+                hold on
+                for fdim = 1:obj.feature.feat_dim
+                    data = ctrs(c, (fdim-1)*bar_pos+1:fdim*bar_pos);
+                    data = data - min(data);
+                    data = data / max(data);
+                    data = data + fdim;
+                    stairs([data, data(end)], 'Color', col(fdim, :));
                 end
-                outfile = fullfile(plotting_path, ['patterns-', ...
-                    obj.dataset, '-kmeans-', pattern_scope, '-', ...
-                    num2str(obj.n_clusters), '.png']);
-                fprintf('    Writing patterns to %s\n', outfile);
-                % save to png
-                print(h, outfile, '-dpng');
+                if obj.feature.feat_dim == 1
+                    y_label = obj.feature.feat_type{1};
+                else
+                    y_label = sprintf('Bottom: %s', ...
+                        strrep(obj.feature.feat_type{1}, '_', '\_'));
+                end
+                ylabel(sprintf('%s', y_label));
+                xlabel('bar position')
+                title(sprintf('cluster %i (%i %s)', c, ...
+                    items_per_cluster(c), pattern_scope));
+                xlim([1 length(data)])
+            end
+            outfile = fullfile(plotting_path, ['patterns-', ...
+                obj.dataset, '-kmeans-', pattern_scope, '-', ...
+                num2str(obj.n_clusters), '.png']);
+            fprintf('    Writing patterns to %s\n', outfile);
+            % save to png
+            print(h, outfile, '-dpng');
         end
     end
 end
