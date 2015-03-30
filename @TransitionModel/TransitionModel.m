@@ -11,7 +11,7 @@ classdef TransitionModel
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
-        rhythm2meter_state    % assigns each rhythmic pattern to a meter state
+        rhythm2meter    % assigns each rhythmic pattern to a meter [R x 1]
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
         state_type      % 'discrete' or 'continuous'

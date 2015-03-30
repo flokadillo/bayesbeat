@@ -5,10 +5,9 @@ classdef ObservationModel
         Meff                % number of positions per bar
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
-        rhythm2meter_state        % assigns each rhythmic pattern to a meter
-        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
+        rhythm2meter        % assigns each rhythmic pattern to a meter
         barGrid             % number of different observation model params per bar (e.g., 64)
-        barGrid_eff         % number of distributions to fit per meter
+        barGrid_eff         % number of distributions to fit per rhythm [R x 1]
         dist_type           % type of parametric distribution
         obs_prob_fun_handle %
         learned_params      % cell array of learned parameters [nPatterns x nBarPos]
@@ -25,11 +24,10 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter_state, ...
-                meter_state2meter, M, N, R, barGrid, Meff, feat_type, ...
+        function obj = ObservationModel(dist_type, rhythm2meter, ...
+                M, N, R, barGrid, Meff, feat_type, ...
                 use_silence_state, position_state_map, rhythm_state_map)
-            obj.rhythm2meter_state = rhythm2meter_state;
-            obj.meter_state2meter = meter_state2meter;
+            obj.rhythm2meter = rhythm2meter;
             obj.dist_type = dist_type;
             obj.lik_func_handle = set_lik_func_handle(obj);
             obj.M = M;
@@ -37,7 +35,7 @@ classdef ObservationModel
             obj.N = N;
             obj.R = R;
             obj.barGrid = barGrid;
-            bar_durations = obj.meter_state2meter(1, :) ./ obj.meter_state2meter(2, :);
+            bar_durations = obj.rhythm2meter(:, 1) ./ obj.rhythm2meter(:, 2);
             obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
             obj.use_silence_state = use_silence_state;
             % create mapping from states to gmms
@@ -84,7 +82,7 @@ classdef ObservationModel
             nFrames = size(observations, 1);
             obsLik = ones(obj.R, obj.barGrid, nFrames) * (-1);
             for iR = 1:obj.R
-                barPos = obj.barGrid_eff(obj.rhythm2meter_state(iR));
+                barPos = obj.barGrid_eff(iR);
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...
                     obj.learned_params(iR, 1:barPos));
             end

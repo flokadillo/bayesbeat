@@ -2,15 +2,14 @@ classdef PF < handle
     % Hidden Markov Model Class
     properties (SetAccess=private)
         M                           % number of positions in a 4/4 bar
-        Meff                        % number of positions per meter [T x 1]
+        Meff                        % number of positions per rhythm [R x 1]
         N                           % number of tempo states
         R                           % number of rhythmic pattern states
         T                           % number of meters
         pn                          % probability of a switch in tempo
         pr                          % probability of a switch in rhythmic pattern
-        rhythm2meter_state          % assigns each rhythmic pattern to a 
-        %                           meter state (1, 2, ...) [R x 1]
-        meter_state2meter           % specifies meter for each meter state (9/8, 8/8, 4/4)
+        rhythm2meter                % assigns each rhythmic pattern to a 
+        %                           meter [R x 1]
         barGrid                     % number of different observation model params per bar (e.g., 64)
         minN                        % min tempo (n_min) for each rhythmic pattern
         maxN                        % max tempo (n_max) for each rhythmic pattern
@@ -47,9 +46,7 @@ classdef PF < handle
     end
     
     methods
-        function obj = PF(Params, rhythm2meter_state, rhythm_names)
-            % addpath '~/diss/src/matlab/libs/bnt/KPMtools' % logsumexp
-            % addpath '~/diss/src/matlab/libs/pmtk3-1nov12/matlabTools/stats' % normalizeLogspace
+        function obj = PF(Params, rhythm2meter, rhythm_names)
             obj.M = Params.M;
             obj.N = Params.N;
             obj.R = Params.R;
@@ -60,11 +57,10 @@ classdef PF < handle
                 ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.rhythm2meter_state = rhythm2meter_state(:);
-            obj.meter_state2meter = Params.meters;
-            obj.Meff = round((Params.meters(1, :) ./ Params.meters(2, :)) ...
-                * (Params.M ./ max(Params.meters(1, :) ./ ...
-                Params.meters(2, :)))); obj.Meff = obj.Meff(:);
+            obj.rhythm2meter = rhythm2meter(:);
+            bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
+            obj.Meff = round((bar_durations) ...
+                * (Params.M ./ (max(bar_durations)))); obj.Meff = obj.Meff(:);
             obj.ratio_Neff = Params.ratio_Neff;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
@@ -101,7 +97,7 @@ classdef PF < handle
             % use pseudo random monte carlo
             n_grid = min(obj.minN):max(obj.maxN);
             n_m_cells = floor(obj.nParticles / length(n_grid));
-            m_grid_size = sum(obj.Meff(obj.rhythm2meter_state)) / n_m_cells;
+            m_grid_size = sum(obj.Meff) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
             r_n = rand(obj.nParticles, 1) - 0.5;
             nParts = zeros(obj.R, 1);
@@ -109,7 +105,7 @@ classdef PF < handle
             for iR = 1:obj.R
                 % create positions between 1 and obj.Meff(obj.rhythm2meter_state(iR))
                 m_grid = (1+m_grid_size/2):m_grid_size:...
-                    (obj.Meff(obj.rhythm2meter_state(iR))-m_grid_size/2);
+                    (obj.Meff(iR)-m_grid_size/2);
                 n_grid_iR = obj.minN(iR):obj.maxN(iR);
                 nParts(iR) = length(m_grid) * length(n_grid_iR);
                 temp = repmat(m_grid, length(n_grid_iR), 1);
@@ -132,9 +128,8 @@ classdef PF < handle
                     obj.initial_r(c:end)) + (1 - n_between_0_and_1) .* ...
                     obj.minN(obj.initial_r(c:end));
                 % map m_between_0_and_1 to allowed position range
-                meter_states = obj.rhythm2meter_state(obj.initial_r(c:end));
                 obj.initial_m(c:end) = m_between_0_and_1 .* ...
-                    (obj.Meff(meter_states)-1)' + 1;
+                    (obj.Meff(obj.initial_r(c:end))-1)' + 1;
                 % old code
 %                 obj.initial_n(c:end) = n_between_0_and_1 .* (obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end));
 %                 obj.initial_m(c:end) = m_between_0_and_1 .* (obj.Meff(meter_states)-1)' + 1;
@@ -144,7 +139,7 @@ classdef PF < handle
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
                 alpha, pn, pr)
             % convert from BPM into barpositions / audio frame
-            meter_num = obj.meter_state2meter(1, obj.rhythm2meter_state);
+            meter_num = obj.rhythm2meter(:, 1);
             % save pattern change probability and save as matrix [RxR]
             if (length(pr(:)) == 1) && (obj.R > 1)
                 % expand pr to a matrix [R x R]
@@ -160,8 +155,8 @@ classdef PF < handle
                 error('p_r has wrong dimensions!\n');
             end
             if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff(obj.rhythm2meter_state) .* obj.frame_length .* maxTempo ./ (meter_num * 60));
+                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
+                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
             else
                 obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
@@ -186,8 +181,9 @@ classdef PF < handle
         function obj = make_observation_model(obj, train_data)
             
             % Create observation model
-            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter_state, ...
-                obj.meter_state2meter, obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, train_data.feat_type, obj.use_silence_state);
+            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
+                obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
+                train_data.feat_type, obj.use_silence_state);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(train_data);
@@ -218,11 +214,10 @@ classdef PF < handle
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             obj = obj.forward_filtering(obs_lik, fname);
-            [m_path, n_path, r_path] = obj.path_via_best_weight();
-            t_path = obj.rhythm2meter_state(r_path);            
+            [m_path, n_path, r_path] = obj.path_via_best_weight();          
             % compute beat times and bar positions of beats
             results{3} = obj.meter_state2meter(:, t_path);
-            results{1} = obj.find_beat_times(m_path, t_path);
+            results{1} = obj.find_beat_times(m_path, r_path);
             results{2} = results{3}(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
             results{4} = r_path;            
         end
@@ -336,8 +331,8 @@ classdef PF < handle
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
                 m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
-                m(:, iFrame) = mod(m(:, iFrame) - 1, obj.Meff(...
-                    obj.rhythm2meter_state(r(:, iFrame-1)))) + 1;
+                m(:, iFrame) = mod(m(:, iFrame) - 1, ...
+                    obj.Meff(r(:, iFrame-1))) + 1;
                 % Pattern transitions to be handled here
                 r(:, iFrame) = r(:, iFrame-1);
                 % Change the ones for which the bar changed
@@ -407,12 +402,12 @@ classdef PF < handle
             end
         end
         
-        function beats = find_beat_times(obj, positionPath, meterPath)
+        function beats = find_beat_times(obj, positionPath, rhythmPath)
             %   Find beat times from sequence of bar positions of the HMM beat tracker
             % ----------------------------------------------------------------------
             %INPUT parameter:
             % positionPath             : sequence of position states
-            % meterPath                : sequence of meter states
+            % rhythmPath                : sequence of meter states
             %                           NOTE: so far only median of sequence is used !
             % nBarPos                  : bar length in bar positions (=M)
             % framelength              : duration of being in one state in [sec]
@@ -425,35 +420,38 @@ classdef PF < handle
             % 29.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             numframes = length(positionPath);
-            meter = zeros(2, length(meterPath));
-            meter(:, meterPath>0) = obj.meter_state2meter(:, meterPath(meterPath>0));
-            % TODO: if beat is shortly before the audio start we should
-            % add one beat at the beginning. E.g. m-sequence starts with
-            % m=2
-            for iT=1:size(obj.meter_state2meter, 2)
-                beatpositions{iT} = round(linspace(1, obj.Meff(iT), ...
-                    obj.meter_state2meter(1, iT) + 1));
-                beatpositions{iT} = beatpositions{iT}(1:end-1);
+            beatpositions = cell(obj.R, 1);
+            for i_r=1:obj.R
+                is_compund_meter = ismember(obj.rhythm2meter(i_r, 1), ...
+                    [6, 9, 12]);
+                if is_compund_meter
+                    beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
+                    obj.rhythm2meter(i_r, 1) / 3 + 1));
+                else % simple meter
+                    beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
+                    obj.rhythm2meter(i_r, 1) + 1));
+                end
+                beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
             beatno = [];
             beats = [];
             for i = 1:numframes-1
-                if meterPath(i) == 0
+                if rhythmPath(i) == 0
                     continue;
                 end
-                for beat_pos = 1:length(beatpositions{meterPath(i)})
-                    if positionPath(i) == beatpositions{meterPath(i)}(beat_pos)
+                for beat_pos = 1:length(beatpositions{rhythmPath(i)})
+                    if positionPath(i) == beatpositions{rhythmPath(i)}(beat_pos)
                         % current frame = beat frame
                         beats = [beats; [i, beat_pos]];
                         break;
-                    elseif ((positionPath(i+1) > beatpositions{meterPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
+                    elseif ((positionPath(i+1) > beatpositions{rhythmPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
                         % bar transition between frame i and frame i+1
-                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{meterPath(i)}(beat_pos));
+                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{rhythmPath(i)}(beat_pos));
                         beats = [beats; [round(bt), beat_pos]];                        
                         break;
-                    elseif ((positionPath(i) < beatpositions{meterPath(i)}(beat_pos)) && (beatpositions{meterPath(i)}(beat_pos) < positionPath(i+1)))
+                    elseif ((positionPath(i) < beatpositions{rhythmPath(i)}(beat_pos)) && (beatpositions{rhythmPath(i)}(beat_pos) < positionPath(i+1)))
                         % beat position lies between frame i and frame i+1
-                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{meterPath(i)}(beat_pos));
+                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{rhythmPath(i)}(beat_pos));
                         beats = [beats; [round(bt), beat_pos]];  
                         break;
                     end
@@ -475,13 +473,16 @@ classdef PF < handle
             % adjust the range of each state variable to make equally
             % important for the clustering
             points = zeros(obj.nParticles, length(state_dims)+1);
-            meter_ids = obj.rhythm2meter_state(states(:, 3));
             points(:, 1) = (sin(states(:, 1)' * 2 * pi ./ ...
-                obj.Meff(meter_ids)) + 1) * obj.state_distance_coefficients(1);
+                obj.Meff(states(:, 3))) + 1) * ...
+                obj.state_distance_coefficients(1);
             points(:, 2) = (cos(states(:, 1)' * 2 * pi ./ ...
-                obj.Meff(meter_ids)) + 1) * obj.state_distance_coefficients(1);
-            points(:, 3) = states(:, 2) * obj.state_distance_coefficients(2);
-            points(:, 4) =(states(:, 3)-1) * obj.state_distance_coefficients(3) + 1;
+                obj.Meff(states(:, 3))) + 1) * ...
+                obj.state_distance_coefficients(1);
+            points(:, 3) = states(:, 2) * ...
+                obj.state_distance_coefficients(2);
+            points(:, 4) =(states(:, 3)-1) * ...
+                obj.state_distance_coefficients(3) + 1;
             
             % compute centroid of clusters
             % TODO: vectorise!
@@ -561,28 +562,6 @@ classdef PF < handle
             warning('on');
         end
         
-        function  [m, n, r, weight] = viterbi_filtering(obj, m, n, r, weight)
-            % compute tempo matrix: rows are particles at iFrame-1,
-            % cols are particles at iFrame
-            tempo_current = bsxfun(@minus, m(:, iFrame), m(:, iFrame-1)')';
-            rhythm_constant = bsxfun(@eq, r(:, iFrame), r(:, iFrame-1)')';
-            % add Meff to negative tempi
-            for iR=1:obj.R
-                rhythm_iR = bsxfun(@eq, r(:, iFrame), (ones(obj.nParticles, 1)*iR)')';
-                idx = rhythm_constant & rhythm_iR & (tempo_current < 0);
-                tempo_current(idx) = tempo_current(idx) + obj.Meff(obj.rhythm2meter_state(iR));
-            end
-            tempo_prev = n(:, iFrame-1);
-            tempoChange = bsxfun(@minus, tempo_current, tempo_prev) / obj.M;
-            logTransProbCont = log(zeros(size(tempoChange)));
-            transition_ok = tempoChange < (10 * obj.sigma_N);
-            logTransProbCont(rhythm_constant & transition_ok) = ...
-                log(normpdf(tempoChange(rhythm_constant & transition_ok) , 0, obj.sigma_N));
-            % find best precursor particle
-            [weight, i_part] = max(bsxfun(@plus, logTransProbCont, weight(:)));
-            m(:, 1:iFrame-1) = m(i_part, 1:iFrame-1);
-            n(:, 1:iFrame-1) = n(i_part, 1:iFrame-1);
-        end
         
         function [weight, groups, newIdx] = resample(obj, weight, groups)
             if obj.resampling_scheme == 0

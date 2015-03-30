@@ -92,19 +92,22 @@ classdef BeatTracker < handle
                 end
             else
                 if isempty(obj.train_data) % no training data given -> set defaults
-                    obj.train_data.rhythm2meter_state = ones(1, obj.Params.R);
-                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), num2cell(1:obj.Params.R), 'UniformOutput', false);
+                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), ...
+                        num2cell(1:obj.Params.R), 'UniformOutput', false);
                 end
                 
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
-                        obj.model = HMM(obj.Params, obj.train_data.meter_state2meter, ...
-                            obj.train_data.rhythm2meter_state, obj.train_data.rhythm_names);
+                        obj.model = HMM(obj.Params, ...
+                            obj.train_data.rhythm2meter, ...
+                            obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(obj.Params, obj.train_data.rhythm2meter_state, ...
+                        obj.model = PF(obj.Params, ...
+                            obj.train_data.rhythm2meter, ...
                             obj.train_data.rhythm_names);
                     otherwise
-                        error('BeatTracker.init_model: inference method %s not known', obj.Params.inferenceMethod);
+                        error('BeatTracker.init_model: inference method %s not known', ...
+                            obj.Params.inferenceMethod);
                 end
             end
             
@@ -307,8 +310,7 @@ classdef BeatTracker < handle
                         fprintf(['    Cannot compute true path, file not', ...
                             'in test_data included ...\n']);
                     else
-                        [m, n] = HMM.getpath(obj.model.Meff(...
-                            obj.model.rhythm2meter_state(r)), annots, ...
+                        [m, n] = HMM.getpath(obj.model.Meff(r), annots, ...
                             obj.model.frame_length, size(observations, 1));
                         anns = [m, n, ones(length(m), 1) * r];
                         save(['/tmp/', fname, '_anns.mat'], 'anns');
@@ -421,7 +423,7 @@ classdef BeatTracker < handle
         end
         
         function new_model = convert_to_new_model_format(old_model)
-            new_model = convert_old_model_to_new(old_model);           
+            new_model = old_model.convert_old_model_to_new();           
         end
         
     end

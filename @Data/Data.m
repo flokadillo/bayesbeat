@@ -14,7 +14,6 @@ classdef Data < handle
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
         rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
-        rhythm2meter_state              % specifies for each bar the corresponding meter state [R x 1]
         meter_state2meter               % specifies meter for each meter state [2 x nMeters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         feats_silence                   % feature vector of silence
@@ -70,7 +69,7 @@ classdef Data < handle
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
             %   loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
-            %   creates n_clusters, meter_state2meter, rhythm2meter_state
+            %   creates n_clusters, meter_state2meter
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
                 obj.bar2file = C.bar2file;
@@ -90,19 +89,6 @@ classdef Data < handle
                 obj.pattern_size = pattern_size;
             else
                 obj.pattern_size = 'bar';
-            end
-            
-            obj.meter_state2meter = unique(obj.rhythm2meter, 'rows')';
-            for iR=1:obj.n_clusters
-                for iM=1:size(obj.meter_state2meter, 2)
-                    if (obj.meter_state2meter(1, iM) == obj.rhythm2meter(iR, 1)) && (obj.meter_state2meter(2, iM) == obj.rhythm2meter(iR, 2))
-                        obj.rhythm2meter_state(iR) = iM;
-                        break;
-                    end
-                end
-            end
-            if ismember(obj.rhythm2meter_state, 0)
-               error('Data.read_pattern_bars: could not assign meter state to rhythm\n'); 
             end
         end
         
