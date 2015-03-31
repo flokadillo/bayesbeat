@@ -76,7 +76,7 @@ classdef TransitionModel
             fprintf('* Set up transition model .');
             % compute tempo range in frame domain
             for ri = 1:obj.R
-                tempo_states = obj.num_position_states_per_beat ./ ...
+                tempo_states = obj.num_position_states_per_beat(ri) ./ ...
                     obj.frames_per_beat{ri};
                 obj.minN(ri) = min(tempo_states);
                 obj.maxN(ri) = max(tempo_states);
@@ -297,7 +297,7 @@ classdef TransitionModel
             threshold = eps;
             
             % total number of states
-            obj.num_states = cellfun(@(x) sum(x), obj.frames_per_beat) * ...
+            obj.num_states = cellfun(@(x) sum(x), obj.frames_per_beat)' * ...
                 obj.num_beats_per_pattern(:);
             num_tempo_states = cellfun(@(x) length(x), obj.frames_per_beat);
             % attach silence state to the end of the states
@@ -331,7 +331,8 @@ classdef TransitionModel
                 for tempo_state_i = 1:num_tempo_states(ri)
                     idx = si:(si+n_pos_states(tempo_state_i)-1);
                     obj.mapping_state_rhythm(idx) = ri;
-                    obj.mapping_state_tempo(idx) = obj.num_position_states_per_beat ./ ...
+                    obj.mapping_state_tempo(idx) = ...
+                        obj.num_position_states_per_beat(ri) ./ ...
                         obj.frames_per_beat{ri}(tempo_state_i);
                     obj.mapping_tempo_state_id(idx) = tempo_state_i;
                     obj.mapping_state_position(idx) = ...
@@ -436,7 +437,7 @@ classdef TransitionModel
             % Then everything multiplicated with the number of beats with
             % are modelled in the patterns
             % TODO: Note changes between patterns are not implemented yet!
-            num_tempo_transitions = (num_tempo_states .* num_tempo_states) * ...
+            num_tempo_transitions = (num_tempo_states .* num_tempo_states)' * ...
                 obj.num_beats_per_pattern(:);
             if obj.use_silence_state
                 num_transitions = obj.num_states + num_tempo_transitions - ...
@@ -444,7 +445,7 @@ classdef TransitionModel
                     2 * sum(num_tempo_states) + 1;
             else
                 num_transitions = obj.num_states + num_tempo_transitions - ...
-                    (num_tempo_states * obj.num_beats_per_pattern(:));
+                    (num_tempo_states' * obj.num_beats_per_pattern(:));
             end
             % initialise vectors to store the transitions in sparse format
             % rows (states at previous time)

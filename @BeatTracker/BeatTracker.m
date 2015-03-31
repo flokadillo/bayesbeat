@@ -130,8 +130,8 @@ classdef BeatTracker < handle
             featuresFln = fullfile(obj.Params.data_path, [clusterFName, '_', ...
                 featStr, '.mat']);
             barGrid_eff = obj.Params.whole_note_div * ...
-                (obj.train_data.meter_state2meter(1, :) ./ ...
-                obj.train_data.meter_state2meter(2, :));
+                (obj.train_data.rhythm2meter(:, 1) ./ ...
+                obj.train_data.rhythm2meter(:, 2));
             obj.train_data = ...
                 obj.train_data.extract_feats_per_file_pattern_barPos_dim(...
                 obj.Params.whole_note_div, barGrid_eff, ...
@@ -169,8 +169,8 @@ classdef BeatTracker < handle
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
                         obj.train_data.get_tempo_per_cluster();
                     % find min/max for each pattern
-                    tempo_min_per_cluster = min(tempo_min_per_cluster);
-                    tempo_max_per_cluster = max(tempo_max_per_cluster);
+                    tempo_min_per_cluster = min(tempo_min_per_cluster)';
+                    tempo_max_per_cluster = max(tempo_max_per_cluster)';
                     % restrict ranges
                     tempo_min_per_cluster(tempo_min_per_cluster < ...
                         obj.Params.min_tempo) = obj.Params.min_tempo;
@@ -224,8 +224,16 @@ classdef BeatTracker < handle
             else
                 pr = obj.Params.pr;
             end
-            obj.model = obj.model.make_transition_model(tempo_min_per_cluster, ...
-                tempo_max_per_cluster, obj.Params.alpha, obj.Params.pn, pr);
+            switch obj.inferenceMethod(1:2)
+                case 'HM'
+                    obj.model = obj.model.make_transition_model(...
+                        tempo_min_per_cluster, tempo_max_per_cluster, ...
+                        obj.Params.alpha, obj.Params.pn, pr);
+                case 'PF'
+                    obj.model = obj.model.make_transition_model(...
+                        tempo_min_per_cluster, tempo_max_per_cluster, ...
+                        obj.Params.alpha, obj.Params.sigmaN, pr);
+            end
         end
         
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
@@ -305,7 +313,7 @@ classdef BeatTracker < handle
                 if exist(annot_fln, 'file')
                     annots = load(annot_fln);
                     meter = max(annots(:, 2));
-                    r = find(obj.model.meter_state2meter(1, :) == meter);
+                    r = find(obj.model.rhythm2meter(:, 1) == meter);
                     if isempty(r)
                         fprintf(['    Cannot compute true path, file not', ...
                             'in test_data included ...\n']);

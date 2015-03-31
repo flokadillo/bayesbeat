@@ -6,6 +6,8 @@ classdef HMM
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter [R x 2]
+        rhythm2meter_state  % assigns each rhythmic pattern to a meter state (1, 2, ...)
+        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) [2 x nMeters]
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
         frames_per_beat     % frames_per_beat for each rhythmic pattern
@@ -97,7 +99,13 @@ classdef HMM
         function obj = convert_old_model_to_new(obj)
             % This function might be removed
             % in future, but is important for compatibility with older models
-            
+            % check dimensions of member variables. This function might be removed
+            % in future, but is important for compatibility with older models
+            % (in old models Meff and 
+            % rhythm2meter_state are row vectors [1 x K] but should be
+            % column vectors)
+            obj.Meff = obj.Meff(:);
+            obj.rhythm2meter_state = obj.rhythm2meter_state(:);
             % In old models, pattern change probability was not saved as
             % matrix [RxR]
             if (length(obj.trans_model.pr(:)) == 1) && (obj.R > 1)
@@ -108,7 +116,10 @@ classdef HMM
                 pr_mat(logical(eye(obj.R))) = (1-obj.pr);
                 obj.pr = pr_mat;
             end
-%             if isempty(obj.rhythm2meter)
+            if isempty(obj.rhythm2meter)
+               obj.rhythm2meter = obj.meter_state2meter(:, ...
+                   obj.rhythm2meter_state)'; 
+            end
         end
         
         
@@ -145,6 +156,7 @@ classdef HMM
                     maxN = ones(1, obj.R) * max(maxN);
                     obj.N = max(maxN);
                 end
+                frames_per_beat = cell(obj.R, 1);
                 for ri = 1:obj.R
                     frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
                         (minN(ri):maxN(ri));
@@ -159,6 +171,7 @@ classdef HMM
                 min_frames_per_beat = floor(60 ./ (max_tempo_bpm * ...
                     obj.frame_length));
                 % compute number of position states
+                frames_per_beat = cell(obj.R, 1);
                 if isnan(obj.N)
                     % use max number of tempi and position states:
                     for ri=1:obj.R
@@ -181,9 +194,9 @@ classdef HMM
             end
             for r_i = 1:obj.R
                 bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution [%.1f, %.1f] bpm)\n', ...
-                    r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
-                    (bpms(end)-bpms(end-1)));
+                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
+                    r_i, bpms(end), bpms(1), (bpms(end-1)-bpms(end)), ...
+                    (bpms(1)-bpms(2)));
             end
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
@@ -329,17 +342,14 @@ classdef HMM
             end
             % compute beat times and bar positions of beats
             meter = zeros(2, length(r_path));
-            meter(:, idx) = obj.rhythm2meter(r_path(idx), :);
+            meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             beats = obj.find_beat_times(m_path, r_path, y);
             if strcmp(obj.pattern_size, 'bar')
-                tempo = meter(1, idx) .* 60 .* n_path(idx) ./ ...
+                tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
                     (obj.Meff(r_path(idx)) * obj.frame_length);
             else
                 tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
             end
-            
-            %             hold on; stem(beats(:, 1)*100, ones(size(beats(:, 1)))*max(y(:)), 'k');
-            rhythm = r_path(idx);
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;

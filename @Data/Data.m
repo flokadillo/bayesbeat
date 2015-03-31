@@ -14,7 +14,6 @@ classdef Data < handle
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
         rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
-        meter_state2meter               % specifies meter for each meter state [2 x nMeters]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
@@ -67,9 +66,9 @@ classdef Data < handle
         
         function obj = read_pattern_bars(obj, cluster_fln, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
-            % and generate obj.bar2file, obj.n_bars, obj.meter_state2meter and obj.rhythm2meter
+            % and generate obj.bar2file, obj.n_bars, and obj.rhythm2meter
             %   loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
-            %   creates n_clusters, meter_state2meter
+            %   creates n_clusters
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
                 obj.bar2file = C.bar2file;
@@ -223,10 +222,8 @@ classdef Data < handle
             %             for i_file = 1:length(obj.file_list)
             for i_file = 1:length(obj.file_list)
                 % determine meter state of current file
-                t_state = find((obj.meter_state2meter(1, :) == obj.meter(i_file, 1)) &...
-                    (obj.meter_state2meter(2, :) == obj.meter(i_file, 2)));
-                % determine rhythmic pattern state of current file
-                r_state = find(model.rhythm2meter == t_state);
+                r_state = find((obj.rhythm2meter(:, 1) == obj.meter(i_file, 1)) &...
+                    (obj.rhythm2meter(:, 2) == obj.meter(i_file, 2)));
                 % determine correct M of current file
                 M_i = model.Meff(t_state);
                 

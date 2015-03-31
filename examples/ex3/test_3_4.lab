@@ -1,4 +1,4 @@
-~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train10.flac
-~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train12.flac
-~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train15.flac
-~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train1.flac
+../audio/train10.flac
+../audio/train12.flac
+../audio/train15.flac
+../audio/train1.flac

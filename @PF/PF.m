@@ -6,10 +6,13 @@ classdef PF < handle
         N                           % number of tempo states
         R                           % number of rhythmic pattern states
         T                           % number of meters
-        pn                          % probability of a switch in tempo
         pr                          % probability of a switch in rhythmic pattern
         rhythm2meter                % assigns each rhythmic pattern to a 
         %                           meter [R x 1]
+        rhythm2meter_state          % assigns each rhythmic pattern to a 
+                                    %         meter state (1, 2, ...)
+        meter_state2meter           % specifies meter for each meter state 
+                                    %         (9/8, 8/8, 4/4) [2 x nMeters]
         barGrid                     % number of different observation model params per bar (e.g., 64)
         minN                        % min tempo (n_min) for each rhythmic pattern
         maxN                        % max tempo (n_max) for each rhythmic pattern
@@ -52,12 +55,13 @@ classdef PF < handle
             obj.R = Params.R;
             obj.T = size(Params.meters, 2);
             obj.nParticles = Params.nParticles;
-            obj.sigma_N = Params.sigmaN;
+%             obj.sigma_N = Params.sigmaN; % moved this to
+%             make_transition_model
             obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ...
                 ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.rhythm2meter = rhythm2meter(:);
+            obj.rhythm2meter = rhythm2meter;
             bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
             obj.Meff = round((bar_durations) ...
                 * (Params.M ./ (max(bar_durations)))); obj.Meff = obj.Meff(:);
@@ -137,7 +141,9 @@ classdef PF < handle
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
-                alpha, pn, pr)
+                alpha, sigmaN, pr)
+            
+            obj.sigma_N = sigmaN;
             % convert from BPM into barpositions / audio frame
             meter_num = obj.rhythm2meter(:, 1);
             % save pattern change probability and save as matrix [RxR]
@@ -215,10 +221,27 @@ classdef PF < handle
             obs_lik = obj.obs_model.compute_obs_lik(y);
             obj = obj.forward_filtering(obs_lik, fname);
             [m_path, n_path, r_path] = obj.path_via_best_weight();          
+            
+            % strip of silence state
+            if obj.use_silence_state
+                idx = logical(r_path<=obj.R);
+            else
+                idx = true(length(r_path), 1);
+            end
             % compute beat times and bar positions of beats
-            results{3} = obj.meter_state2meter(:, t_path);
-            results{1} = obj.find_beat_times(m_path, r_path);
-            results{2} = results{3}(2, :)' .* 60 .* n_path / (obj.M * obj.frame_length);
+            meter = zeros(2, length(r_path));
+            meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
+            % compute beat times and bar positions of beats
+            beats = obj.find_beat_times(m_path, r_path);
+            if strcmp(obj.pattern_size, 'bar')
+                tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
+                    (obj.Meff(r_path(idx)) * obj.frame_length);
+            else
+                tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
+            end
+            results{1} = beats;
+            results{2} = tempo;
+            results{3} = meter;
             results{4} = r_path;            
         end
         
@@ -253,6 +276,10 @@ classdef PF < handle
                 pr_mat(logical(eye(obj.R))) = (1-obj.pr);
                 obj.pr = pr_mat;
             end
+            if isempty(obj.rhythm2meter)
+               obj.rhythm2meter = obj.meter_state2meter(:, ...
+                   obj.rhythm2meter_state)'; 
+            end
         end
         
     end
@@ -283,9 +310,9 @@ classdef PF < handle
             m_path = obj.particles.m(bestParticle, :);
             r_path = obj.particles.r(bestParticle, :);
             n_path = obj.particles.n(bestParticle, :)';
-            m_path = m_path(:);
-            n_path = n_path(:);
-            r_path = r_path(:);
+            m_path = m_path(:)';
+            n_path = n_path(:)';
+            r_path = r_path(:)';
         end
         
                 
