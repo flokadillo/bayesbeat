@@ -39,7 +39,10 @@ classdef ObservationModel
             obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
             obj.use_silence_state = use_silence_state;
             % create mapping from states to gmms
-            obj = obj.make_state2obs_idx(position_state_map, rhythm_state_map);
+            if exist('position_state_map', 'var')
+                obj = obj.make_state2obs_idx(position_state_map, ...
+                    rhythm_state_map);
+            end
             obj.feat_type = feat_type;
         end
         

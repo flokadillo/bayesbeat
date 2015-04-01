@@ -10,9 +10,11 @@ classdef PF < handle
         rhythm2meter                % assigns each rhythmic pattern to a 
         %                           meter [R x 1]
         rhythm2meter_state          % assigns each rhythmic pattern to a 
-                                    %         meter state (1, 2, ...)
+        % meter state (1, 2, ...)  - var not needed anymore but keep due to
+        % compatibility
         meter_state2meter           % specifies meter for each meter state 
-                                    %         (9/8, 8/8, 4/4) [2 x nMeters]
+        % (9/8, 8/8, 4/4) [2 x nMeters] - var not needed anymore but keep due to
+        % compatibility
         barGrid                     % number of different observation model params per bar (e.g., 64)
         minN                        % min tempo (n_min) for each rhythmic pattern
         maxN                        % max tempo (n_max) for each rhythmic pattern
@@ -133,10 +135,7 @@ classdef PF < handle
                     obj.minN(obj.initial_r(c:end));
                 % map m_between_0_and_1 to allowed position range
                 obj.initial_m(c:end) = m_between_0_and_1 .* ...
-                    (obj.Meff(obj.initial_r(c:end))-1)' + 1;
-                % old code
-%                 obj.initial_n(c:end) = n_between_0_and_1 .* (obj.maxN(obj.initial_r(c:end)) - obj.minN(obj.initial_r(c:end))) + obj.minN(obj.initial_r(c:end));
-%                 obj.initial_m(c:end) = m_between_0_and_1 .* (obj.Meff(meter_states)-1)' + 1;
+                    (obj.Meff(obj.initial_r(c:end))-1) + 1;
             end
         end
         
@@ -336,7 +335,8 @@ classdef PF < handle
                 obj.particles_grid.r(:, iFrame) = obj.initial_r;
             end
             % observation probability
-            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
+            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / ...
+                obj.barGrid);
             obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
             weight = log(obs / sum(obs));
             if obj.resampling_scheme > 1

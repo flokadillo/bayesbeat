@@ -6,8 +6,12 @@ classdef HMM
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter [R x 2]
-        rhythm2meter_state  % assigns each rhythmic pattern to a meter state (1, 2, ...)
-        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) [2 x nMeters]
+        rhythm2meter_state  % assigns each rhythmic pattern to a meter state 
+        % (1, 2, ...) - var not needed anymore but keep due to
+        % compatibility
+        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) 
+        % [2 x nMeters]  - var not needed anymore but keep due to
+        % compatibility
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
         frames_per_beat     % frames_per_beat for each rhythmic pattern
@@ -756,8 +760,10 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
-                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind = sub2ind([obj.R, obj.barGrid, nFrames ], ...
+                obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                obj.obs_model.state2obs_idx(minState:maxState, 2), ...
+                ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
