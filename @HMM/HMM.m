@@ -44,7 +44,6 @@ classdef HMM
     methods
         function obj = HMM(Params, rhythm2meter, rhythm_names)
             obj.M = Params.M;
-            obj.N = Params.N;
             obj.R = Params.R;
             bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
             obj.barGrid = max(Params.whole_note_div * bar_durations);
@@ -56,6 +55,7 @@ classdef HMM
             obj.Meff = round((bar_durations) ...
                 * (Params.M ./ (max(bar_durations))));
             obj.pattern_size = Params.pattern_size;
+            
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
             else
@@ -95,7 +95,12 @@ classdef HMM
             if isfield(Params, 'transition_model_type')
                 obj.tm_type = Params.transition_model_type;
             else
-                obj.tm_type = 'whiteley';
+                obj.tm_type = '2015';
+            end
+            if isfield(Params, 'N')
+                obj.N = Params.N;
+            else
+                obj.N = nan;
             end
         end
         
@@ -165,6 +170,11 @@ classdef HMM
                     frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
                         (minN(ri):maxN(ri));
                 end
+                for r_i = 1:obj.R
+                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
+                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
+                    r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
+                end
             elseif strcmp(obj.tm_type, '2015')
                 % number of frames per beat (slowest tempo)
                 % (python: max_tempo_states)
@@ -193,15 +203,16 @@ classdef HMM
                         frames_per_beat{ri} = unique(round(frames_per_beat{ri}));
                     end
                 end
+                for r_i = 1:obj.R
+                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
+                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
+                    r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
+                    (bpms(end)-bpms(end-1)));
+                end
             else
                 error('Transition model %s unknown!\n', obj.tm_type);
             end
-            for r_i = 1:obj.R
-                bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
-                    r_i, bpms(end), bpms(1), (bpms(end-1)-bpms(end)), ...
-                    (bpms(1)-bpms(2)));
-            end
+            
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
                 frames_per_beat, obj.frame_length, ...
@@ -246,7 +257,6 @@ classdef HMM
                         tempi = tempo_per_cluster(:, iCluster) * obj.M * obj.frame_length ...
                             / (60 * meter(2));
                         gmm = gmdistribution.fit(tempi(~isnan(tempi)), obj.init_n_gauss);
-                        % gmm_wide = gmdistribution(gmm.mu, gmm.Sigma, gmm.PComponents);
                         lik = pdf(gmm, (1:obj.N)');
                         % start/stop index of the states that belong to the correct rhythmic pattern
                         startInd = sub2ind([obj.M, obj.N, obj.R], 1, 1, iCluster);
@@ -261,10 +271,9 @@ classdef HMM
                         obj.initial_prob = zeros(n_states, 1);
                         % compute number of valid states:
                         n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(1, obj.R);
-                        n_valid_states = obj.Meff * n_range(:);
+                        n_valid_states = obj.Meff(:)' * n_range(:);
                         prob = 1/n_valid_states;
                         for r_i = 1:obj.R
-                            %                         prob = 1/(obj.R * n_range(r_i) * obj.Meff(r_i));
                             for n_i = obj.trans_model.minN(r_i):obj.trans_model.maxN(r_i)
                                 start_state = sub2ind([obj.M, obj.N, obj.R], 1, ...
                                     n_i, r_i);
@@ -327,7 +336,7 @@ classdef HMM
                 error('inference method not specified\n');
             end
             % decode state index into sub indices
-            if isfield(obj.trans_model, 'mapping_state_position')
+            if isprop(obj.trans_model, 'mapping_state_position')
                 m_path = obj.trans_model.mapping_state_position(...
                     hidden_state_sequence)';
                 n_path = obj.trans_model.mapping_state_tempo(...

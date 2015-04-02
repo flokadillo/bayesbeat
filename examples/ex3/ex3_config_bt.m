@@ -54,7 +54,7 @@ Params.inferenceMethod = 'HMM_viterbi';
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 768;
 % Maximum tempo state 
-Params.N = 11;
+% Params.N = 11;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Number of position grid points per whole note. This is important for the
@@ -76,7 +76,6 @@ Params.pr = 0;
 
 % HMM parameters
 % --------------
-
 % Probability of tempo acceleration (and deceleration)
 Params.pn = 0.01;  
 % Settings for Viterbi learning: tempo_tying

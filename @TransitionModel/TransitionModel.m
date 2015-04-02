@@ -120,6 +120,7 @@ classdef TransitionModel
                 pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
                 % pattern self transitions
                 pr_mat(logical(eye(obj.R))) = (1-obj.pr);
+                obj.pr = pr_mat;
             elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
                 % ok, do nothing
             else
@@ -185,7 +186,7 @@ classdef TransitionModel
                         end
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:obj.R
-                            prob2 = pr_mat(rhi, rhj);
+                            prob2 = obj.pr(rhi, rhj);
                             j = (rhj - 1) * obj.N * obj.M + j_n;
                             ri(p:p+n_bc-1) = i(bar_crossing);
                             cj(p:p+n_bc-1) = j;
