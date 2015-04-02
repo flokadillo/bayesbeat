@@ -66,7 +66,7 @@ classdef BeatTracker < handle
             end
             if ~isfield(obj.Params, 'save_meter')
                 obj.Params.save_meter = 0;
-            end            
+            end
             if ~isfield(obj.Params, 'save_features_to_file')
                 obj.Params.save_features_to_file = 0;
             end
@@ -115,7 +115,7 @@ classdef BeatTracker < handle
         
         
         function init_train_data(obj)
-            fprintf('* Set up training data ...');
+            fprintf('* Set up training data ...\n');
             obj.train_data = Data(obj.Params.trainLab, 1);
             if ~isfield(obj.Params, 'clusterIdFln'), return;  end
             obj.train_data = obj.train_data.read_pattern_bars(...
@@ -155,7 +155,6 @@ classdef BeatTracker < handle
                         obj.feature.load_feature(silence_files{iFile})];
                 end
             end
-            fprintf(' done\n');
         end
         
         function init_test_data(obj)
@@ -305,14 +304,14 @@ classdef BeatTracker < handle
                 obj.test_data.file_list{test_file_id}, ...
                 obj.Params.save_features_to_file);
             % compute observation likelihoods
-%             time_before_inference = toc;
+            %             time_before_inference = toc;
             results = obj.model.do_inference(observations, fname, ...
                 obj.inferenceMethod, do_output);
-%             if do_output
-%                 fprintf('    Real time factor: %.2f\n', (toc - ...
-%                     time_before_inference) / (size(observations, 1) * ...
-%                     obj.feature.frame_length));
-%             end
+            %             if do_output
+            %                 fprintf('    Real time factor: %.2f\n', (toc - ...
+            %                     time_before_inference) / (size(observations, 1) * ...
+            %                     obj.feature.frame_length));
+            %             end
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
@@ -404,7 +403,7 @@ classdef BeatTracker < handle
             fprintf(fid, '%i/%i\n', m(1), m(2));
             fclose(fid);
         end
-               
+        
         
         function smoothedBeats = smooth_beats_sequence(inputBeats, win)
             % smooth_inputBeats(inputBeatFile, outputBeatFile, win)
@@ -438,7 +437,7 @@ classdef BeatTracker < handle
         end
         
         function new_model = convert_to_new_model_format(old_model)
-            new_model = old_model.convert_old_model_to_new();           
+            new_model = old_model.convert_old_model_to_new();
         end
         
     end

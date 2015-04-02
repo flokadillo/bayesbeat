@@ -1,6 +1,6 @@
 classdef Data < handle
     % Data Class (represents training and test data)
-    properties 
+    properties
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
         bar2file                        % specifies for each bar the file id [nBars x 1]
@@ -24,8 +24,8 @@ classdef Data < handle
         feat_type                       % cell array (features (extension) to be used)
     end
     
-
-    methods      
+    
+    methods
         function obj = Data(lab_fln, train)
             % read lab_fln (a file where all data files are listed)
             % lab_fln:  text file with filenames and path
@@ -57,7 +57,7 @@ classdef Data < handle
             for i_file = 1:length(obj.file_list)
                 absolute_path_present = strcmp(obj.file_list{i_file}(1), '~') ...
                     || strcmp(obj.file_list{i_file}(1), filesep) || ...
-                        strcmp(obj.file_list{i_file}(2), ':');  % For windows
+                    strcmp(obj.file_list{i_file}(2), ':');  % For windows
                 if ~absolute_path_present
                     obj.file_list{i_file} = fullfile(pwd, obj.file_list{i_file});
                 end
@@ -176,7 +176,7 @@ classdef Data < handle
             obj.feat_type = featureType;
             % Extract audio features and sort them according to bars and position
             if exist(featuresFln, 'file') && ~reorganize_bars_into_cluster
-                fprintf('* Loading features from %s\n', featuresFln);
+                fprintf('    Loading features from %s\n', featuresFln);
                 load(featuresFln, 'dataPerFile');
             else
                 fprintf('* Extract and organise trainings data: \n');
@@ -220,7 +220,7 @@ classdef Data < handle
             end
         end
         
-     
+        
         function belief_func = make_belief_functions(obj, model)
             belief_func = cell(length(obj.file_list), 2);
             n_states = model.M * model.N * model.R;
@@ -258,7 +258,7 @@ classdef Data < handle
                     states = sub2ind([model.M, model.N, model.R], m(:), n(:), r(:));
                     idx = (iBeat-1)*(tol_win*2+1)*model.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*model.N*length(r_state);
                     i_rows(idx) = iBeat;
-                    j_cols(idx) = states;                   
+                    j_cols(idx) = states;
                     % -----------------------------------------------------
                     % Variant 2: Tolerance win constant in time over tempi
                     % -----------------------------------------------------
@@ -277,7 +277,7 @@ classdef Data < handle
                 belief_func{i_file, 1}(1) = max([belief_func{i_file, 1}(1), 1]);
                 belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
-        end  
+        end
     end
     
     methods (Static)

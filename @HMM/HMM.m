@@ -6,10 +6,10 @@ classdef HMM
         N                   % number of tempo states
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter [R x 2]
-        rhythm2meter_state  % assigns each rhythmic pattern to a meter state 
+        rhythm2meter_state  % assigns each rhythmic pattern to a meter state
         % (1, 2, ...) - var not needed anymore but keep due to
         % compatibility
-        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4) 
+        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
         % [2 x nMeters]  - var not needed anymore but keep due to
         % compatibility
         barGrid             % number of different observation model params
@@ -110,7 +110,7 @@ classdef HMM
             % in future, but is important for compatibility with older models
             % check dimensions of member variables. This function might be removed
             % in future, but is important for compatibility with older models
-            % (in old models Meff and 
+            % (in old models Meff and
             % rhythm2meter_state are row vectors [1 x K] but should be
             % column vectors)
             obj.Meff = obj.Meff(:);
@@ -126,8 +126,8 @@ classdef HMM
                 obj.pr = pr_mat;
             end
             if isempty(obj.rhythm2meter)
-               obj.rhythm2meter = obj.meter_state2meter(:, ...
-                   obj.rhythm2meter_state)'; 
+                obj.rhythm2meter = obj.meter_state2meter(:, ...
+                    obj.rhythm2meter_state)';
             end
         end
         
@@ -173,7 +173,7 @@ classdef HMM
                 for r_i = 1:obj.R
                     bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
                     fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
-                    r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
+                        r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
                 end
             elseif strcmp(obj.tm_type, '2015')
                 % number of frames per beat (slowest tempo)
@@ -206,8 +206,8 @@ classdef HMM
                 for r_i = 1:obj.R
                     bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
                     fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
-                    r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
-                    (bpms(end)-bpms(end-1)));
+                        r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
+                        (bpms(end)-bpms(end-1)));
                 end
             else
                 error('Transition model %s unknown!\n', obj.tm_type);
@@ -581,11 +581,11 @@ classdef HMM
             % rhythm_to_meter: [2 x R]
             rhythm_to_meter = obj.rhythm2meter';
             if size(rhythm_to_meter, 1) ~= 2
-               error('Error: rhythm_to_meter wrong dimension\n') 
+                error('Error: rhythm_to_meter wrong dimension\n')
             end
             tempo_ranges = zeros(2, obj.R);
             tempo_ranges(1, :) = obj.trans_model.min_bpm;
-            tempo_ranges(2, :) = obj.trans_model.max_bpm;           
+            tempo_ranges(2, :) = obj.trans_model.max_bpm;
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;
             % transpose to be consistent with C row-major orientation.
@@ -1038,10 +1038,10 @@ classdef HMM
                     [6, 9, 12]);
                 if is_compund_meter
                     beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2meter(i_r, 1) / 3 + 1));
+                        obj.rhythm2meter(i_r, 1) / 3 + 1));
                 else % simple meter
                     beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2meter(i_r, 1) + 1));
+                        obj.rhythm2meter(i_r, 1) + 1));
                 end
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
@@ -1052,7 +1052,7 @@ classdef HMM
                 % position_states:
                 res_obs = obj.M/obj.barGrid;
                 [dist, btype] = max(beatpositions{rhythm_state(1)} - ...
-                position_state(1));
+                    position_state(1));
                 if (abs(dist) < res_obs/2) && (dist < 0)
                     % if beat is shortly before (within res_obs/2) the audio start we
                     % add one beat at the beginning. E.g. m-sequence starts with

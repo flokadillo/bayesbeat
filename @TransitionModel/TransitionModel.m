@@ -76,7 +76,6 @@ classdef TransitionModel
                 obj.p2s = 0;
                 obj.pfs = 0;
             end
-            fprintf('* Set up transition model .');
             % compute tempo range in frame domain
             for ri = 1:obj.R
                 tempo_states = obj.num_position_states_per_beat(ri) ./ ...
@@ -97,7 +96,7 @@ classdef TransitionModel
             elseif strcmp(tm_type, '2015')
                 obj = obj.make_2015_tm();
             end
-            fprintf('done\n');
+            
         end
         
         
@@ -154,7 +153,6 @@ classdef TransitionModel
             % memory allocation:
             ri = zeros(obj.num_states*3,1); cj = zeros(obj.num_states*3,1); val = zeros(obj.num_states*3,1);
             for rhi = 1:obj.R
-                if do_output, fprintf('.'); end;
                 mi=1:obj.M_per_pattern(rhi);
                 for ni = obj.minN(rhi)+1:obj.maxN(rhi)-1
                     % decode m, n, r into state index i
@@ -572,7 +570,6 @@ classdef TransitionModel
             
             if isempty(corrupt_states_i)
                 error = 0;
-                if dooutput, fprintf('done\n'); end
             else
                 fprintf('    Number of corrupt states: %i  ',length(corrupt_states_i));
                 if ~isempty(corrupt_states_i)

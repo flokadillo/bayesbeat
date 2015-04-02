@@ -84,7 +84,7 @@ Params.save_meter = 0;
 Params.M = 1600;
 % 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
 % set to nan if you want to use the maximum number of tempo states possible
-Params.N = 30;
+Params.N = nan;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Number of position grid points per whole note. This is important for the
@@ -204,7 +204,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_boeck_rwc_3_4';
+Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where bar to rhythm assignments are stored
