@@ -1,40 +1,26 @@
-function Params = config_bt(base_path)
-% [Params] = config_bt
-%   specifies parameters for beat tracking algorithm
-% ----------------------------------------------------------------------
-% INPUT Parameter:
-%   none
-%
-% OUTPUT Parameter:
-%   Params            : structure array with beat tracking parameters
-%
-% 06.09.2012 by Florian Krebs
-% ----------------------------------------------------------------------
+# Config options for the bayes_beat package
 
-% system name
-Params.system = 'BeatTracker';
+The parameters of the system are controlled by a config file that has to be specified when running the meter extraction. In the following, all possible parameters are listed and explained. If a parameter is omitted in the config file, its default settings are assumed. The default settings for each parameters are shown in brackets.
 
-% Path settings
-if exist('base_path', 'var')
-    Params.base_path = base_path;
-else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
-end
-if exist(Params.base_path, 'dir')
-    addpath(Params.base_path)
-else
-    error('Please specify path to bayes_beat class in the config file\n');
-end
+### General
 
-Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'results');
+This setting is intended if the simulation class is used with systems apart from the BeatTracker.  
+`system` = ['BeatTracker']
 
-% SIMULATION PARAMETERS:
-% ======================
+### Path settings
 
-% If n_depends_on_r=true, then use different tempo limits for each rhythm
-% state
-Params.n_depends_on_r = 1;
+Specify the root folder of the bayes_beat package:    
+`base_path`  
+Folder where rhythm-cluster-assignments, sorted-features, etc. are stored:  
+`data_path`   
+Folder where results are stored:  
+`results_path`  
+
+### Simulation settings
+
+If n_depends_on_r=true, then use different tempo limits for each rhythm state:  
+`n_depends_on_r` [=1]  
+
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
 % n_folds_for_cross_validation

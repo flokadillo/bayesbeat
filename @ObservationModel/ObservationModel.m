@@ -40,6 +40,8 @@ classdef ObservationModel
             obj.use_silence_state = use_silence_state;
             % create mapping from states to gmms
             if exist('position_state_map', 'var')
+                % only do this if position_state_map exists. PF systems do
+                % not have a position_state_map and neither need a state2obs_idx
                 obj = obj.make_state2obs_idx(position_state_map, ...
                     rhythm_state_map);
             end

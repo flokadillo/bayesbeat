@@ -9,6 +9,7 @@ classdef Feature
         frame_length    % frame rate in frames per second
         input_fln
         feature
+        feat_freq_range     % [feat_dims x 2] with low and high frequency limits in [Hz]
         
     end
     

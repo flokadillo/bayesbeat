@@ -11,9 +11,12 @@ classdef TransitionModel
         R               % number of rhythmic pattern states
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
+        frame_length
         rhythm2meter    % assigns each rhythmic pattern to a meter [R x 1]
         minN            % min tempo (n_min) for each rhythmic pattern
         maxN            % max tempo (n_max) for each rhythmic pattern
+        min_bpm
+        max_bpm
         state_type      % 'discrete' or 'continuous'
         use_silence_state % [true/false] use silence stateto pause tracker
         alpha           % squeezing factor for the tempo change distribution
@@ -32,9 +35,8 @@ classdef TransitionModel
                                 %  corresponding position
         mapping_state_rhythm    % [n_states, 1] contains for each state the
                                 % corresponding rhythm
-        mapping_tempo_state_id      % [n_states, 1] contains the tempo state number
-        mapping_position_state_id   % [n_states, 1] contains the position state number
-        mapping_substates_state % [M, N, R]
+        mapping_tempo_state_id  % [n_states, 1] contains the tempo state number
+        mapping_position_state_id % [n_states, 1] contains the position state number
         proximity_matrix        % [n_states, 6] states id of neighboring states
                                 %   in the order left, left down, right down,
                                 %   right, right up, left up
@@ -46,8 +48,8 @@ classdef TransitionModel
     
     methods
         function obj = TransitionModel(M_per_pattern, N, R, pn, pr, alpha, ...
-                position_states_per_beat, frames_per_beat, use_silence_state, ...
-                p2s, pfs, tm_type)
+                position_states_per_beat, frames_per_beat, frame_length, ...
+                use_silence_state, p2s, pfs, tm_type)
             % save parameters
             obj.M = max(M_per_pattern);
             obj.M_per_pattern = M_per_pattern;
@@ -56,6 +58,7 @@ classdef TransitionModel
             obj.pn = pn;
             obj.pr = pr;
             obj.alpha = alpha;
+            obj.frame_length = frame_length;
             obj.num_position_states_per_beat = position_states_per_beat;
             obj.num_beats_per_pattern = round(M_per_pattern ./ ...
                 position_states_per_beat);
@@ -81,6 +84,11 @@ classdef TransitionModel
                 obj.minN(ri) = min(tempo_states);
                 obj.maxN(ri) = max(tempo_states);
             end
+            obj.min_bpm = 60 * obj.minN ./ ...
+                (obj.num_position_states_per_beat(ri) * obj.frame_length);
+            obj.max_bpm = 60 * obj.maxN ./ ...
+                (obj.num_position_states_per_beat(ri) * obj.frame_length);
+            
             if ~exist('tm_type', 'var')
                 tm_type = 'whiteley';
             end
@@ -318,8 +326,6 @@ classdef TransitionModel
             obj.mapping_state_rhythm = ones(obj.num_states, 1, 'int32') * (-1);
             obj.mapping_position_state_id = ones(obj.num_states, 1, 'int32') * (-1);
             obj.mapping_tempo_state_id = ones(obj.num_states, 1, 'int32') * (-1);
-            obj.mapping_substates_state = ones(max_n_pos_states, ...
-                max_n_tempo_states, obj.R, 'int32') * (-1);
             obj.num_position_states_per_pattern = cell(obj.R, 1);
             obj.proximity_matrix = ones(obj.num_states, 6, 'int32') * (-1);
             si = 1;
@@ -341,9 +347,6 @@ classdef TransitionModel
                     obj.mapping_position_state_id(idx) = 1:n_pos_states(tempo_state_i);
                     obj.num_position_states_per_pattern{ri}(tempo_state_i) = ...
                         n_pos_states(tempo_state_i);
-                    for i = 1:n_pos_states(tempo_state_i)
-                        obj.mapping_substates_state(i, tempo_state_i, ri) = idx(i);
-                    end
                     % set up proximity matrix
                     % states to the left
                     obj.proximity_matrix(idx, 1) = [idx(end), idx(1:end-1)];
@@ -441,7 +444,7 @@ classdef TransitionModel
                 obj.num_beats_per_pattern(:);
             if obj.use_silence_state
                 num_transitions = obj.num_states + num_tempo_transitions - ...
-                    (num_tempo_states * obj.num_beats_per_pattern(:)) + ...
+                    (num_tempo_states' * obj.num_beats_per_pattern(:)) + ...
                     2 * sum(num_tempo_states) + 1;
             else
                 num_transitions = obj.num_states + num_tempo_transitions - ...

@@ -27,7 +27,6 @@ classdef RhythmCluster < handle
         rhythm_names        % {R x 1} strings
         file_2_nBars        % [nFiles x 1] number of bars per file
         cluster_transition_matrix
-        cluster_transitions_fln
     end
     
     methods
@@ -357,13 +356,14 @@ classdef RhythmCluster < handle
             end
             obj.bar_2_cluster = cidx;
             obj.file_2_nBars = file2nBars;
+            % create rhythm transitions
+            obj.compute_cluster_transitions();
             % save all variables related to a cluster assignment to file
             obj.save_cluster_alignment_file();
             ca_fln = obj.clusters_fln;
-            clust_trans_fln = obj.compute_cluster_transitions();
         end
         
-        function clust_trans_fln = compute_cluster_transitions(obj)
+        function [] = compute_cluster_transitions(obj)
             A = zeros(obj.n_clusters, obj.n_clusters);
             for iFile=1:length(obj.train_file_list)
                 bars = find(obj.bar2file==iFile);
@@ -375,14 +375,6 @@ classdef RhythmCluster < handle
             % normalise transition matrix
             A = bsxfun(@rdivide, A , sum(A , 2));
             obj.cluster_transition_matrix = A;
-            % obj.cluster_transition_matrix = eye(size(A));
-            obj.cluster_transitions_fln = fullfile(obj.data_save_path, ...
-                ['cluster_transitions-', obj.dataset, '-', ...
-                num2str(obj.feature.feat_dim), 'd-', ...
-                num2str(obj.n_clusters), '.txt']);
-            dlmwrite(obj.cluster_transitions_fln, obj.cluster_transition_matrix);
-            clust_trans_fln = obj.cluster_transitions_fln;
-            fprintf('Saved transition matrix to %s\n', obj.cluster_transitions_fln);
         end
         
         function [ca_fln] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
@@ -516,6 +508,7 @@ classdef RhythmCluster < handle
             end
             obj.rhythm_names = rhythm_names;
             obj.file_2_nBars = nBars;
+            obj.compute_cluster_transitions();
             obj.save_cluster_alignment_file();
         end
     end
@@ -527,10 +520,11 @@ classdef RhythmCluster < handle
             bar2rhythm = obj.bar_2_cluster;
             rhythm_names = obj.rhythm_names;
             file2nBars = obj.file_2_nBars;
+            pr = obj.cluster_transition_matrix;
             save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
-                'file2nBars', 'rhythm_names', 'rhythm2meter');
+                'file2nBars', 'rhythm_names', 'rhythm2meter', 'pr');
             fprintf('    Saved bar2rhythm, bar2file, file2nBars, rhythm_names, ');
-            fprintf('rhythm2meter to %s\n', obj.clusters_fln);
+            fprintf('rhythm2meter, pr to %s\n', obj.clusters_fln);
         end
         
         function [] = plot_patterns(cidx, ctrs, bar_pos, pattern_scope, ...

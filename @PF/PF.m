@@ -7,12 +7,12 @@ classdef PF < handle
         R                           % number of rhythmic pattern states
         T                           % number of meters
         pr                          % probability of a switch in rhythmic pattern
-        rhythm2meter                % assigns each rhythmic pattern to a 
+        rhythm2meter                % assigns each rhythmic pattern to a
         %                           meter [R x 1]
-        rhythm2meter_state          % assigns each rhythmic pattern to a 
+        rhythm2meter_state          % assigns each rhythmic pattern to a
         % meter state (1, 2, ...)  - var not needed anymore but keep due to
         % compatibility
-        meter_state2meter           % specifies meter for each meter state 
+        meter_state2meter           % specifies meter for each meter state
         % (9/8, 8/8, 4/4) [2 x nMeters] - var not needed anymore but keep due to
         % compatibility
         barGrid                     % number of different observation model params per bar (e.g., 64)
@@ -57,8 +57,8 @@ classdef PF < handle
             obj.R = Params.R;
             obj.T = size(Params.meters, 2);
             obj.nParticles = Params.nParticles;
-%             obj.sigma_N = Params.sigmaN; % moved this to
-%             make_transition_model
+            %             obj.sigma_N = Params.sigmaN; % moved this to
+            %             make_transition_model
             obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ...
                 ./ Params.meters(2, :)));
             obj.frame_length = Params.frame_length;
@@ -90,7 +90,7 @@ classdef PF < handle
                     sum(100*clock)));
             else
                 rng('shuffle');
-            end       
+            end
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
@@ -123,7 +123,7 @@ classdef PF < handle
                 c = c + nParts(iR);
             end
             if sum(nParts) < obj.nParticles
-                % add remaining particles randomly 
+                % add remaining particles randomly
                 % random pattern assignment
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) ...
                     * (obj.R-1) + 1;
@@ -167,9 +167,9 @@ classdef PF < handle
                 obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
             end
             if max(obj.maxN) > obj.N
-               fprintf('    N should be %i instead of %i -> corrected\n', ...
-                   max(obj.maxN), obj.N); 
-               obj.N = ceil(max(obj.maxN));
+                fprintf('    N should be %i instead of %i -> corrected\n', ...
+                    max(obj.maxN), obj.N);
+                obj.N = ceil(max(obj.maxN));
             end
             if ~obj.n_depends_on_r % no dependency between n and r
                 obj.minN = ones(1, obj.R) * min(obj.minN);
@@ -214,12 +214,12 @@ classdef PF < handle
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
             if isempty(strfind(inference_method, 'PF'))
-               error('Inference method %s not compatible with PF model\n', inference_method);
+                error('Inference method %s not compatible with PF model\n', inference_method);
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             obj = obj.forward_filtering(obs_lik, fname);
-            [m_path, n_path, r_path] = obj.path_via_best_weight();          
+            [m_path, n_path, r_path] = obj.path_via_best_weight();
             
             % strip of silence state
             if obj.use_silence_state
@@ -241,7 +241,7 @@ classdef PF < handle
             results{1} = beats;
             results{2} = tempo;
             results{3} = meter;
-            results{4} = r_path;            
+            results{4} = r_path;
         end
         
         function [ joint_prob ] = compute_joint_of_sequence(obj, state_sequence, obs_lik)
@@ -260,7 +260,7 @@ classdef PF < handle
         function obj = convert_old_model_to_new(obj)
             % check dimensions of member variables. This function might be removed
             % in future, but is important for compatibility with older models
-            % (in old models Meff and 
+            % (in old models Meff and
             % rhythm2meter_state are row vectors [1 x K] but should be
             % column vectors)
             obj.Meff = obj.Meff(:);
@@ -276,8 +276,8 @@ classdef PF < handle
                 obj.pr = pr_mat;
             end
             if isempty(obj.rhythm2meter)
-               obj.rhythm2meter = obj.meter_state2meter(:, ...
-                   obj.rhythm2meter_state)'; 
+                obj.rhythm2meter = obj.meter_state2meter(:, ...
+                    obj.rhythm2meter_state)';
             end
         end
         
@@ -314,8 +314,8 @@ classdef PF < handle
             r_path = r_path(:)';
         end
         
-                
-        function obj = forward_filtering(obj, obs_lik, fname)           
+        
+        function obj = forward_filtering(obj, obs_lik, fname)
             nFrames = size(obs_lik, 3);
             if obj.save_inference_data
                 logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
@@ -368,7 +368,7 @@ classdef PF < handle
                     r(crossed_barline(rInd), iFrame) = ...
                         randsample(obj.R, 1, true, ...
                         obj.pr(r(crossed_barline(rInd),iFrame-1),:));
-                end              
+                end
                 % evaluate particle at iFrame-1
                 obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
                 weight = weight(:) + log(obs(:));
@@ -453,10 +453,10 @@ classdef PF < handle
                     [6, 9, 12]);
                 if is_compund_meter
                     beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2meter(i_r, 1) / 3 + 1));
+                        obj.rhythm2meter(i_r, 1) / 3 + 1));
                 else % simple meter
                     beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2meter(i_r, 1) + 1));
+                        obj.rhythm2meter(i_r, 1) + 1));
                 end
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
@@ -474,19 +474,19 @@ classdef PF < handle
                     elseif ((positionPath(i+1) > beatpositions{rhythmPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
                         % bar transition between frame i and frame i+1
                         bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{rhythmPath(i)}(beat_pos));
-                        beats = [beats; [round(bt), beat_pos]];                        
+                        beats = [beats; [round(bt), beat_pos]];
                         break;
                     elseif ((positionPath(i) < beatpositions{rhythmPath(i)}(beat_pos)) && (beatpositions{rhythmPath(i)}(beat_pos) < positionPath(i+1)))
                         % beat position lies between frame i and frame i+1
                         bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{rhythmPath(i)}(beat_pos));
-                        beats = [beats; [round(bt), beat_pos]];  
+                        beats = [beats; [round(bt), beat_pos]];
                         break;
                     end
                 end
             end
             beats(:, 1) = beats(:, 1) * obj.frame_length;
         end
-               
+        
         function [groups] = divide_into_clusters(obj, states, state_dims, groups_old)
             % states: [nParticles x nStates]
             % state_dim: [nStates x 1]
@@ -500,10 +500,10 @@ classdef PF < handle
             % adjust the range of each state variable to make equally
             % important for the clustering
             points = zeros(obj.nParticles, length(state_dims)+1);
-            points(:, 1) = (sin(states(:, 1)' * 2 * pi ./ ...
+            points(:, 1) = (sin(states(:, 1) * 2 * pi ./ ...
                 obj.Meff(states(:, 3))) + 1) * ...
                 obj.state_distance_coefficients(1);
-            points(:, 2) = (cos(states(:, 1)' * 2 * pi ./ ...
+            points(:, 2) = (cos(states(:, 1) * 2 * pi ./ ...
                 obj.Meff(states(:, 3))) + 1) * ...
                 obj.state_distance_coefficients(1);
             points(:, 3) = states(:, 2) * ...
@@ -517,7 +517,7 @@ classdef PF < handle
             for i_dim=1:size(points, 2)
                 %                 centroids(iCluster, :) = mean(points(groups_old == group_ids(iCluster) , :));
                 centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
-            end           
+            end
             % do k-means clustering
             options = statset('MaxIter', 1);
             [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
@@ -573,7 +573,7 @@ classdef PF < handle
                 % add new centroid
                 centroids = [centroids; mean(points(parts_idx(round(length(parts_idx)/2)+1:end), :), 1)];
                 split = 1;
-            end           
+            end
             if split || merged
                 try
                     [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
@@ -593,7 +593,7 @@ classdef PF < handle
         function [weight, groups, newIdx] = resample(obj, weight, groups)
             if obj.resampling_scheme == 0
                 newIdx = obj.resampleSystematic(exp(weight));
-                weight = log(ones(obj.nParticles, 1) / obj.nParticles);  
+                weight = log(ones(obj.nParticles, 1) / obj.nParticles);
             elseif obj.resampling_scheme == 1 % APF
                 % warping:
                 w = exp(weight);
@@ -601,27 +601,28 @@ classdef PF < handle
                 w_warped = f(w);
                 newIdx = obj.resampleSystematic(w_warped);
                 w_fac = w ./ w_warped;
-                weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );  
+                weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
             elseif obj.resampling_scheme == 2 % K-MEANS
                 % k-means clustering
-                [newIdx, weight, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters);
+                [newIdx, weight, groups] = obj.resample_in_groups(groups, ...
+                    weight, obj.n_max_clusters);
                 weight = weight';
             elseif obj.resampling_scheme == 3 % APF + K-MEANS
                 % apf and k-means
-                [newIdx, weight, groups] = obj.resample_in_groups2(groups, weight, obj.n_max_clusters, str2func(obj.warp_fun));
+                [newIdx, weight, groups] = obj.resample_in_groups(groups, ...
+                    weight, obj.n_max_clusters, str2func(obj.warp_fun));
                 weight = weight';
             else
                 fprintf('WARNING: Unknown resampling scheme!\n');
             end
         end
-        
     end
     
     methods (Static)
         
         outIndex = resampleSystematic( w, n_samples );
         
-        outIndex = resampleSystematic2( w, n_samples );
+        outIndex = resampleSystematicInGroups( w, n_samples );
         
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
             % divide space into fixed cells with equal number of grid
@@ -653,8 +654,6 @@ classdef PF < handle
         end
         
         [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun);
-        
-        [outIndex, outWeights, groups] = resample_in_groups2(groups, weights, n_max_clusters, warp_fun);
         
     end
     

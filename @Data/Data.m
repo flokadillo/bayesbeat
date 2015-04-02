@@ -5,6 +5,7 @@ classdef Data < handle
         lab_fln                         % lab file with list of files of dataset
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
+        pr                              % rhythmtransition probability matrix [R x R]
         meter                           % meter of each file [nFiles x 2]
         beats                           % beats of each file {nFiles x 1}[n_beats 3]
         n_bars                          % number of bars of each file [nFiles x 1]
@@ -67,8 +68,8 @@ classdef Data < handle
         function obj = read_pattern_bars(obj, cluster_fln, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, and obj.rhythm2meter
-            %   loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
-            %   creates n_clusters
+            % loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
+            % creates n_clusters
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
                 obj.bar2file = C.bar2file;
@@ -76,11 +77,16 @@ classdef Data < handle
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
+                if isfield(C, 'pr')
+                    % only newer models
+                    obj.pr = C.pr;
+                end
             else
                 error('Cluster file %s not found\n', cluster_fln);
             end
             obj.cluster_fln = cluster_fln;
-            if ismember(0, obj.bar2cluster), obj.bar2cluster = obj.bar2cluster + 1; end
+            if ismember(0, obj.bar2cluster), obj.bar2cluster = ...
+                    obj.bar2cluster + 1; end
             obj.n_clusters = max(obj.bar2cluster);
             
             % read pattern_size

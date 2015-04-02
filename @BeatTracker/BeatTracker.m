@@ -120,6 +120,10 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'clusterIdFln'), return;  end
             obj.train_data = obj.train_data.read_pattern_bars(...
                 obj.Params.clusterIdFln, obj.Params.pattern_size);
+            if ~isempty(obj.train_data.pr)
+                % if pr is given in cluster file save it here
+                obj.Params.pr = obj.train_data.pr;
+            end
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
@@ -182,6 +186,7 @@ classdef BeatTracker < handle
                     tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, ...
                         obj.Params.R);
                 end
+                fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
                 fprintf('* Set up observation model\n');
@@ -220,8 +225,10 @@ classdef BeatTracker < handle
                 tempo_max_per_cluster)
             if isfield(obj.Params, 'cluster_transitions_fln') && ...
                     exist(obj.Params.cluster_transitions_fln, 'file')
+                % load pr from separate file
                 pr = dlmread(obj.Params.cluster_transitions_fln);
             else
+                % use pr of config file
                 pr = obj.Params.pr;
             end
             switch obj.inferenceMethod(1:2)

@@ -90,7 +90,7 @@ Params.res_int = 30;
 %   1) APF
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 0;
+Params.resampling_scheme = 3;
 
 Params.do_viterbi_filtering = 0;
 

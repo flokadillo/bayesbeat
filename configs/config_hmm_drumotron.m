@@ -30,7 +30,7 @@ Params.python_madmom_path = '/home/florian/diss/src/python/madmom';
 
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
-Params.n_depends_on_r = 0;
+Params.n_depends_on_r = 1;
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
 % n_folds_for_cross_validation
@@ -124,62 +124,20 @@ Params.tempo_tying = 1;
 Params.transition_model_type = '2015';
 
 
-% PF parameters
-% -------------
-
-% Number of particles
-Params.nParticles = 1000;
-% Standard deviation of tempo transition. Note that the tempo n is normalised
-% by dividing by M, so the actual sigma is sigmaN * M.
-Params.sigmaN = 0.0001; 
-% If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
-Params.ratio_Neff = 0.1;
-Params.res_int = 30;
-% Type of resampling scheme to be used:
-%   0) Standard SISR (systematic resampling)
-%   1) APF
-%   2) Mixture PF using k-means clustering (MPF)
-%   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 0;
-
-Params.do_viterbi_filtering = 0;
-
-% APF parameters
-% ..............
-% Warping function of weights for APF and AMPF
-Params.warp_fun = '@(x)x.^(1/4)';
-
-% Mixture PF parameters
-% .....................
-% Factors to adjust distance function for k-means [l_m, l_n, l_r]
-Params.state_distance_coefficients = [30, 1, 100];
-% If distance < cluster_merging_thr: merge clusters
-Params.cluster_merging_thr = 20; 
-% If spread > cluster_splitting_thr: split clusters
-Params.cluster_splitting_thr = 30; 
-% If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 100;
-% Number of cluster to start with
-Params.n_initial_clusters = 32;
-
 % Observation model
 % -----------------
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
 Params.observationModelType = 'MOG';
+Params.feat_freq_range = [30, 200; 200, 17000]; 
 % Features (extension) to be used
-%Params.feat_type{2} = 'rnn';
-%Params.feat_type{1} = 'superflux';
 %Params.feat_type{1} = 'superflux_lo_30_Hz_hi_17000_Hz_50_fps.odf';
  Params.feat_type{1} = 'superflux_lo_30_Hz_hi_200_Hz_50_fps.odf';
  Params.feat_type{2} = 'superflux_lo_200_Hz_hi_17000_Hz_50_fps.odf';
+ Params.feat_type{3} = 'superflux_lo_200_Hz_hi_17000_Hz_50_fps.odf';
+% 
 % Params.feat_type{3} = 'superflux_lo_30_Hz_hi_17000_Hz.odf';
-%  Params.feat_type{1} = 'lo230_superflux.mvavg';
-%  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'sprflx-online';
-%  Params.feat_type{1} = 'sprflx-madmom1';
-%  Params.feat_type{2} = 'sprflx-madmom2';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 

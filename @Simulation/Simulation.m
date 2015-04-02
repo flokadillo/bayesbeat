@@ -28,6 +28,9 @@ classdef Simulation
                     fprintf('* Reading %s\n', ['./', config_fun, '.m']);
                 end
             end
+            if ~isfield(obj.Params, 'system')
+                obj.Params.system = 'BeatTracker';
+            end
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
             obj.system = sys_constructor(obj.Params, sim_id);

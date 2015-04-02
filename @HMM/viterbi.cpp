@@ -25,20 +25,20 @@ typedef int mwSize;
 typedef int mwIndex;
 typedef int mwSignedIndex;
 
-// #if (defined(_LP64) || defined(_WIN64)) && !defined(MX_COMPAT_32)
-// /* Currently 2^48 based on hardware limitations */
-// # define MWSIZE_MAX    281474976710655UL
-// # define MWINDEX_MAX   281474976710655UL
-// # define MWSINDEX_MAX  281474976710655L
-// # define MWSINDEX_MIN -281474976710655L
-// #else
-// # define MWSIZE_MAX    2147483647UL
-// # define MWINDEX_MAX   2147483647UL
-// # define MWSINDEX_MAX  2147483647L
-// # define MWSINDEX_MIN -2147483647L
-// #endif
-// #define MWSIZE_MIN    0UL
-// #define MWINDEX_MIN   0UL
+#if (defined(_LP64) || defined(_WIN64)) && !defined(MX_COMPAT_32)
+/* Currently 2^48 based on hardware limitations */
+# define MWSIZE_MAX    281474976710655UL
+# define MWINDEX_MAX   281474976710655UL
+# define MWSINDEX_MAX  281474976710655L
+# define MWSINDEX_MIN -281474976710655L
+#else
+# define MWSIZE_MAX    2147483647UL
+# define MWINDEX_MAX   2147483647UL
+# define MWSINDEX_MAX  2147483647L
+# define MWSINDEX_MIN -2147483647L
+#endif
+#define MWSIZE_MIN    0UL
+#define MWINDEX_MIN   0UL
 #endif
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
@@ -92,8 +92,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //   debug_data = plhs[1] = mxCreateDoubleMatrix(num_states, 1, mxREAL);
   
 //internal variables
-  mexPrintf("States=%d, Frames=%d\n", num_valid_states, num_frames);
-  mexPrintf("Size of Psi matrix: %.1f MB\n", num_valid_states*num_frames*4/1E6);
+//  mexPrintf("States=%d, Frames=%d\n", num_valid_states, num_frames);
+//  mexPrintf("Size of Psi matrix: %.1f MB\n", num_valid_states*num_frames*4/1E6);
   psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxINT32_CLASS, mxREAL);
   std::vector<double> delta(initial_prob_ptr, initial_prob_ptr+num_states);
   std::vector<double> prediction(initial_prob_ptr, initial_prob_ptr+num_states);

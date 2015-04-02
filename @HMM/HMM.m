@@ -204,7 +204,8 @@ classdef HMM
             end
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
-                frames_per_beat, obj.use_silence_state, obj.p2s, obj.pfs, ...
+                frames_per_beat, obj.frame_length, ...
+                obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
@@ -477,8 +478,9 @@ classdef HMM
                 obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 fprintf('    New tempo limits: %i - %i\n', obj.minN(1), obj.maxN(1));
             end
+            % update: mew TransitionModel
             obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
-                obj.rhythm2meter, obj.minN, obj.maxN);
+                obj.rhythm2meter, obj.frame_length, obj.minN, obj.maxN);
             % update observation model
             train_data.feats_file_pattern_barPos_dim = observation_per_state;
             obj.obs_model = obj.obs_model.train_model(train_data);
@@ -567,13 +569,14 @@ classdef HMM
             R = obj.R;
             P = obj.barGrid;
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
-            rhythm_to_meter = obj.rhythm2meter;
+            % rhythm_to_meter: [2 x R]
+            rhythm_to_meter = obj.rhythm2meter';
+            if size(rhythm_to_meter, 1) ~= 2
+               error('Error: rhythm_to_meter wrong dimension\n') 
+            end
             tempo_ranges = zeros(2, obj.R);
-            tempo_ranges(1, :) = (obj.trans_model.minN *...
-                60) ./ (obj.Meff * obj.frame_length);
-            tempo_ranges(2, :) = (obj.trans_model.maxN *...
-                60) ./ (obj.Meff * obj.frame_length);
-            
+            tempo_ranges(1, :) = obj.trans_model.min_bpm;
+            tempo_ranges(2, :) = obj.trans_model.max_bpm;           
             num_gmm_mixtures = n_mix;
             obs_feature_dim = feat_dim;
             % transpose to be consistent with C row-major orientation.
@@ -584,9 +587,7 @@ classdef HMM
             proximity_matrix = obj.trans_model.proximity_matrix';
             observation_model = observation_model;
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
-            
             transition_model_type = obj.tm_type;
-            
             feature_type = obj.obs_model.feat_type{1};
             for i=2:feat_dim
                 feature_type = [feature_type, '_', obj.obs_model.feat_type{i}];
