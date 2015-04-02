@@ -1,25 +1,29 @@
 # Config options for the bayes_beat package
 
-The parameters of the system are controlled by a config file that has to be specified when running the meter extraction. In the following, all possible parameters are listed and explained. If a parameter is omitted in the config file, its default settings are assumed. The default settings for each parameters are shown in brackets.
+The parameters of the system are controlled by a config file that has to be specified when running the meter extraction. In the following, all possible parameters are listed and explained. If a parameter is omitted in the config file, its default settings are assumed. The default settings for each parameters are listed.  
+ 
 
 ### General
 
+* `system` = 'BeatTracker'  
 This setting is intended if the simulation class is used with systems apart from the BeatTracker.  
-`system` = ['BeatTracker']
+
 
 ### Path settings
-
-Specify the root folder of the bayes_beat package:    
-`base_path`  
-Folder where rhythm-cluster-assignments, sorted-features, etc. are stored:  
-`data_path`   
+  
+* `base_path`  
+Specifies the root folder of the bayes_beat package.
+* `data_path`  
+Folder where rhythm-cluster-assignments, sorted-features, etc. are stored.  
+* `results_path`  
 Folder where results are stored:  
-`results_path`  
+
 
 ### Simulation settings
 
+* `n_depends_on_r` = 1  
 If n_depends_on_r=true, then use different tempo limits for each rhythm state:  
-`n_depends_on_r` [=1]  
+
 
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
@@ -58,12 +62,10 @@ Params.save_rhythm = 0;
 % Save time_signature (.meter.txt)
 Params.save_meter = 0;
 
-
-
-% SYSTEM PARAMETERS:
+### System parameters:
 % ==================
 
-% State space size
+#### State space size
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
@@ -115,7 +117,7 @@ Params.learn_tempo_ranges = 1;
 Params.min_tempo = 60;
 Params.max_tempo = 230;
 
-% HMM parameters
+#### HMM parameters
 % --------------
 
 % Probability of tempo acceleration (and deceleration) in the whiteley
@@ -130,10 +132,14 @@ Params.alpha = 100;
 %   1) Global p_n for all changes (only one p_n)
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
-% Type of transition model and state organisation ('whiteley' or '2015')
-Params.transition_model_type = 'whiteley';
 
-% PF parameters
+* `transition_model_type` = '2015'  
+Type of transition model. Can be one of the following:  
+    * 'whiteley': Old transition model as proposed in Whiteley et al. (2006)  
+    * '2015': New transition model  
+
+
+#### PF parameters
 % -------------
 
 % Number of particles
@@ -171,7 +177,7 @@ Params.n_max_clusters = 100;
 % Number of cluster to start with
 Params.n_initial_clusters = 32;
 
-% Observation model
+#### Observation model
 % -----------------
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
@@ -183,10 +189,10 @@ Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 
-% DATA:
+### DATA:
 % =====
 
-% Train data
+#### Train data
 % ----------
 
 % Train dataset
@@ -197,7 +203,7 @@ Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), 'R-meter.mat']);
 
-% Test data
+#### Test data
 % ----------
 
 % Test dataset
@@ -207,5 +213,3 @@ Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/boeck/train12.wav';
 % Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
 % Params.testLab = '~/diss/projects/ismir_beats_2014/lab_files/hainsworth_orig.lab';
-
-end
