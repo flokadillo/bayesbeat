@@ -87,12 +87,29 @@ classdef TransitionModel
                 (obj.num_position_states_per_beat(ri) * obj.frame_length);
             obj.max_bpm = 60 * obj.maxN ./ ...
                 (obj.num_position_states_per_beat(ri) * obj.frame_length);
-            
             if ~exist('tm_type', 'var')
                 tm_type = 'whiteley';
             end
+            % check if a valid pattern transition probability is given. If
+            % not correct it
+            if (length(obj.pr(:)) == 1) && (obj.R > 1)
+                % expand pr to a matrix [R x R]
+                % transitions to other patterns
+                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                % pattern self transitions
+                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
+                obj.pr = pr_mat;
+            elseif (length(obj.pr(:)) == 1) && (obj.R == 1)
+                % Pattern change makes no sense, nevertheless pr has to be
+                % set to 1 instead of 0 to allow the bar transition
+                obj.pr = 1;
+            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
+                % ok, do nothing
+            else
+                error('p_r has wrong dimensions!\n');
+            end
             if strcmp(tm_type, 'whiteley')
-                obj = obj.make_whiteleys_tm(1);
+                obj = obj.make_whiteleys_tm();
             elseif strcmp(tm_type, '2015')
                 obj = obj.make_2015_tm();
             end
@@ -100,7 +117,7 @@ classdef TransitionModel
         end
         
         
-        function obj = make_whiteleys_tm(obj, do_output)
+        function obj = make_whiteleys_tm(obj)
             % This function creates a transition matrix as proposed by
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
@@ -113,18 +130,7 @@ classdef TransitionModel
             obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
-            if (length(obj.pr(:)) == 1) && (obj.R > 1)
-                % expand pr to a matrix [R x R]
-                % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
-                obj.pr = pr_mat;
-            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
-                % ok, do nothing
-            else
-                error('p_r has wrong dimensions!\n');
-            end
+            
             % set up tempo transition matrix
             if size(obj.pn, 1) == obj.R * obj.N
                 n_r_trans = obj.pn;
@@ -168,20 +174,19 @@ classdef TransitionModel
                     % --------------------------------------------------------------
                     bar_crossing = mj < mi;
                     n_bc = sum(bar_crossing);
+                    % number of non-bar-crossings
                     nn_bc = length(bar_crossing) - n_bc;
                     % possible transitions: 3 x T x R
                     ind_rn = (rhi - 1) * obj.N + ni;
                     for n_ind = 1:3
                         if n_ind == 1 % tempo decrease
                             nj = ni - 1;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         else  % tempo increase
                             nj = ni+1;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         end
+                        j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:obj.R
                             prob2 = obj.pr(rhi, rhj);

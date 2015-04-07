@@ -68,7 +68,7 @@ Params.M = 1600;
 % Maximum tempo state 
 Params.N = nan;
 % Number of rhythmic pattern states
-Params.R = 2;
+Params.R = 1;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -122,7 +122,7 @@ Params.pn = 0.001;
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
 % Type of transition model and state organisation ('whiteley' or '2015')
-Params.transition_model_type = '2015';
+Params.transition_model_type = 'whiteley';
 
 
 % PF parameters
@@ -174,10 +174,8 @@ Params.observationModelType = 'MOG';
 % Params.feat_type{1} = 'sprflx2d0';
 % Params.feat_type{2} = 'sprflx2d1';
 %Params.feat_type{1} = 'sprflx';
-%   Params.feat_type{1} = 'lo230_superflux.mvavg.normZ';
-%   Params.feat_type{2} = 'hi250_superflux.mvavg.normZ';
-Params.feat_type{1} = 'sprflx-madmom1';
-Params.feat_type{2} = 'sprflx-madmom2';
+  Params.feat_type{1} = 'lo230_superflux.mvavg';
+  Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Params.feat_type{1} = 'sprflx-madmom-50-1';
 % Params.feat_type{2} = 'sprflx-madmom-50-2';
 % Params.feat_type{1} = 'rnn_orig';
@@ -193,7 +191,7 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom';
+Params.train_set = 'boeck_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where pattern transitions are stored
