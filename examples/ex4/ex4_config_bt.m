@@ -22,9 +22,8 @@ if ~exist(Params.base_path, 'dir')
     error('Please specify path to bayes_beat class in the config file\n');
 end
 addpath(Params.base_path)
-Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'examples/ex4/results');
-Params.temp_path = fullfile(Params.base_path, 'temp');
+Params.data_path = fullfile(Params.base_path, 'examples/ex4');
+Params.results_path = fullfile(Params.base_path, 'examples/ex4');
 
 % SIMULATION PARAMETERS:
 % ======================

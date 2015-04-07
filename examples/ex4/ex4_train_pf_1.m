@@ -6,8 +6,8 @@ Params = ex4_config_bt('~/diss/src/matlab/beat_tracking/bayes_beat');
 sim_id = 1;
 
 % CLUSTERING THE DATASET
-
-Clustering = RhythmCluster('examples/ex4/test_3_4.lab');
+Clustering = RhythmCluster('examples/ex4/test_3_4.lab', Params.feat_type, ...
+    Params.frame_length, Params.data_path, 'bar');
 % cluster the dataset according to the meter of each file
 Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
 
