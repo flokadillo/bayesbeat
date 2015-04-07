@@ -15,12 +15,17 @@ function Params = ex1_config_bt(base_path)
 Params.system = 'BeatTracker';
 
 % Path settings
+% Set path to the bayes_beat class
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
-Params.results_path = fullfile(Params.base_path, 'examples/ex1/results');
+if ~exist(Params.base_path, 'dir')
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+addpath(Params.base_path)
+Params.results_path = fullfile(Params.base_path, 'examples/ex1');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -44,6 +49,6 @@ Params.frame_length = 0.02;
 
 % Test data
 % ----------
- Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
+ Params.testLab = fullfile(Params.base_path, 'examples/audio/train1.flac');
 
 end

@@ -54,7 +54,6 @@ if mod(winsize,2) == 0          % winsize even - rounding is not the perfect sol
 else                            % winsize odd
     Mo2 = (winsize-1)/2;
 end
-
 % ----------------------------------------------------------------------
 if type == 0
 % ----------------------------------------------------------------------
@@ -73,9 +72,7 @@ if type == 0
     zp = zeros(fftsize-winsize,1);  % zero padding (to be inserted)
     for m=1:nblocks
         xt = x(xoff+1:xoff+winsize);  % extract frame of input data
-%         figure; plot(xt(1:10));
         xtw = w .* xt;                % apply window to current frame
-%         figure; plot(xtw(1:10));
         % zero padding and circular shifting to calculate phase at the center of
         % the window and not at the beginning
         xtwz = [xtw(Mo2+1:winsize); zp; xtw(1:Mo2)];
@@ -149,17 +146,11 @@ elseif type == 1
     end
     S = S2;  
 end
-
 N = size(S,2);
 S = S(1:fftsize/2,:);     % throw away negative frequencies
 f = (1:fftsize/2) .* fs/fftsize;  % make frequency axis
 t = (0:hopsize:nframes) / fs; % time axis in seconds
 t = t(1:N);
-% if strcmp(type.freq,'midi')
-%     [ S, f ] = spec2midi( S, fs );
-% end
-
-
 % --------------------------------------------------------------------
 % Plot Spectrogram
 % --------------------------------------------------------------------
@@ -175,7 +166,6 @@ if plots == 1
     %         P(P < -100) = 0;    % threshhold -100 dB
     imagesc(P);
     numticks = 10;
-    
     if numticks > min(length(fp), length(t)), numticks = min(length(fp), length(t)); end;
     set(gca,'YDir','normal'); % displays lower values of y on the bottom, and higher values on top
     set(gca,'YTick',[1:round(length(fp)/numticks):length(f)]) % puts one tick (Beschriftung) at the y axis every 5 data points

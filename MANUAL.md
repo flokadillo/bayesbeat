@@ -1,35 +1,30 @@
-function Params = config_hmm_viterbi(base_path)
-% [Params] = config_bt
-%   specifies parameters for beat tracking algorithm
-% ----------------------------------------------------------------------
-% INPUT Parameter:
-%   none
-%
-% OUTPUT Parameter:
-%   Params            : structure array with beat tracking parameters
-%
-% 06.09.2012 by Florian Krebs
-% ----------------------------------------------------------------------
+# Config options for the bayes_beat package
 
-% system name
-Params.system = 'BeatTracker';
+The parameters of the system are controlled by a config file that has to be specified when running the meter extraction. In the following, all possible parameters are listed and explained. If a parameter is omitted in the config file, its default settings are assumed. The default settings for each parameters are listed.  
+ 
 
-% Path settings
-if exist('base_path', 'var')
-    Params.base_path = base_path;
-else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
-end
-Params.data_path = fullfile(Params.base_path, 'data');
-Params.results_path = fullfile(Params.base_path, 'results');
-Params.temp_path = fullfile(Params.base_path, 'temp');
+### General
 
-% SIMULATION PARAMETERS:
-% ======================
+* `system` = 'BeatTracker'  
+This setting is intended if the simulation class is used with systems apart from the BeatTracker.  
 
-% If n_depends_on_r=true, then use different tempo limits for each rhythm
-% state
-Params.n_depends_on_r = 1;
+
+### Path settings
+  
+* `base_path`  
+Specifies the root folder of the bayes_beat package.
+* `data_path`  
+Folder where rhythm-cluster-assignments, sorted-features, etc. are stored.  
+* `results_path`  
+Folder where results are stored:  
+
+
+### Simulation settings
+
+* `n_depends_on_r` = 1  
+If n_depends_on_r=true, then use different tempo limits for each rhythm state:  
+
+
 % If patternGiven=true, then take the pattern labels as given
 Params.patternGiven = 0;
 % n_folds_for_cross_validation
@@ -51,31 +46,42 @@ Params.inferenceMethod = 'HMM_viterbi';
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '~/diss/src/matlab/beat_tracking/bayes_beat/data/big_hmm_carnatic_beats.mat';
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
+% Use mex implementation of viterbi decoding
 Params.use_mex_viterbi = 1;
+% Save beat times and corresponding position within a bar (.beats.txt)
+Params.save_beats = 1;
+% Save only downbeats (.downbeats.txt)
+Params.save_downbeats = 0;
+% Save median tempo (.bpm.txt)
+Params.save_tempo = 0;
+% Save rhythm (.rhythm.txt)
+Params.save_rhythm = 0;
+% Save time_signature (.meter.txt)
+Params.save_meter = 0;
 
-% SYSTEM PARAMETERS:
+### System parameters:
 % ==================
 
-% State space size
+#### State space size
 % ----------------
 
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 1600;
-% Maximum tempo state 
-Params.N = nan;
+% 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
+% set to nan if you want to use the maximum number of tempo states possible
+Params.N = 30;
 % Number of rhythmic pattern states
-Params.R = 1;
+Params.R = 2;
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
 % Length of rhythmic patterns {beat', 'bar'}
 Params.pattern_size = 'bar'; % 'beat' or 'bar'
 % Audio frame length [sec]
-Params.frame_length = 0.01;
+Params.frame_length = 0.02;
 % Model initial distribution over tempo states by mixture of init_n_gauss
 % Gaussians.
 Params.init_n_gauss = 0;
@@ -103,29 +109,37 @@ Params.pr = 0;
 % onset detection function to correct for the rough discretisation of the
 % observation model
 Params.correct_beats = 0;
-% Squeezing factor for the tempo change distribution in the 2015 TM
+% Learn tempo ranges from data
+Params.learn_tempo_ranges = 1;
+% Set tempo limits (same for all rhythmic patterns). If 
+% learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
+% a certain range given by min_tempo and max_tempo [BPM]
+Params.min_tempo = 60;
+Params.max_tempo = 230;
+
+#### HMM parameters
+% --------------
+
+% Probability of tempo acceleration (and deceleration) in the whiteley
+% model
+Params.pn = 0.001;  
+% squeezing factor for the tempo change distribution
 %  (higher values prefer a constant tempo over a tempo
 %               change from one beat to the next one)
 Params.alpha = 100;
-% Set tempo limits (same for all rhythmic patterns). If no ranges are given, they are learned from data.
-% Params.min_tempo = 60;
-% Params.max_tempo = 215;
-
-% HMM parameters
-% --------------
-
-% Probability of tempo acceleration (and deceleration)
-Params.pn = 0.001;  
 % Settings for Viterbi learning: tempo_tying
 %   0) p_n tied across position states (different p_n for each n)
 %   1) Global p_n for all changes (only one p_n)
 %   2) Separate p_n for tempo increase and decrease (two different p_n)
 Params.tempo_tying = 1; 
-% Type of transition model and state organisation ('whiteley' or '2015')
-Params.transition_model_type = 'whiteley';
+
+* `transition_model_type` = '2015'  
+Type of transition model. Can be one of the following:  
+    * 'whiteley': Old transition model as proposed in Whiteley et al. (2006)  
+    * '2015': New transition model  
 
 
-% PF parameters
+#### PF parameters
 % -------------
 
 % Number of particles
@@ -163,53 +177,39 @@ Params.n_max_clusters = 100;
 % Number of cluster to start with
 Params.n_initial_clusters = 32;
 
-% Observation model
+#### Observation model
 % -----------------
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
-% Params.observationModelType = 'RNN';
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-% Params.feat_type{1} = 'sprflx2d0';
-% Params.feat_type{2} = 'sprflx2d1';
-%Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'sprflx-madmom-50-1';
-% Params.feat_type{2} = 'sprflx-madmom-50-2';
-% Params.feat_type{1} = 'rnn_orig';
-% Params.feat_type{1} = 'rnn_hainsworth';
-% Params.feat_type{1} = 'sprflx-online';
+Params.feat_type{1} = 'lo230_superflux.mvavg';
+Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 
-% DATA:
+### DATA:
 % =====
 
-% Train data
+#### Train data
 % ----------
 
 % Train dataset
-Params.train_set = 'boeck_4';
+Params.train_set = 'ballroom_boeck_rwc_3_4';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
-% Path to file where pattern transitions are stored
-%   Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
-% Path to file where cluster to bar assignments are stored
+% Path to file where bar to rhythm assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), 'R-meter.mat']);
 
-% Test data
+#### Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'ballroom';
+Params.test_set = 'rwc_2_3_4';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
 % Params.testLab = '~/diss/data/beats/boeck/train12.wav';
 % Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
 % Params.testLab = '~/diss/projects/ismir_beats_2014/lab_files/hainsworth_orig.lab';
-
-end

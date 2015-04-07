@@ -22,7 +22,7 @@ for iPos = 1:length(obs_params)
     O(iPos, :) = pdf('gamma', observation, ...
         obs_params{iPos}(1), obs_params{iPos}(2));
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -33,7 +33,7 @@ for iPos = 1:length(obs_params)
     O(iPos, :) = pdf('inversegaussian', observation, ...
         obs_params{iPos}(1), obs_params{iPos}(2));
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -43,7 +43,7 @@ O = zeros(length(obs_params), length(observation));
 for iPos = 1:length(obs_params)
     O(iPos, :) = pdf(obs_params{iPos}, observation);
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -54,7 +54,7 @@ for iPos = 1:length(obs_params)
     O(iPos, :) = pdf(obs_params{iPos}, reshape([observation.onsets], ...
         length(observation(1).onsets), [])');
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -71,7 +71,7 @@ for iPos = 1:length(obs_params)
     O(iPos, indZeros) = obs_params{iPos}{1};
 end
 
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -81,7 +81,7 @@ O = ones(size(obs_params.obs, 1), 1);
 for iDim=1:obs_params.nDim
     O = O .* gampdf(observation.onsets(iDim), obs_params.obs(:, 1, iDim), obs_params.obs(:, 2, iDim));
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -91,7 +91,7 @@ O = ones(size(obs_params.obs, 1), obs_params.nDim);
 for iDim=1:obs_params.nDim
     O(:, iDim) = gampdf(observation.onsets(iDim), obs_params.obs(:, 1, iDim), obs_params.obs(:, 2, iDim));
 end
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 O = mean(O, 2);
 end
@@ -156,7 +156,7 @@ for iPos = 1:length(obs_params)
     O(iPos, :) = pdf('Normal', observation, obs_params{iPos}(1), obs_params{iPos}(2));
 end
 % O = normpdf(observation, obs_params{iPos}, obs_params{iPos});
-% % set likelihood to zero for unpossible states
+% % set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -167,14 +167,14 @@ for iPos = 1:length(obs_params)
     O(iPos, :) = pdf('Normal', observation, obs_params{iPos}(1), obs_params{iPos}(2));
 end
 % O = normpdf(observation, obs_params{iPos}, obs_params{iPos});
-% % set likelihood to zero for unpossible states
+% % set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
 function O = multivariateGauss0(observation, obs_params)
 % obs_params.obs:  parameters of gamma distribution for each state [states x 2]
 O = normpdf(observation.onsets, zeros(obs_params.nDim, 1), obs_params.obs(:, 2, iDim));
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 end
 
@@ -205,7 +205,7 @@ function O = gammaTempo(observation, obs_params)
 % obs_params.obs:  parameters of gamma distribution for each state [states x 2]
 % observations [timeframes x 2]: [flux tempo]
 O = gampdf(observation.onsets, obs_params.obs(:,1), obs_params.obs(:,2));
-% set likelihood to zero for unpossible states
+% set likelihood to zero for impossible states
 O(isnan(O)) = 0;
 [outMat] = replicateVecAlong(obs_params.M, obs_params.N, obs_params.T, obs_params.R, 2, observation.tempo);
 O = outMat .* O;

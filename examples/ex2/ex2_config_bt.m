@@ -20,8 +20,11 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
-Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
-Params.results_path = fullfile(Params.base_path, 'examples/ex2/results');
+if ~exist(Params.base_path, 'dir')
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+addpath(Params.base_path)
+Params.results_path = fullfile(Params.base_path, 'examples/ex2/');
 Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
@@ -29,7 +32,6 @@ Params.temp_path = fullfile(Params.base_path, 'temp');
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF', 'PF_viterbi'}
 Params.inferenceMethod = 'PF';
 % Filename of pre-stored model to load
-% Params.model_fln = fullfile(Params.base_path, 'examples/ex1/hmm_boeck.mat');
 Params.model_fln = fullfile(Params.base_path, 'examples/ex2/pf_boeck.mat');
  
 % SYSTEM PARAMETERS:

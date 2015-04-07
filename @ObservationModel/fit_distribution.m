@@ -14,21 +14,19 @@ end
 params = cell(nPatterns, nPos);
 
 for iPattern=1:nPatterns % all clusters
-    fprintf('.');
-    
     for iPos=1:nPos
         if nFiles == 1
             % resulting featureValues should be a matrix [nValues x featDim]
             % if files are squeezed out we have to transpose
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :))');
+            featureValues = cell2mat(squeeze(...
+                dataPerClusterAndPosition(:, iPattern, iPos, :))');
         else
-            featureValues = cell2mat(squeeze(dataPerClusterAndPosition(:, iPattern, iPos, :)));
+            featureValues = cell2mat(squeeze(...
+                dataPerClusterAndPosition(:, iPattern, iPos, :)));
         end
-        
-        if isempty(featureValues), 
-            break; 
+        if isempty(featureValues),
+            break;
         end
-        
         switch obj.dist_type
             case 'gamma'
                 featureValues(featureValues<eps) = eps;
@@ -61,7 +59,6 @@ for iPattern=1:nPatterns % all clusters
             otherwise
                 error('distribution type %s unknown !', obj.dist_type);
         end
-        
     end
 end
 warning('on');

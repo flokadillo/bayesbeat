@@ -20,9 +20,14 @@ if exist('base_path', 'var')
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
+if exist(Params.base_path, 'dir')
+    addpath(Params.base_path)
+else
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+
 Params.data_path = fullfile(Params.base_path, 'data');
 Params.results_path = fullfile(Params.base_path, 'results');
-Params.temp_path = fullfile(Params.base_path, 'temp');
 
 % SIMULATION PARAMETERS:
 % ======================
@@ -51,12 +56,23 @@ Params.inferenceMethod = 'HMM_viterbi';
 Params.viterbi_learning_iterations = 0;
 % Filename of pre-stored model to load
 % Params.model_fln = fullfile(Params.temp_path, 'last_model.mat');
-% Params.model_fln = '~/diss/src/matlab/beat_tracking/bayes_beat/data/big_hmm_carnatic_beats.mat';
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
 % Use mex implementation of viterbi decoding
 Params.use_mex_viterbi = 1;
+% Save beat times and corresponding position within a bar (.beats.txt)
+Params.save_beats = 1;
+% Save only downbeats (.downbeats.txt)
+Params.save_downbeats = 0;
+% Save median tempo (.bpm.txt)
+Params.save_tempo = 0;
+% Save rhythm (.rhythm.txt)
+Params.save_rhythm = 0;
+% Save time_signature (.meter.txt)
+Params.save_meter = 0;
+
+
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -68,7 +84,7 @@ Params.use_mex_viterbi = 1;
 Params.M = 1600;
 % 'Whiteley tm': Maximum tempo state  , '2015 tm': Number of tempo states,
 % set to nan if you want to use the maximum number of tempo states possible
-Params.N = 30;
+Params.N = nan;
 % Number of rhythmic pattern states
 Params.R = 2;
 % Number of position grid points per whole note. This is important for the
@@ -105,11 +121,13 @@ Params.pr = 0;
 % onset detection function to correct for the rough discretisation of the
 % observation model
 Params.correct_beats = 0;
-% Set tempo limits (same for all rhythmic patterns). If no ranges are given, 
-% they are learned from data. If tempi beyond [30, 300] BPM are found, the
-% tempo range is restricted to [40, 300] BPM
-% Params.min_tempo = 60;
-% Params.max_tempo = 215;
+% Learn tempo ranges from data
+Params.learn_tempo_ranges = 1;
+% Set tempo limits (same for all rhythmic patterns). If 
+% learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
+% a certain range given by min_tempo and max_tempo [BPM]
+Params.min_tempo = 60;
+Params.max_tempo = 230;
 
 % HMM parameters
 % --------------
@@ -128,8 +146,6 @@ Params.alpha = 100;
 Params.tempo_tying = 1; 
 % Type of transition model and state organisation ('whiteley' or '2015')
 Params.transition_model_type = 'whiteley';
-
-
 
 % PF parameters
 % -------------
@@ -174,17 +190,10 @@ Params.n_initial_clusters = 32;
 
 % Distribution type {invGauss, fixed, gamma, histogram, multivariateHistogram,
 % bivariateGauss, mixOfGauss, MOG, MOG3, ...}
-% Params.observationModelType = 'RNN';
 Params.observationModelType = 'MOG';
 % Features (extension) to be used
-% Params.feat_type{1} = 'sprflx2d0';
-% Params.feat_type{2} = 'sprflx2d1';
-%Params.feat_type{1} = 'sprflx';
-  Params.feat_type{1} = 'lo230_superflux.mvavg';
-  Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Params.feat_type{1} = 'rnn_orig';
-% Params.feat_type{1} = 'rnn_hainsworth';
-% Params.feat_type{1} = 'sprflx-online';
+Params.feat_type{1} = 'lo230_superflux.mvavg';
+Params.feat_type{2} = 'hi250_superflux.mvavg';
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 
@@ -195,13 +204,10 @@ Params.featureDim = length(Params.feat_type);
 % ----------
 
 % Train dataset
-Params.train_set = 'ballroom_boeck_rwc_3_4';
+Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
-% Path to file where pattern transitions are stored
-%   Params.cluster_transitions_fln = fullfile(Params.data_path, ['cluster_transitions-', ...
-%       Params.train_set, '-', num2str(Params.featureDim), 'd-', num2str(Params.R), '.txt']);
-% Path to file where cluster to bar assignments are stored
+% Path to file where bar to rhythm assignments are stored
 Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
     num2str(Params.R), 'R-meter.mat']);
 

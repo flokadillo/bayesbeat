@@ -11,13 +11,17 @@ function Params = ex4_config_bt(base_path)
 % 06.09.2012 by Florian Krebs
 % ----------------------------------------------------------------------
 
+Params.system = 'BeatTracker';
 % Path settings
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
     Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 end
-Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+if ~exist(Params.base_path, 'dir')
+    error('Please specify path to bayes_beat class in the config file\n');
+end
+addpath(Params.base_path)
 Params.data_path = fullfile(Params.base_path, 'data');
 Params.results_path = fullfile(Params.base_path, 'examples/ex4/results');
 Params.temp_path = fullfile(Params.base_path, 'temp');
@@ -86,7 +90,7 @@ Params.res_int = 30;
 %   1) APF
 %   2) Mixture PF using k-means clustering (MPF)
 %   3) Auxiliary mixture particle filter (AMPF)
-Params.resampling_scheme = 0;
+Params.resampling_scheme = 3;
 
 Params.do_viterbi_filtering = 0;
 

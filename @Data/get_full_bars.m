@@ -1,4 +1,5 @@
-function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
+function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
+    verbose)
 %  [nBars, beatIdx] = find_full_bars(beats, [tolInt, verbose])
 %  returns complete bars within a sequence of beat numbers
 % ----------------------------------------------------------------------
@@ -22,19 +23,18 @@ if nargin==1
     tolInt = 1.8;
     verbose = 0;
 end
-
 btype = beats(:, 3);
 nBeats = length(btype);
 % find most frequent occuring maximum beat type
 frequency = histc(btype, 1:max(btype));
 for i_meter = max(btype):-1:2
-    % the beat id of the main meter should appear frequently
+    % the beat id of the main meter should appear more often as the
+    % downbeat - 10
     if frequency(i_meter) >= (frequency(1) - 10)
         meter = i_meter;
         break;
     end
 end
-
 % 1) check for pauses
 period = diff(beats(:, 1));
 ratioPeriod = period(2:end , 1) ./ period(1:end-1 , 1);
@@ -44,9 +44,7 @@ if verbose,
 end
 % 2) check for missing or additional beats
 array = diff(btype);
-
 pattern = [ones(1, meter-1), -(meter-1), 1];
-
 barStartIdx = strfind(array', pattern);
 nBars = length(barStartIdx);
 beatIdx = zeros(nBeats, 1);
