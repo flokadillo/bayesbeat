@@ -49,7 +49,7 @@ for iFile=1:nFiles
         [meter, error1] = Data.load_annotations_bt(listing(iFile).name, 'meter');
         [beats_all{iFile}, error2] = Data.load_annotations_bt(listing(iFile).name, 'beats');
         if error1
-            Output.file2meter(iFile, 1) = max(beats_all{iFile}(:, 3));
+            Output.file2meter(iFile, 1) = max(beats_all{iFile}(:, 2));
             Output.file2meter(iFile, 2) = 4;
             fprintf('    WARNING: Denominator of the meter unknown, assuming quarter note beats\n');
         else
@@ -78,7 +78,7 @@ for iFile=1:nFiles
     % for one bar to be extracted, the downbeat of the bar itself and the
     % next downbeat has to be present in the annotations. Otherwise, it is
     % discarded
-    b1 = find(beats_all{iFile}(:, 3) == 1);
+    b1 = find(beats_all{iFile}(:, 2) == 1);
     if (length(b1) <= 1) && strcmp(pattern_size, 'bar')
         if dooutput, 
             fprintf(repmat('\b', 1, nchar));
