@@ -76,6 +76,9 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'alpha')
                 obj.Params.alpha = 100;
             end
+            if ~isfield(obj.Params, 'use_silence_state')
+                obj.Params.use_silence_state = 0;
+            end
         end
         
         
