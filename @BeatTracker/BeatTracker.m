@@ -16,21 +16,21 @@ classdef BeatTracker < handle
     methods
         function obj = BeatTracker(Params, sim_id)
             % parse probabilistic model
-            if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
-                if exist(Params.model_fln, 'file')
-                    c = load(Params.model_fln);
-                    fields = fieldnames(c);
-                    obj.model = c.(fields{1});
-                    obj.model = obj.convert_to_new_model_format(obj.model);
-                    obj.init_model_fln = Params.model_fln;
-                    obj.feature = Feature(obj.model.obs_model.feat_type, ...
-                        obj.model.frame_length);
-                else
-                    error('Model file %s not found', model_fln);
-                end
-            else
-                obj.feature = Feature(Params.feat_type, Params.frame_length);
-            end
+%             if isfield(Params, 'model_fln') && ~isempty(Params.model_fln)
+%                 if exist(Params.model_fln, 'file')
+%                     c = load(Params.model_fln);
+%                     fields = fieldnames(c);
+%                     obj.model = c.(fields{1});
+%                     obj.model = obj.convert_to_new_model_format(obj.model);
+%                     obj.init_model_fln = Params.model_fln;
+%                     obj.feature = Feature(obj.model.obs_model.feat_type, ...
+%                         obj.model.frame_length);
+%                 else
+%                     error('Model file %s not found', model_fln);
+%                 end
+%             else
+%                 obj.feature = Feature(Params.feat_type, Params.frame_length);
+%             end
             obj.inferenceMethod = Params.inferenceMethod;
             if exist('sim_id', 'var')
                 obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
@@ -88,12 +88,16 @@ classdef BeatTracker < handle
                     c = load(obj.Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
+                    obj.model = obj.convert_to_new_model_format(obj.model);
                     obj.init_model_fln = obj.Params.model_fln;
-                    fprintf('    Loaded model from %s\n', obj.Params.model_fln);
+                    obj.feature = Feature(obj.model.obs_model.feat_type, ...
+                        obj.model.frame_length);
                 else
-                    fprintf('%s was not found, creating new model ...\n', obj.Params.model_fln);
+                    error('Model file %s not found', model_fln);
                 end
             else
+                obj.feature = Feature(obj.Params.feat_type, ...
+                    obj.Params.frame_length);
                 if isempty(obj.train_data) % no training data given -> set defaults
                     obj.train_data.rhythm_names = cellfun(@(x) num2str(x), ...
                         num2cell(1:obj.Params.R), 'UniformOutput', false);
@@ -210,8 +214,7 @@ classdef BeatTracker < handle
                         save(fln, 'pf');
                 end
                 fprintf('* Saved model (Matlab) to %s\n', fln);
-            end
-            
+            end            
             %  obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
             
             if isfield(obj.Params, 'viterbi_learning_iterations') && ...
