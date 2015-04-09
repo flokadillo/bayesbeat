@@ -336,7 +336,8 @@ classdef HMM
                 error('inference method not specified\n');
             end
             % decode state index into sub indices
-            if isprop(obj.trans_model, 'mapping_state_position')
+            if isprop(obj.trans_model, 'mapping_state_position') && ...
+                    ~isempty(obj.trans_model.mapping_state_position)
                 m_path = obj.trans_model.mapping_state_position(...
                     hidden_state_sequence)';
                 n_path = obj.trans_model.mapping_state_tempo(...
@@ -360,7 +361,7 @@ classdef HMM
             beats = obj.find_beat_times(m_path, r_path, y);
             if strcmp(obj.pattern_size, 'bar')
                 tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
-                    (obj.Meff(r_path(idx)) * obj.frame_length);
+                    (obj.Meff(r_path(idx)') * obj.frame_length);
             else
                 tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
             end

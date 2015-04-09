@@ -87,12 +87,29 @@ classdef TransitionModel
                 (obj.num_position_states_per_beat(ri) * obj.frame_length);
             obj.max_bpm = 60 * obj.maxN ./ ...
                 (obj.num_position_states_per_beat(ri) * obj.frame_length);
-            
             if ~exist('tm_type', 'var')
                 tm_type = 'whiteley';
             end
+            % check if a valid pattern transition probability is given. If
+            % not correct it
+            if (length(obj.pr(:)) == 1) && (obj.R > 1)
+                % expand pr to a matrix [R x R]
+                % transitions to other patterns
+                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                % pattern self transitions
+                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
+                obj.pr = pr_mat;
+            elseif (length(obj.pr(:)) == 1) && (obj.R == 1)
+                % Pattern change makes no sense, nevertheless pr has to be
+                % set to 1 instead of 0 to allow the bar transition
+                obj.pr = 1;
+            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
+                % ok, do nothing
+            else
+                error('p_r has wrong dimensions!\n');
+            end
             if strcmp(tm_type, 'whiteley')
-                obj = obj.make_whiteleys_tm(1);
+                obj = obj.make_whiteleys_tm();
             elseif strcmp(tm_type, '2015')
                 obj = obj.make_2015_tm();
             end
@@ -100,7 +117,7 @@ classdef TransitionModel
         end
         
         
-        function obj = make_whiteleys_tm(obj, do_output)
+        function obj = make_whiteleys_tm(obj)
             % This function creates a transition matrix as proposed by
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
@@ -113,38 +130,38 @@ classdef TransitionModel
             obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
-            if (length(obj.pr(:)) == 1) && (obj.R > 1)
-                % expand pr to a matrix [R x R]
-                % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
-                % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
-                obj.pr = pr_mat;
-            elseif (size(obj.pr, 1) == obj.R) && (size(obj.pr, 2) == obj.R)
-                % ok, do nothing
-            else
-                error('p_r has wrong dimensions!\n');
-            end
-            % set up tempo transition matrix
+            
+            % Set up tempo transition matrix [R*N, N], which has an NxN
+            % transition matrix for each pattern            % 
             if size(obj.pn, 1) == obj.R * obj.N
+                % the tempo transition probability is assumed to differ for
+                % each pattern and each absolute tempo
                 n_r_trans = obj.pn;
-            elseif size(obj.pn, 1) == 2
+            elseif ismember(size(obj.pn, 1), [1, 2])
+                if (size(obj.pn, 1) == 1)
+                    % prob of tempo increase and decrease are the same (pn)
+                    obj.pn = ones(2, 1) * obj.pn;
+                end
+                % pn specifies one probability for tempo speed up (pn(1)), 
+                % and one for tempo slowing down pn(2) 
                 n_r_trans = zeros(obj.R * obj.N, obj.N);
                 for ri = 1:obj.R
                     n_const = diag(ones(obj.N, 1) * (1-sum(obj.pn)), 0);
+                    % Also adjust for values at minN and maxN 
+                    n_const(obj.minN(ri), obj.minN(ri)) = 1 - obj.pn(1);
+                    n_const(obj.maxN(ri),obj.maxN(ri)) = 1 - obj.pn(2);
                     n_up = diag(ones(obj.N, 1) * obj.pn(1), 1);
                     n_down = diag(ones(obj.N, 1) * obj.pn(2), -1);
-                    n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = ...
-                        n_const + n_up(1:obj.N, 1:obj.N) + n_down(1:obj.N, 1:obj.N);
-                end
-            elseif size(obj.pn, 1) == 1 % prob of tempo increase and decrease are the same (pn/2)
-                n_r_trans = zeros(obj.R * obj.N, obj.N);
-                for ri = 1:obj.R
-                    n_const = diag(ones(obj.N, 1) * (1-2*obj.pn), 0);
-                    n_up = diag(ones(obj.N, 1) * obj.pn, 1);
-                    n_down = diag(ones(obj.N, 1) * obj.pn, -1);
-                    n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = ...
-                        n_const + n_up(1:obj.N, 1:obj.N) + n_down(1:obj.N, 1:obj.N);
+                    % add the three matrices
+                    temp = n_const + n_up(1:obj.N, 1:obj.N) + ...
+                        n_down(1:obj.N, 1:obj.N);
+                    % remove tempo change transitions below minN 
+                    temp(1:obj.minN(ri)-1, :) = 0;
+                    temp(:, 1:obj.minN(ri)-1) = 0;
+                    % remove tempo change transitions above maxN 
+                    temp(obj.maxN(ri)+1:obj.N, :) = 0;
+                    temp(:, obj.maxN(ri)+1:obj.N) = 0;
+                    n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = temp;
                 end
             else
                 error('p_n has wrong dimensions!\n');
@@ -154,7 +171,7 @@ classdef TransitionModel
             ri = zeros(obj.num_states*3,1); cj = zeros(obj.num_states*3,1); val = zeros(obj.num_states*3,1);
             for rhi = 1:obj.R
                 mi=1:obj.M_per_pattern(rhi);
-                for ni = obj.minN(rhi)+1:obj.maxN(rhi)-1
+                for ni = obj.minN(rhi):obj.maxN(rhi)
                     % decode m, n, r into state index i
                     i = sub2ind([obj.M, obj.N, obj.R], mi, repmat(ni, 1, ...
                         obj.M_per_pattern(rhi)), ...
@@ -168,20 +185,21 @@ classdef TransitionModel
                     % --------------------------------------------------------------
                     bar_crossing = mj < mi;
                     n_bc = sum(bar_crossing);
+                    % number of non-bar-crossings
                     nn_bc = length(bar_crossing) - n_bc;
                     % possible transitions: 3 x T x R
                     ind_rn = (rhi - 1) * obj.N + ni;
                     for n_ind = 1:3
                         if n_ind == 1 % tempo decrease
+                            if ni == obj.minN(rhi), continue; end
                             nj = ni - 1;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         else  % tempo increase
-                            nj = ni+1;
-                            j_n = mj(bar_crossing) + (nj - 1) * obj.M;
+                            if ni == obj.maxN(rhi), continue; end
+                            nj = ni + 1;
                         end
+                        j_n = mj(bar_crossing) + (nj - 1) * obj.M;
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:obj.R
                             prob2 = obj.pr(rhi, rhj);
@@ -206,11 +224,13 @@ classdef TransitionModel
                     % possible transitions: 3
                     for n_ind = 1:3 % decrease, constant, increase
                         if n_ind == 1 % tempo decrease
+                            if ni == obj.minN(rhi), continue; end
                             nj = ni - 1;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
                         else  % tempo increase
-                            nj = ni+1;
+                            if ni == obj.maxN(rhi), continue; end
+                            nj = ni + 1;
                         end
                         prob = n_r_trans((rhi-1)*obj.N + ni, nj);
                         j = (nj - 1) * obj.M + j_mr;
@@ -221,53 +241,7 @@ classdef TransitionModel
                     end
                 end
             end
-            % --------------------------------------------------------------
-            % set probabilities for states with min and max tempo (borders of state space)
-            j_r = (0:obj.R-1) * obj.N * obj.M;
-            mi = 1:obj.M;
-            for rhi=1:obj.R
-                % -----------------------------------------------
-                % ni = minimal tempo:
-                % -----------------------------------------------
-                ni = obj.minN(rhi);
-                % only 2 possible transitions
-                % 1) tempo constant
-                nj = ni;
-                mj = mod(mi + ni - 1, obj.M_per_pattern(rhi)) + 1; % new position
-                i = j_r(rhi) + (ni - 1) * obj.M + mi;
-                j = j_r(rhi) + (nj - 1) * obj.M + mj;
-                ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;
-                val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);
-                p = p + obj.M;
-                % save state mappings
-                obj.mapping_state_tempo(i) = ni;
-                obj.mapping_state_position(i) = mi;
-                obj.mapping_state_rhythm(i) = rhi;
-                % 2) tempo increase
-                j = j + obj.M;
-                ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;
-                val(p:p+obj.M-1) = 1 - val(p-obj.M:p-1);   p = p + obj.M;
-                % -----------------------------------------------
-                % ni = maximal tempo:
-                % -----------------------------------------------
-                ni = min([obj.maxN(rhi), obj.N]);
-                % only 2 possible transitions
-                % 1) tempo constant
-                nj = ni;
-                i = j_r(rhi) + (ni-1)*obj.M + mi;
-                ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;
-                val(p:p+obj.M-1) = n_r_trans((rhi-1)*obj.N + ni, nj);
-                p = p + obj.M;
-                % save state mappings
-                obj.mapping_state_tempo(i) = ni;
-                obj.mapping_state_position(i) = mi;
-                obj.mapping_state_rhythm(i) = rhi;
-                % 2) tempo decrease
-                j = j - obj.M;
-                ri(p:p+obj.M-1) = i;  cj(p:p+obj.M-1) = j;
-                val(p:p+obj.M-1) = 1 - val(p-obj.M:p-1);   p = p + obj.M;
-            end
-            
+            % --------------------------------------------------------------                        
             if obj.use_silence_state
                 p0 = p;
                 % self transition
