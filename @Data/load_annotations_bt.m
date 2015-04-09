@@ -66,7 +66,8 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
             beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
             bar_id = nan(size(beat_number));
         end
-        data = [data, bar_id, beat_number];
+%         data = [data, bar_id, beat_number];
+        data = [data, beat_number];
     end
     fclose(fid);
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')

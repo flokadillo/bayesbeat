@@ -23,7 +23,11 @@ if nargin==1
     tolInt = 1.8;
     verbose = 0;
 end
-btype = beats(:, 3);
+if size(beats, 2) == 3
+    btype = beats(:, 3);
+else
+    btype = beats(:, 2);
+end
 nBeats = length(btype);
 % find most frequent occuring maximum beat type
 frequency = histc(btype, 1:max(btype));
