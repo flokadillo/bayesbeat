@@ -134,18 +134,7 @@ classdef HMM
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
                 alpha, pn, pr)
-            position_states_per_beat = zeros(obj.R, 1);
-            for i_r = 1:obj.R
-                is_compund_meter = ismember(obj.rhythm2meter(i_r, 1), ...
-                    [6, 9, 12]);
-                if is_compund_meter
-                    position_states_per_beat(i_r) = ...
-                        obj.Meff(i_r) * 3 / obj.rhythm2meter(i_r, 1);
-                else
-                    position_states_per_beat(i_r) = ...
-                        obj.Meff(i_r) / obj.rhythm2meter(i_r, 1);
-                end
-            end
+            position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
             if strcmp(obj.tm_type, 'whiteley')
                 % convert from BPM into barpositions / audio frame
                 if strcmp(obj.pattern_size, 'bar')
@@ -1035,15 +1024,8 @@ classdef HMM
             % set up cell array with beat position for each meter
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
-                is_compund_meter = ismember(obj.rhythm2meter(i_r, 1), ...
-                    [6, 9, 12]);
-                if is_compund_meter
-                    beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                        obj.rhythm2meter(i_r, 1) / 3 + 1));
-                else % simple meter
                     beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
                         obj.rhythm2meter(i_r, 1) + 1));
-                end
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
             
