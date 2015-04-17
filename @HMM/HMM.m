@@ -114,6 +114,11 @@ classdef HMM
             % rhythm2meter_state are row vectors [1 x K] but should be
             % column vectors)
             obj.Meff = obj.Meff(:);
+            if length(obj.Meff) ~= obj.R
+                obj.Meff = obj.Meff(obj.rhythm2meter_state);
+                obj.Meff = obj.Meff(:);
+                
+            end
             obj.rhythm2meter_state = obj.rhythm2meter_state(:);
             % In old models, pattern change probability was not saved as
             % matrix [RxR]
@@ -128,6 +133,8 @@ classdef HMM
             if isempty(obj.rhythm2meter)
                 obj.rhythm2meter = obj.meter_state2meter(:, ...
                     obj.rhythm2meter_state)';
+                obj.obs_model = ...
+                    obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
         end
         

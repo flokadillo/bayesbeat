@@ -159,6 +159,14 @@ classdef ObservationModel
             end
             
         end
+        
+        function obj = convert_to_new_model(obj, rhythm2meter)
+            obj.rhythm2meter = rhythm2meter;
+            bar_durations = obj.rhythm2meter(:, 1) ./ ...
+                obj.rhythm2meter(:, 2);
+            obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ ...
+                max(bar_durations));
+        end
     end
     
 end
