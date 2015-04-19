@@ -80,6 +80,7 @@ classdef BeatTracker < handle
                     if isfield(obj.Params, 'use_mex_viterbi')
                         obj.model.use_mex_viterbi = obj.Params.use_mex_viterbi;
                     end
+                    fprintf('* Loading model from %s\n', obj.Params.model_fln);
                 else
                     error('Model file %s not found', model_fln);
                 end
