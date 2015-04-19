@@ -126,6 +126,10 @@ classdef TransitionModel
                 silence_state_id = obj.M * obj.N *obj.R + 1;
             end
             obj.num_states = obj.M * obj.N * obj.R;
+            % round max and min tempo
+            obj.minN = floor(obj.minN);
+            obj.maxN = ceil(obj.maxN);
+            
             % alloc memory for
             obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
             obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
