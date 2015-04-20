@@ -77,6 +77,10 @@ classdef Data < handle
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
+                if ismember(obj.rhythm2meter, [8, 4], 'rows')
+                   fprintf('WARNING Data/read_pattern_bars\n');
+                   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
+                end
                 if isfield(C, 'pr')
                     % only newer models
                     obj.pr = C.pr;
@@ -156,9 +160,10 @@ classdef Data < handle
                 beat_periods = sort(diff(obj.beats{iFile}(:, 1)), 'descend');
                 % ignore the biggest and smallest 10 percent of the beat
                 % periods
-                beat_periods = beat_periods(max([floor(length(...
-                    beat_periods) / 10), 1]):min([floor(length(...
-                    beat_periods) * 9 / 10), length(beat_periods)]));
+                beat_periods = median(beat_periods);
+%                 beat_periods = beat_periods(max([floor(length(...
+%                     beat_periods) / 10), 1]):min([floor(length(...
+%                     beat_periods) * 9 / 10), length(beat_periods)]));
                 styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
                 if ~isempty(styleId)
                     tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);
