@@ -20,8 +20,14 @@ function [runtime] = BT_Simulation(sim_id, params)
 % 03.01.2013 modularize code into subfunctions
 % 29.01.2015 added config file name input parameter
 % ------------------------------------------------------------------------
+bayes_beat_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
 % output hash of current git revision
+% change to base path
+system(['cd ', bayes_beat_path]);
+% get hash
 [~, cmdout] = system('git rev-parse HEAD');
+% go back to where we came from
+system('cd -');
 fprintf('Git SHA-1: %s\n', cmdout);
 fprintf('Process ID: %i\n', feature('getpid'));
 % create folder for results
