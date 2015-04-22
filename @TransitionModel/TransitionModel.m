@@ -23,33 +23,34 @@ classdef TransitionModel
         M_per_pattern   % [1 x R] effective number of bar positions per rhythm pattern
         num_beats_per_pattern % [1 x R] number of beats per pattern
         frames_per_beat % cell arrays with tempi relative to the framerate
-                        % frames_per_beat{1} is a row vector with tempo
-                        % values in [audio frames per beat] for pattern 1
+        % frames_per_beat{1} is a row vector with tempo
+        % values in [audio frames per beat] for pattern 1
         num_position_states_per_beat % number of position states per beat
         num_position_states_per_pattern % cell array of length R
         p2s                 % prior probability to go into silence state
         pfs                 % prior probability to exit silence state
         mapping_state_tempo     % [n_states, 1] contains for each state the
-                                %  corresponding tempo
+        %  corresponding tempo
         mapping_state_position  % [n_states, 1] contains for each state the
-                                %  corresponding position
+        %  corresponding position
         mapping_state_rhythm    % [n_states, 1] contains for each state the
-                                % corresponding rhythm
+        % corresponding rhythm
         mapping_tempo_state_id  % [n_states, 1] contains the tempo state number
         mapping_position_state_id % [n_states, 1] contains the position state number
         proximity_matrix        % [n_states, 6] states id of neighboring states
-                                %   in the order left, left down, right down,
-                                %   right, right up, left up
+        %   in the order left, left down, right down,
+        %   right, right up, left up
         tempo_state
         num_states
+        tm_type                 % transition model type: 'whiteley' or '2015'
     end
     
     
     
     methods
         function obj = TransitionModel(M_per_pattern, N, R, pn, pr, alpha, ...
-                position_states_per_beat, frames_per_beat, frame_length, ...
-                use_silence_state, p2s, pfs, tm_type)
+                position_states_per_beat, min_tempo_bpm, max_tempo_bpm, ...
+                frame_length, use_silence_state, p2s, pfs, tm_type)
             % save parameters
             obj.M = max(M_per_pattern);
             obj.M_per_pattern = M_per_pattern;
@@ -62,8 +63,12 @@ classdef TransitionModel
             obj.num_position_states_per_beat = position_states_per_beat;
             obj.num_beats_per_pattern = round(M_per_pattern ./ ...
                 position_states_per_beat);
-            obj.frames_per_beat = frames_per_beat;
-            
+            obj.tm_type = tm_type;
+            obj.min_bpm = min_tempo_bpm(:);
+            obj.max_bpm = max_tempo_bpm(:);
+            if ~exist('tm_type', 'var')
+                obj.tm_type = 'whiteley';
+            end
             % save silence state variables
             if exist('use_silence_state', 'var')
                 obj.use_silence_state = use_silence_state;
@@ -76,19 +81,67 @@ classdef TransitionModel
                 obj.p2s = 0;
                 obj.pfs = 0;
             end
-            % compute tempo range in frame domain
-            for ri = 1:obj.R
-                tempo_states = obj.num_position_states_per_beat(ri) ./ ...
-                    obj.frames_per_beat{ri};
-                obj.minN(ri) = min(tempo_states);
-                obj.maxN(ri) = max(tempo_states);
-            end
-            obj.min_bpm = 60 * obj.minN ./ ...
-                (obj.num_position_states_per_beat(ri) * obj.frame_length);
-            obj.max_bpm = 60 * obj.maxN ./ ...
-                (obj.num_position_states_per_beat(ri) * obj.frame_length);
-            if ~exist('tm_type', 'var')
-                tm_type = 'whiteley';
+            if strcmp(obj.tm_type, 'whiteley')
+                % convert from BPM into barpositions / audio frame
+                obj.minN = floor(position_states_per_beat .* ...
+                    obj.frame_length .* obj.min_bpm ./ 60);
+                obj.maxN = ceil(position_states_per_beat .* ...
+                    obj.frame_length .* obj.max_bpm ./ 60);
+                if max(obj.maxN) ~= obj.N
+                    obj.N = max(obj.maxN);
+                end
+                if ~obj.n_depends_on_r % no dependency between n and r
+                    obj.minN = ones(1, obj.R) * min(obj.minN);
+                    obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                    obj.N = max(obj.maxN);
+                end
+                obj.frames_per_beat = cell(obj.R, 1);
+                for ri = 1:obj.R
+                    obj.frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
+                        (obj.minN(ri):obj.maxN(ri));
+                end
+                for r_i = 1:obj.R
+                    bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
+                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
+                        r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
+                end
+            elseif strcmp(obj.tm_type, '2015')
+                % number of frames per beat (slowest tempo)
+                % (python: max_tempo_states)
+                max_frames_per_beat = ceil(60 ./ (obj.min_bpm * ...
+                    obj.frame_length));
+                % number of frames per beat (fastest tempo)
+                % (python: min_tempo_states)
+                min_frames_per_beat = floor(60 ./ (obj.max_bpm * ...
+                    obj.frame_length));
+                % compute number of position states
+                obj.frames_per_beat = cell(obj.R, 1);
+                if isnan(obj.N)
+                    % use max number of tempi and position states:
+                    for ri=1:obj.R
+                        obj.frames_per_beat{ri} = ...
+                            max_frames_per_beat(ri):-1:min_frames_per_beat(ri);
+                    end
+                else
+                    % use N tempi and position states and distribute them
+                    % log2 wise
+                    for ri=1:obj.R
+                        obj.frames_per_beat{ri} = ...
+                            2.^(linspace(log2(min_frames_per_beat(ri)), ...
+                            log2(max_frames_per_beat(ri)), obj.N));
+                        % remove duplicates which would have the same tempo
+                        obj.frames_per_beat{ri} = unique(round(...
+                            obj.frames_per_beat{ri}));
+                    end
+                end
+                for r_i = 1:obj.R
+                    bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
+                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
+                        r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
+                        (bpms(end)-bpms(end-1)));
+                end
+            else
+                error('Transition model %s unknown!\n', obj.tm_type);
             end
             % check if a valid pattern transition probability is given. If
             % not correct it
@@ -108,12 +161,11 @@ classdef TransitionModel
             else
                 error('p_r has wrong dimensions!\n');
             end
-            if strcmp(tm_type, 'whiteley')
+            if strcmp(obj.tm_type, 'whiteley')
                 obj = obj.make_whiteleys_tm();
-            elseif strcmp(tm_type, '2015')
+            elseif strcmp(obj.tm_type, '2015')
                 obj = obj.make_2015_tm();
             end
-            
         end
         
         
@@ -136,7 +188,7 @@ classdef TransitionModel
             obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
             
             % Set up tempo transition matrix [R*N, N], which has an NxN
-            % transition matrix for each pattern            % 
+            % transition matrix for each pattern            %
             if size(obj.pn, 1) == obj.R * obj.N
                 % the tempo transition probability is assumed to differ for
                 % each pattern and each absolute tempo
@@ -146,12 +198,12 @@ classdef TransitionModel
                     % prob of tempo increase and decrease are the same (pn)
                     obj.pn = ones(2, 1) * obj.pn;
                 end
-                % pn specifies one probability for tempo speed up (pn(1)), 
-                % and one for tempo slowing down pn(2) 
+                % pn specifies one probability for tempo speed up (pn(1)),
+                % and one for tempo slowing down pn(2)
                 n_r_trans = zeros(obj.R * obj.N, obj.N);
                 for ri = 1:obj.R
                     n_const = diag(ones(obj.N, 1) * (1-sum(obj.pn)), 0);
-                    % Also adjust for values at minN and maxN 
+                    % Also adjust for values at minN and maxN
                     n_const(obj.minN(ri), obj.minN(ri)) = 1 - obj.pn(1);
                     n_const(obj.maxN(ri),obj.maxN(ri)) = 1 - obj.pn(2);
                     n_up = diag(ones(obj.N, 1) * obj.pn(1), 1);
@@ -159,10 +211,10 @@ classdef TransitionModel
                     % add the three matrices
                     temp = n_const + n_up(1:obj.N, 1:obj.N) + ...
                         n_down(1:obj.N, 1:obj.N);
-                    % remove tempo change transitions below minN 
+                    % remove tempo change transitions below minN
                     temp(1:obj.minN(ri)-1, :) = 0;
                     temp(:, 1:obj.minN(ri)-1) = 0;
-                    % remove tempo change transitions above maxN 
+                    % remove tempo change transitions above maxN
                     temp(obj.maxN(ri)+1:obj.N, :) = 0;
                     temp(:, obj.maxN(ri)+1:obj.N) = 0;
                     n_r_trans((ri-1) * obj.N + 1:ri * obj.N, :) = temp;
@@ -245,7 +297,7 @@ classdef TransitionModel
                     end
                 end
             end
-            % --------------------------------------------------------------                        
+            % --------------------------------------------------------------
             if obj.use_silence_state
                 p0 = p;
                 % self transition

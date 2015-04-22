@@ -14,8 +14,6 @@ classdef HMM
         % compatibility
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
-        frames_per_beat     % frames_per_beat for each rhythmic pattern
-        % cell array of values for each r
         frame_length        % audio frame length in [sec]
         dist_type           % type of parametric distribution
         trans_model         % transition model
@@ -142,83 +140,15 @@ classdef HMM
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
                 alpha, pn, pr)
             position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
-            if strcmp(obj.tm_type, 'whiteley')
-                % convert from BPM into barpositions / audio frame
-                if strcmp(obj.pattern_size, 'bar')
-                    minN = floor(position_states_per_beat .* ...
-                        obj.frame_length .* min_tempo_bpm ./ 60);
-                    maxN = ceil(position_states_per_beat .* ...
-                        obj.frame_length .* max_tempo_bpm ./ 60);
-                else
-                    minN = floor(obj.M * obj.frame_length * min_tempo_bpm ./ 60);
-                    maxN = ceil(obj.M * obj.frame_length * max_tempo_bpm ./ 60);
-                end
-                if max(maxN) ~= obj.N
-                    obj.N = max(maxN);
-                end
-                if ~obj.n_depends_on_r % no dependency between n and r
-                    minN = ones(1, obj.R) * min(minN);
-                    maxN = ones(1, obj.R) * max(maxN);
-                    obj.N = max(maxN);
-                end
-                frames_per_beat = cell(obj.R, 1);
-                for ri = 1:obj.R
-                    frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
-                        (minN(ri):maxN(ri));
-                end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
-                        r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
-                end
-            elseif strcmp(obj.tm_type, '2015')
-                % number of frames per beat (slowest tempo)
-                % (python: max_tempo_states)
-                max_frames_per_beat = ceil(60 ./ (min_tempo_bpm * ...
-                    obj.frame_length));
-                % number of frames per beat (fastest tempo)
-                % (python: min_tempo_states)
-                min_frames_per_beat = floor(60 ./ (max_tempo_bpm * ...
-                    obj.frame_length));
-                % compute number of position states
-                frames_per_beat = cell(obj.R, 1);
-                if isnan(obj.N)
-                    % use max number of tempi and position states:
-                    for ri=1:obj.R
-                        frames_per_beat{ri} = ...
-                            max_frames_per_beat(ri):-1:min_frames_per_beat(ri);
-                    end
-                else
-                    % use N tempi and position states and distribute them
-                    % log2 wise
-                    for ri=1:obj.R
-                        frames_per_beat{ri} = ...
-                            2.^(linspace(log2(min_frames_per_beat(ri)), ...
-                            log2(max_frames_per_beat(ri)), obj.N));
-                        % remove duplicates which would have the same tempo
-                        frames_per_beat{ri} = unique(round(frames_per_beat{ri}));
-                    end
-                end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
-                        r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
-                        (bpms(end)-bpms(end-1)));
-                end
-            else
-                error('Transition model %s unknown!\n', obj.tm_type);
-            end
-            
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
-                frames_per_beat, obj.frame_length, ...
+                min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
                 obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');
             end
-            
         end
         
         function obj = make_observation_model(obj, train_data)
@@ -1031,8 +961,8 @@ classdef HMM
             % set up cell array with beat position for each meter
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
-                    beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                        obj.rhythm2meter(i_r, 1) + 1));
+                beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
+                    obj.rhythm2meter(i_r, 1) + 1));
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
             
