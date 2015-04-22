@@ -64,6 +64,9 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
+            if ~isfield(obj.Params, 'outlier_percentile')
+                obj.Params.outlier_percentile = 5;
+            end
         end
         
         
@@ -166,7 +169,8 @@ classdef BeatTracker < handle
                 if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
-                        obj.train_data.get_tempo_per_cluster();
+                        obj.train_data.get_tempo_per_cluster(...
+                        obj.Params.outlier_percentile);
                     % find min/max for each pattern
                     tempo_min_per_cluster = min(tempo_min_per_cluster)';
                     tempo_max_per_cluster = max(tempo_max_per_cluster)';
