@@ -78,7 +78,7 @@ classdef Data < handle
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
                 if ismember(obj.rhythm2meter, [8, 4], 'rows')
-                   fprintf('WARNING Data/read_pattern_bars\n');
+                   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
                    obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
                 end
                 if isfield(C, 'pr')
