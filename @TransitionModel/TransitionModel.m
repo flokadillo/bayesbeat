@@ -90,11 +90,11 @@ classdef TransitionModel
                 if max(obj.maxN) ~= obj.N
                     obj.N = max(obj.maxN);
                 end
-                if ~obj.n_depends_on_r % no dependency between n and r
-                    obj.minN = ones(1, obj.R) * min(obj.minN);
-                    obj.maxN = ones(1, obj.R) * max(obj.maxN);
-                    obj.N = max(obj.maxN);
-                end
+%                 if ~n_depends_on_r % no dependency between n and r
+%                     obj.minN = ones(1, obj.R) * min(obj.minN);
+%                     obj.maxN = ones(1, obj.R) * max(obj.maxN);
+%                     obj.N = max(obj.maxN);
+%                 end
                 obj.frames_per_beat = cell(obj.R, 1);
                 for ri = 1:obj.R
                     obj.frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
