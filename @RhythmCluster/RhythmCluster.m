@@ -171,7 +171,7 @@ classdef RhythmCluster < handle
             % pattern_scope      can be either 'bar' or 'song'. With 'song',
             %                    all bars of one song are averaged into one
             %                    song_pattern and these are then clustered
-            % 'meters'           [2 x num_meters] meters that are expected
+            % 'meters'           [num_meters x 2] meters that are expected
             %                    to be in the data
             % 'meter_names'      cell array [num_meters x 1]: assigns a name
             %                    for each meter
@@ -179,7 +179,8 @@ classdef RhythmCluster < handle
             % 'plotting_path'    [default='/tmp/']
             %
             % OUTPUT parameters:
-            % runtime           runtime (excluding training) in minutes
+            % ca_fln             file with cluster assignment data
+            % clust_trans_fln
             %
             %
             % 06.09.2012 by Florian Krebs
@@ -188,30 +189,22 @@ classdef RhythmCluster < handle
             % 03.01.2013 modularize code into subfunctions
             % 29.01.2015 added config file name input parameter
             % ------------------------------------------------------------------------
-            % n_clusters
-            % type = 'bar' : cluster data_per_bar
-            % type = 'song': cluster data_per_song
-            % fig_store_flag: stores a figure with plots of clustering,
-            % else no
-            % bad_meters    : [1 x nMeters] numerator of meters to ignore
-            %                   (e.g. [3, 8, 9])
-            % -------------------------------------------------------------
             % parse arguments
-            p = inputParser;
+            parser = inputParser;
             % set defaults
             default_scope = 'song';
             valid_scope = {'bar','song'};
             check_scope = @(x) any(validatestring(x, valid_scope));
             default_plotting_path = '/tmp/';
             % add inputs
-            addRequired(p, 'obj', @isobject);
-            addRequired(p, 'n_clusters', @isnumeric);
-            addOptional(p, 'pattern_scope', default_scope, check_scope);
-            addParameter(p, 'meter_names', '', @iscell);
-            addParameter(p, 'meters', -1, @isnumeric);
-            addParameter(p, 'save_pattern_fig', 1, @isnumeric);
-            addParameter(p, 'plotting_path', default_plotting_path, @ischar);
-            parse(p, obj, n_clusters, varargin{:});
+            addRequired(parser, 'obj', @isobject);
+            addRequired(parser, 'n_clusters', @isnumeric);
+            addOptional(parser, 'pattern_scope', default_scope, check_scope);
+            addParameter(parser, 'meter_names', '', @iscell);
+            addParameter(parser, 'meters', -1, @isnumeric);
+            addParameter(parser, 'save_pattern_fig', 1, @isnumeric);
+            addParameter(parser, 'plotting_path', default_plotting_path, @ischar);
+            parse(parser, obj, n_clusters, varargin{:});
             % -------------------------------------------------------------
             obj.n_clusters = n_clusters;
             if strcmpi(pattern_scope, 'bar')
@@ -222,25 +215,30 @@ classdef RhythmCluster < handle
                 meter_per_item = obj.file_2_meter;
             end
             % check if meter found in the data corresponds to meter given
-            % in the input arguments
+            % in the input arguments [num_meters x 2]
             meter_data = unique(meter_per_item, 'rows');
-            if meters == -1
+            if size(meter_data, 2) ~= 2
+                meter_data = meter_data';
+            end
+            if parser.Results.meters == -1
                 meters = meter_data;
                 % create meter_names from time signature
-                for i_meter=1:size(meters, 2)
-                    meter_names{i_meter} = [num2str(meters(1, i_meter)), ...
-                        '-', num2str(meters(2, i_meter))];
+                for i_meter=1:size(meters, 1)
+                    meter_names{i_meter} = [num2str(meters(i_meter, 1)), ...
+                        '-', num2str(meters(i_meter, 2))];
                 end
             else
-                same_num_meters = (size(meter_data, 2) == size(meters, 2));
-                same_content = ismember(meter_data', meters', 'rows');
+                same_num_meters = (size(meter_data, 1) == ...
+                    size(parser.Results.meters, 1));
+                same_content = ismember(meter_data, parser.Results.meters, ...
+                    'rows');
                 if ~(same_num_meters && same_content)
                     error(['ERROR RhythmCluster.do_clustering: Number of ',...
                         'meters in data does not match number of meters', ...
                         'specified in the function input argument']);
                 end
+                meters = unique(meter_per_item, 'rows');
             end
-            meters = unique(meter_per_item, 'rows');
             if size(meters, 1) == 1 % only one meter
                 n_items_per_meter = size(meter_per_item, 1);
             else % count items per meter
@@ -256,8 +254,10 @@ classdef RhythmCluster < handle
                 / sum(n_items_per_meter);
             n_clusters_per_meter = ceil(clusters_per_meter);
             while sum(n_clusters_per_meter) > obj.n_clusters % check because of ceil
-                % find most crowded cluster
+                % find least crowded cluster
                 overhead = clusters_per_meter - n_clusters_per_meter + 1;
+                % keep at least one cluster per meter 
+                overhead(n_clusters_per_meter==1) = 10;
                 [~, idx] = min(overhead);
                 n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - 1;
             end
@@ -300,10 +300,10 @@ classdef RhythmCluster < handle
             end
             % reintroduce nans
             ctrs(ctrs==-999) = nan;
-            if save_pattern_fig
+            if parser.Results.save_pattern_fig
                 % plot patterns and save plot to png file
                 obj.plot_patterns(cidx, ctrs, bar_pos, pattern_scope, ...
-                    plotting_path);
+                    parser.Results.plotting_path);
             end
             % save cluster assignments
             if strcmpi(pattern_scope, 'bar')
@@ -311,6 +311,7 @@ classdef RhythmCluster < handle
                 obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', ...
                     obj.dataset, '-', num2str(obj.feature.feat_dim), ...
                     'd-', num2str(obj.n_clusters), 'R-kmeans.mat']);
+                file2nBars = [];
             else % assign the cluster idx of the song to each bar which
                 % belongs to that song
                 % read index of valid songs
@@ -348,7 +349,7 @@ classdef RhythmCluster < handle
             % make up a name for each newly created rhythm pattern. Ishould
             % contain both the meter and the id of the pattern
             for i_R = 1:obj.n_clusters
-                meter_id_of_pattern_i_R = ismember(meters', ...
+                meter_id_of_pattern_i_R = ismember(meters, ...
                     obj.rhythm2meter(i_R, :), 'rows');
                 obj.rhythm_names{i_R} = [obj.dataset, '-', ...
                     meter_names{meter_id_of_pattern_i_R}, ...
@@ -527,7 +528,7 @@ classdef RhythmCluster < handle
             fprintf('rhythm2meter, pr to %s\n', obj.clusters_fln);
         end
         
-        function [] = plot_patterns(cidx, ctrs, bar_pos, pattern_scope, ...
+        function [] = plot_patterns(obj, cidx, ctrs, bar_pos, pattern_scope, ...
                 plotting_path)
             plot_cols = ceil(sqrt(obj.n_clusters));
             h = figure( 'Visible','off');
@@ -552,7 +553,7 @@ classdef RhythmCluster < handle
                 end
                 ylabel(sprintf('%s', y_label));
                 xlabel('bar position')
-                title(sprintf('cluster %i (%i %s)', c, ...
+                title(sprintf('cluster %i (%i %ss)', c, ...
                     items_per_cluster(c), pattern_scope));
                 xlim([1 length(data)])
             end

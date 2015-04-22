@@ -111,7 +111,6 @@ classdef Simulation
             if obj.Params.n_folds_for_cross_validation == 1 % leave one out
                 test_file_ids = k;
                 obj.system.retrain_model(test_file_ids);
-                
             elseif obj.Params.n_folds_for_cross_validation > 1 % k-fild cross validation
                 % load filenames of fold k
                 fid = fopen(obj.Params.foldLab{k}, 'r');
@@ -121,7 +120,6 @@ classdef Simulation
             else % no train/test split
                 test_file_ids = 1:length(obj.system.test_data.file_list);
             end
-            
         end
         
         function results = test(obj, iFile)
