@@ -53,7 +53,7 @@ end
 if exist('config_fln', 'var')
     % load parameters from config file
     fprintf(['* Copy ', config_fln, ' to ', num2str(sim_id), '/config_bt_dir.m\n']);
-    system(['cp ./', config_fln, ' ./results/', num2str(sim_id), '/config_bt_dir.m']);
+    system(['cp ', config_fln, ' ./results/', num2str(sim_id), '/config_bt_dir.m']);
     sim = Simulation('config_bt_dir', sim_id, ['./results/', num2str(sim_id)]);
 end
 % start training

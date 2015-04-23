@@ -47,7 +47,6 @@ classdef HMM
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter = rhythm2meter;
             % effective number of bar positions per rhythm
             obj.Meff = round((bar_durations) ...
@@ -68,7 +67,16 @@ classdef HMM
             else
                 obj.viterbi_learning_iterations = 0;
             end
-            obj.n_depends_on_r = Params.n_depends_on_r;
+            if isfield(Params, 'init_n_gauss')
+                obj.init_n_gauss = Params.init_n_gauss;
+            else
+                obj.init_n_gauss = 0;
+            end
+            if isfield(Params, 'n_depends_on_r')
+                obj.n_depends_on_r = Params.n_depends_on_r;
+            else
+                obj.n_depends_on_r = 1;
+            end
             if isfield(Params, 'online')
                 obj.max_shift = Params.online.max_shift;
                 obj.update_interval = Params.online.update_interval;
