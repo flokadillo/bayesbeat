@@ -180,7 +180,7 @@ classdef HMM
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
-            n_states = obj.trans_model.num_states;
+            n_states = length(obj.trans_model.mapping_state_position);
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);

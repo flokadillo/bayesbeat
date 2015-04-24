@@ -41,7 +41,7 @@ classdef TransitionModel
         %   in the order left, left down, right down,
         %   right, right up, left up
         tempo_state
-        num_states
+        num_states              % number of valid states of the model
         tm_type                 % transition model type: 'whiteley' or '2015'
     end
     
@@ -177,15 +177,15 @@ classdef TransitionModel
             if obj.use_silence_state
                 silence_state_id = obj.M * obj.N *obj.R + 1;
             end
-            obj.num_states = obj.M * obj.N * obj.R;
+            num_states = obj.M * obj.N * obj.R;
             % round max and min tempo
             obj.minN = floor(obj.minN);
             obj.maxN = ceil(obj.maxN);
             
             % alloc memory for
-            obj.mapping_state_tempo = ones(obj.num_states, 1) * (-1);
-            obj.mapping_state_position = ones(obj.num_states, 1) * (-1);
-            obj.mapping_state_rhythm = ones(obj.num_states, 1) * (-1);
+            obj.mapping_state_tempo = ones(num_states, 1) * (-1);
+            obj.mapping_state_position = ones(num_states, 1) * (-1);
+            obj.mapping_state_rhythm = ones(num_states, 1) * (-1);
             
             % Set up tempo transition matrix [R*N, N], which has an NxN
             % transition matrix for each pattern            %
@@ -224,7 +224,9 @@ classdef TransitionModel
             end
             p = 1;
             % memory allocation:
-            ri = zeros(obj.num_states*3,1); cj = zeros(obj.num_states*3,1); val = zeros(obj.num_states*3,1);
+            ri = zeros(num_states*3,1); 
+            cj = zeros(num_states*3,1); 
+            val = zeros(num_states*3,1);
             for rhi = 1:obj.R
                 mi=1:obj.M_per_pattern(rhi);
                 for ni = obj.minN(rhi):obj.maxN(rhi)
@@ -317,13 +319,14 @@ classdef TransitionModel
                 p = p + length(n(:));
                 ri(p0:p-1) = silence_state_id;
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
-                    obj.num_states+1, obj.num_states+1);
+                    num_states+1, num_states+1);
             else
                 obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
-                    obj.num_states, obj.num_states);
+                    num_states, num_states);
             end
             obj.mapping_position_state_id = obj.mapping_state_position;
             obj.mapping_tempo_state_id = obj.mapping_state_tempo;
+            obj.num_states = sum(obj.mapping_state_position>0);
         end
         
         function obj = make_2015_tm(obj)
