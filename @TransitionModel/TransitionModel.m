@@ -133,6 +133,10 @@ classdef TransitionModel
                         % remove duplicates which would have the same tempo
                         obj.frames_per_beat{ri} = unique(round(...
                             obj.frames_per_beat{ri}));
+                        % reverse order to be consistent with the N=nan
+                        % case
+                        obj.frames_per_beat{ri} = ...
+                            obj.frames_per_beat{ri}(end:-1:1);
                     end
                 end
                 for r_i = 1:obj.R
