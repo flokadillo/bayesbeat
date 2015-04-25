@@ -42,6 +42,7 @@ classdef TransitionModel
         %   right, right up, left up
         tempo_state
         num_states              % number of valid states of the model
+        num_transitions         % number of transitions
         tm_type                 % transition model type: 'whiteley' or '2015'
     end
     
@@ -327,6 +328,8 @@ classdef TransitionModel
             obj.mapping_position_state_id = obj.mapping_state_position;
             obj.mapping_tempo_state_id = obj.mapping_state_tempo;
             obj.num_states = sum(obj.mapping_state_position>0);
+            [a, ~] = find(obj.A);
+            obj.num_transitions = length(a);
         end
         
         function obj = make_2015_tm(obj)
@@ -580,6 +583,8 @@ classdef TransitionModel
             idx = (row_i > 0);
             obj.A = sparse(row_i(idx), col_j(idx), val(idx), ...
                 obj.num_states, obj.num_states);
+            [a, ~] = find(obj.A);
+            obj.num_transitions = length(a);
         end
         
         function error = transition_model_is_corrupt(obj, dooutput)
