@@ -143,7 +143,8 @@ classdef ObservationModel
                 rhythm_state_map)
             % Computes state2obs_idx, which specifies which states are tied
             % (share the same parameters)
-            %
+            % position_state_map    obj.trans_model.mapping_state_position, ...
+            % rhythm_state_map      obj.trans_model.mapping_state_rhythm
             num_states = length(position_state_map);
             obj.state2obs_idx = nan(num_states, 2);
             barPosPerGrid = obj.M / obj.barGrid;

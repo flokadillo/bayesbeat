@@ -240,6 +240,9 @@ classdef HMM
         end
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
+            if obj.hmm_is_corrupt
+                error('@HMM/do_inference.m: HMM is corrupt\n');
+            end
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
                 % normalize
@@ -1249,6 +1252,21 @@ classdef HMM
                 extended_states > 0));
             possible_successors = [successors, ...
                 extended_states];
+        end
+        
+        function hmm_corrupt = hmm_is_corrupt(obj)
+            num_states_hypothesis = [length(obj.initial_prob);
+                size(obj.obs_model.state2obs_idx, 1);
+                size(obj.trans_model.A, 1);
+                length(obj.trans_model.mapping_state_tempo);
+                length(obj.trans_model.mapping_state_position);
+                length(obj.trans_model.mapping_state_rhythm);
+                length(obj.trans_model.mapping_tempo_state_id)]; 
+            if any(diff(num_states_hypothesis))
+                hmm_corrupt = true;
+            else
+                hmm_corrupt = false;
+            end
         end
     end
     
