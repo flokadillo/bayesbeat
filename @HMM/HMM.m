@@ -144,6 +144,8 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
+            % 
+            obj.tm_type = obj.trans_model.tm_type;
         end
         
         
