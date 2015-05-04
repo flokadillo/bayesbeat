@@ -59,6 +59,8 @@ Params.viterbi_learning_iterations = 0;
 % Save extracted feature to a folder called "beat_activations" relative to
 % the audio folder
 Params.save_features_to_file = 1;
+% Load pre-computed features from file
+Params.load_features_from_file = 1;
 % Use mex implementation of viterbi decoding
 Params.use_mex_viterbi = 1;
 % Save beat times and corresponding position within a bar (.beats.txt)

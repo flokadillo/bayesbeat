@@ -55,6 +55,9 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'save_features_to_file')
                 obj.Params.save_features_to_file = 0;
             end
+            if ~isfield(obj.Params, 'load_features_from_file')
+                obj.Params.load_features_from_file = 1;
+            end
             if ~isfield(obj.Params, 'transition_model_type')
                 obj.Params.transition_model_type = '2015';
             end
@@ -301,16 +304,11 @@ classdef BeatTracker < handle
             % load feature
             observations = obj.feature.load_feature(...
                 obj.test_data.file_list{test_file_id}, ...
-                obj.Params.save_features_to_file);
+                obj.Params.save_features_to_file, ...
+                obj.Params.load_features_from_file);
             % compute observation likelihoods
-            %             time_before_inference = toc;
             results = obj.model.do_inference(observations, fname, ...
                 obj.inferenceMethod, do_output);
-            %             if do_output
-            %                 fprintf('    Real time factor: %.2f\n', (toc - ...
-            %                     time_before_inference) / (size(observations, 1) * ...
-            %                     obj.feature.frame_length));
-            %             end
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
