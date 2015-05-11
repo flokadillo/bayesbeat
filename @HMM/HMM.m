@@ -776,6 +776,10 @@ classdef HMM
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
+            % state_ids_j have to be sorted for the mex viterbi!
+            [state_ids_j, idx] = sort(state_ids_j, 'ascend');
+            state_ids_i = state_ids_i(idx);
+            trans_prob_ij = trans_prob_ij(idx);
             validstate_to_state=unique(state_ids_j);
             valid_states=zeros(max(state_ids_j), 1);
             valid_states(validstate_to_state)=1:length(validstate_to_state);
