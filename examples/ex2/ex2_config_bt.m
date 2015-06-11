@@ -18,7 +18,7 @@ Params.system = 'BeatTracker';
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    error('No base path is given\n');
 end
 if ~exist(Params.base_path, 'dir')
     error('Please specify path to bayes_beat class in the config file\n');
@@ -42,12 +42,5 @@ Params.frame_length = 0.02;
 % -----------------
  Params.feat_type{1} = 'lo230_superflux.mvavg';
  Params.feat_type{2} = 'hi250_superflux.mvavg';
-
-% DATA:
-% =====
-
-% Test data
-% ----------
- Params.testLab = fullfile(Params.base_path, 'examples/audio/train10.flac');
 
 end
