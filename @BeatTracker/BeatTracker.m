@@ -88,7 +88,7 @@ classdef BeatTracker < handle
                     end
                     fprintf('* Loading model from %s\n', obj.Params.model_fln);
                 else
-                    error('Model file %s not found', model_fln);
+                    error('Model file %s not found', obj.Params.model_fln);
                 end
             else
                 obj.feature = Feature(obj.Params.feat_type, ...

@@ -6,13 +6,20 @@
 //  TODO: Check if that's true
 //
 // INPUT:
-//      state_ids_i=[1:4]'; state_ids_j=[2;1;4;3]; trans_prob_ij=[1;1;1;1]; initial_prob=[0.5;0;0.5;0]; obs_lik=zeros(2, 2, 4); obs_lik(1, :, :)=[0.7, 0.2, 0.7, 0.9; 0.3, 0.8, 0.3, 0.1]; obs_lik(2, :, :)=[0.5, 0.4, 0.7, 0.5; 0.5, 0.6, 0.3, 0.5]; state_2_r_pos=[1, 1; 1, 2; 2, 1; 2, 2]; validstate_to_state=unique(state_ids_j); valid_states=zeros(max(state_ids_j), 1); valid_states(validstate_to_state)=1:length(validstate_to_state);
+//      state_ids_i=[1:4]'; 
+//      state_ids_j=[2;1;4;3]; 
+//      trans_prob_ij=[1;1;1;1]; 
+//      initial_prob=[0.5;0;0.5;0]; 
+//      obs_lik=zeros(2, 2, 4); 
+//      obs_lik(1, :, :)=[0.7, 0.2, 0.7, 0.9; 0.3, 0.8, 0.3, 0.1]; 
+//      obs_lik(2, :, :)=[0.5, 0.4, 0.7, 0.5; 0.5, 0.6, 0.3, 0.5]; 
+//      state_2_r_pos=[1, 1; 1, 2; 2, 1; 2, 2]; 
+//      validstate_to_state=unique(state_ids_j); 
+//      valid_states=zeros(max(state_ids_j), 1); 
+//      valid_states(validstate_to_state)=1:length(validstate_to_state);
 //
-//
-//
-//
-//
-//
+// 07.05.2015 by Florian Krebs
+// ---------------------------------------------------------------------
 
 #include <math.h>
 #include <matrix.h>
@@ -54,7 +61,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxArray *map_state_sequence, *psi;
   mxArray *debug_data;
   const mwSize *dims;
-  double sum_k, temp;
+  double sum_k, temp, debug_temp, check;
   mwSignedIndex *psi_ptr;
   int num_frames, num_states, obs_idx, R, num_pos, num_trans, num_valid_states;
   int i, j, r, p, i_trans, prev_end_state, current_start_state, current_end_state;
@@ -74,6 +81,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   // num_frames
   dims = mxGetDimensions(prhs[4]);
   num_frames = (int)dims[2];
+  // num_states
   dims = mxGetDimensions(prhs[3]);
   num_states = (int)dims[0];
   // rhythmic patterns
@@ -103,25 +111,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   psi_ptr = (mwSignedIndex*)mxGetData(psi);
 // double *debug_data_ptr = mxGetPr(debug_data);
 //start computing    
+  debug_temp = 0;
   for(i=0;i<num_frames;i++)
+//   for(i=0;i<225;i++)
   {
       prev_end_state = -7;
       // loop over possible transitions
       for(i_trans=0;i_trans<num_trans;i_trans++)
       {
+          // get start and end state of transition i_trans           
           current_start_state = (int)state_ids_i_ptr[i_trans]-1;
           current_end_state = (int)state_ids_j_ptr[i_trans]-1;
           if (current_end_state == prev_end_state) {
+              // the transition i_trans-1 has the same end_state as transition
+              // i_trans: Find the best start_state among these
               temp = delta[current_start_state] * trans_prob_ij_ptr[i_trans];
-             if ( temp > prediction[current_end_state]) { // found more probable precursor state
+              if ( temp > prediction[current_end_state]) { 
+                // found more probable precursor state -> save it
                  prediction[current_end_state] = temp;
-                 idx = (int)(valid_states_ptr[current_end_state]-1)*num_frames+i;
+                 idx = (int)(valid_states_ptr[current_end_state]-1) * num_frames+i;
                  psi_ptr[idx] = current_start_state;
               }         
-          } else { // new state x(t)       
+          } else { 
+              // the transition i_trans has a different end-state from transition
+              // i_trans-1
               prev_end_state = current_end_state;
               prediction[current_end_state] = delta[current_start_state] * trans_prob_ij_ptr[i_trans];   
-              idx = (int)(valid_states_ptr[current_end_state]-1)*num_frames+i;
+              idx = (int)(valid_states_ptr[current_end_state]-1) * num_frames+i;
               psi_ptr[idx] = current_start_state;             
           }
       }
@@ -137,10 +153,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
               delta[i_state] = prediction[i_state] * obs_lik_ptr[r + p*R + i*R*num_pos]; 
               sum_k += delta[i_state];
           }
+          else {
+              delta[i_state] = 0;
+          }
       } 
       // normalise
       for (i_state=0; i_state<num_states; i_state++) {
-          delta[i_state] /= sum_k;   
+          delta[i_state] /= sum_k;  
       }
   }
   // Back tracing
