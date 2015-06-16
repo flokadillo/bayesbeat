@@ -113,7 +113,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //start computing    
   debug_temp = 0;
   for(i=0;i<num_frames;i++)
-//   for(i=0;i<225;i++)
   {
       prev_end_state = -7;
       // loop over possible transitions
@@ -143,10 +142,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       }
       sum_k = 0;
       for (i_state=0; i_state<num_states; i_state++) {
-          if (valid_states_ptr[i_state] == 0) { // i_state is not a valid state (no transition)
-              delta[i_state] = 0;
-          }    
-          else if (!mxIsNaN(state_2_r_pos_ptr[i_state])){
+          if (!mxIsNaN(state_2_r_pos_ptr[i_state])){
                // multiply with observation likelihood and sum up
               r = (int)state_2_r_pos_ptr[i_state]-1;
               p = (int)state_2_r_pos_ptr[i_state+num_states]-1;
