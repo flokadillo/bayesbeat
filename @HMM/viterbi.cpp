@@ -16,6 +16,7 @@
 //      state_2_r_pos=[1, 1; 1, 2; 2, 1; 2, 2]; 
 //
 // 07.05.2015 by Florian Krebs
+// 17.06.2015 integrated uint16/uint32 switch by Harald Frostel
 // ---------------------------------------------------------------------
 
 #include <math.h>
@@ -60,7 +61,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxArray *debug_data;
   const mwSize *dims;
   double sum_k, temp, debug_temp, check;
-  //mwSignedIndex *psi_ptr;
   int num_frames, obs_idx, R, num_pos, num_trans;
   int i, j, r, p, i_trans, prev_end_state, current_start_state, current_end_state;
   int i_state;
@@ -93,6 +93,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //   debug_data = plhs[1] = mxCreateDoubleMatrix(num_states, 1, mxREAL);
   
 //internal variables
+  // if less than 65535 states are used we can store the state ids as uint16
   const bool elems32 = (num_states) > 65535;
   uint16_t *psi_ptr_16 = NULL;
   uint32_t *psi_ptr_32 = NULL;
@@ -108,9 +109,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   
 //associate pointers (get pointer to the first element of the real data)
   double *map_state_sequence_ptr = mxGetPr(map_state_sequence);
-  //psi_ptr = (mwSignedIndex*)mxGetData(psi);
   
-// double *debug_data_ptr = mxGetPr(debug_data);
 //start computing    
   debug_temp = 0;
   for(i=0;i<num_frames;i++)
