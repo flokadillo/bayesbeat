@@ -144,7 +144,7 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
-            % 
+            %
             obj.tm_type = obj.trans_model.tm_type;
         end
         
@@ -760,6 +760,7 @@ classdef HMM
             fprintf(' done\n');
         end
         
+        
         function bestpath = viterbi_decode_mex(obj, obs_lik, fname)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
             % initial_prob)
@@ -776,16 +777,25 @@ classdef HMM
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
-            % state_ids_j have to be sorted for the mex viterbi!
+            % state_ids_j have to be sorted for the mex viterbi.
+            % maybe this can be skipped, if find always sorts indices?
             [state_ids_j, idx] = sort(state_ids_j, 'ascend');
             state_ids_i = state_ids_i(idx);
             trans_prob_ij = trans_prob_ij(idx);
-            validstate_to_state=unique(state_ids_j);
-            valid_states=zeros(max(state_ids_j), 1);
-            valid_states(validstate_to_state)=1:length(validstate_to_state);
+            % As there might be wholes in the state spaces, we first compress
+            % the state space in order to have lower state ids.
+            % mapping from compressed state (cs) to state (s)
+            [s_from_cs, ~, state_ids_j] = unique(state_ids_j);
+            % mapping from state (s) to compressed state (s)
+            cs_from_s = zeros(s_from_cs(end), 1);
+            cs_from_s(s_from_cs) = 1:length(s_from_cs);
+            % compress states_i
+            state_ids_i = cs_from_s(state_ids_i);
             bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
-                obj.initial_prob, obs_lik, obj.obs_model.state2obs_idx, ...
-                valid_states, validstate_to_state);
+                obj.initial_prob(s_from_cs), obs_lik, ...
+                obj.obs_model.state2obs_idx(s_from_cs, :));
+            % uncompress states
+            bestpath = s_from_cs(bestpath);
             fprintf(' done\n');
         end
         
@@ -1267,7 +1277,7 @@ classdef HMM
                 length(obj.trans_model.mapping_state_tempo);
                 length(obj.trans_model.mapping_state_position);
                 length(obj.trans_model.mapping_state_rhythm);
-                length(obj.trans_model.mapping_tempo_state_id)]; 
+                length(obj.trans_model.mapping_tempo_state_id)];
             if any(diff(num_states_hypothesis))
                 hmm_corrupt = true;
             else
@@ -1281,9 +1291,7 @@ classdef HMM
         [m, n] = getpath(M, annots, frame_length, nFrames);
         
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
-            initial_prob, obs_lik, state2obs_idx, ...
-            valid_states, validstate_to_state);
-        
+            initial_prob, obs_lik, state2obs_idx);
         
     end
     
