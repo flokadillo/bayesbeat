@@ -116,6 +116,9 @@ Params.learn_tempo_ranges = 1;
 % a certain range given by min_tempo and max_tempo [BPM]
 Params.min_tempo = 60;
 Params.max_tempo = 230;
+% When learning tempo ranges, outlier beat intervals can be ignored, e.g.,
+% outlier_percentile = 50 uses the median tempo only, = 0 uses all periods
+Params.outlier_percentile = 5;
 
 #### HMM parameters
 % --------------

@@ -77,6 +77,10 @@ classdef Data < handle
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
+                if ismember(obj.rhythm2meter, [8, 4], 'rows')
+                   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
+                   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
+                end
                 if isfield(C, 'pr')
                     % only newer models
                     obj.pr = C.pr;
@@ -145,7 +149,12 @@ classdef Data < handle
             end
         end
         
-        function [tempo_min_per_cluster, tempo_max_per_cluster] = get_tempo_per_cluster(obj)
+        function [tempo_min_per_cluster, tempo_max_per_cluster] = ...
+                get_tempo_per_cluster(obj, outlier_percentile)
+            if ~exist('outlier_percentile', 'var')
+                % discard upper and lower 5% of the beat intervals
+                outlier_percentile = 5;
+            end
             tempo_min_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             tempo_max_per_cluster = NaN(length(obj.file_list), obj.n_clusters);
             for iFile = 1:length(obj.file_list)
@@ -154,11 +163,17 @@ classdef Data < handle
                     error('Beats file not found\n');
                 end
                 beat_periods = sort(diff(obj.beats{iFile}(:, 1)), 'descend');
-                % ignore the biggest and smallest 10 percent of the beat
-                % periods
-                beat_periods = beat_periods(max([floor(length(...
-                    beat_periods) / 10), 1]):min([floor(length(...
-                    beat_periods) * 9 / 10), length(beat_periods)]));
+                % ignore outliers
+                start_idx = max([floor(length(beat_periods) * ...
+                    outlier_percentile / 100), 1]);
+                stop_idx = min([floor(length(beat_periods) * (1 - ...
+                    outlier_percentile / 100)), length(beat_periods)]);
+                if stop_idx >= start_idx
+                    beat_periods = beat_periods(start_idx:stop_idx);
+                else
+                    fprintf('   WARNING @Data/get_tempo_per_cluster.m: outlier_percentile too high!\n');
+                    beat_periods = median(beat_periods);
+                end
                 styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
                 if ~isempty(styleId)
                     tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);

@@ -34,7 +34,8 @@ for iPattern=1:nPatterns % all clusters
                 params{iPattern, iPos} = PD.Params';
             case 'MOG'
                 options = statset('MaxIter', 200);
-                params{iPattern, iPos} = gmdistribution.fit(featureValues, 2, 'Options', options, 'Regularize', 1e-10);
+                params{iPattern, iPos} = gmdistribution.fit(featureValues, ...
+		2, 'Options', options, 'Regularize', 1e-10, 'Replicates', 10);
             case 'MOG3'
                 options = statset('MaxIter', 200);
                 params{iPattern, iPos} = gmdistribution.fit(featureValues, 3, 'Options', options, 'Regularize', 1e-10);
