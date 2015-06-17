@@ -26,6 +26,7 @@
 #include <mex.h>
 #include <algorithm>
 #include <vector>
+#include <stdint.h>
 /* Definitions to keep compatibility with earlier versions of ML */
 #ifndef MWSIZE_MAX
 typedef int mwSize;
@@ -62,10 +63,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxArray *debug_data;
   const mwSize *dims;
   double sum_k, temp, debug_temp, check;
-  mwSignedIndex *psi_ptr;
-  int num_frames, num_states, obs_idx, R, num_pos, num_trans, num_valid_states;
+  //mwSignedIndex *psi_ptr;
+  int num_frames, obs_idx, R, num_pos, num_trans, num_valid_states;
   int i, j, r, p, i_trans, prev_end_state, current_start_state, current_end_state;
-  int idx, i_state, last_state_valid;
+  int i_state, last_state_valid;
   
 //associate inputs and associate pointers
   double *state_ids_i_ptr = mxGetPr(prhs[0]);
@@ -83,7 +84,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   num_frames = (int)dims[2];
   // num_states
   dims = mxGetDimensions(prhs[3]);
-  num_states = (int)dims[0];
+  const mwSize num_states = dims[0];
   // rhythmic patterns
   dims = mxGetDimensions(prhs[4]);
   R = (int)dims[0];
@@ -102,13 +103,23 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //internal variables
 //  mexPrintf("States=%d, Frames=%d\n", num_valid_states, num_frames);
 //  mexPrintf("Size of Psi matrix: %.1f MB\n", num_valid_states*num_frames*4/1E6);
-  psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxINT32_CLASS, mxREAL);
+  const bool elems32 = (num_states) > 65535;
+  uint16_t *psi_ptr_16 = NULL;
+  uint32_t *psi_ptr_32 = NULL;
+  if (elems32) {
+      psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxUINT32_CLASS, mxREAL);
+      psi_ptr_32 = static_cast<uint32_t *>(mxGetData(psi));
+  } else {
+      psi = mxCreateNumericMatrix(num_valid_states, num_frames, mxUINT16_CLASS, mxREAL);  
+       psi_ptr_16 = static_cast<uint16_t *>(mxGetData(psi));
+  }
   std::vector<double> delta(initial_prob_ptr, initial_prob_ptr+num_states);
   std::vector<double> prediction(initial_prob_ptr, initial_prob_ptr+num_states);
   
 //associate pointers (get pointer to the first element of the real data)
   double *map_state_sequence_ptr = mxGetPr(map_state_sequence);
-  psi_ptr = (mwSignedIndex*)mxGetData(psi);
+  //psi_ptr = (mwSignedIndex*)mxGetData(psi);
+  
 // double *debug_data_ptr = mxGetPr(debug_data);
 //start computing    
   debug_temp = 0;
@@ -128,16 +139,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
               if ( temp > prediction[current_end_state]) { 
                 // found more probable precursor state -> save it
                  prediction[current_end_state] = temp;
-                 idx = (int)(valid_states_ptr[current_end_state]-1) * num_frames+i;
-                 psi_ptr[idx] = current_start_state;
+                 const size_t idx = (valid_states_ptr[current_end_state]-1) * num_frames+i;
+                 if (elems32) {
+                    psi_ptr_32[idx] = current_start_state;
+                 }
+                 else {
+                     psi_ptr_16[idx] = current_start_state;
+                 }
               }         
           } else { 
               // the transition i_trans has a different end-state from transition
               // i_trans-1
               prev_end_state = current_end_state;
               prediction[current_end_state] = delta[current_start_state] * trans_prob_ij_ptr[i_trans];   
-              idx = (int)(valid_states_ptr[current_end_state]-1) * num_frames+i;
-              psi_ptr[idx] = current_start_state;             
+              const size_t idx = (valid_states_ptr[current_end_state]-1) * num_frames+i;
+              if (elems32) {
+                    psi_ptr_32[idx] = current_start_state;
+                 }
+                 else {
+                     psi_ptr_16[idx] = current_start_state;
+                 }
           }
       }
       sum_k = 0;
@@ -171,9 +192,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   map_state_sequence_ptr[num_frames-1] = (double)best_end_state+1;
   last_state_valid = (int)valid_states_ptr[best_end_state]-1;
   for (i=num_frames-1; i>0; i--) {
-      idx = (int)(last_state_valid*num_frames+i);  // idx for psi
-      map_state_sequence_ptr[i-1] = (double)psi_ptr[idx]+1;
-      last_state_valid = valid_states_ptr[psi_ptr[idx]]-1;
+      const size_t idx = (last_state_valid*num_frames+i);  // idx for psi
+      const uint32_t value = elems32?psi_ptr_32[idx]:uint32_t(psi_ptr_16[idx]);
+      map_state_sequence_ptr[i-1] = value+1;
+      last_state_valid = valid_states_ptr[value]-1;
   }
   mxDestroyArray(psi);
 }
