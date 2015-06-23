@@ -286,7 +286,6 @@ classdef HMM
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                 end
-                hidden_state_sequence = [];
             elseif strcmp(inference_method, 'HMM_viterbi_lag')
                 hidden_state_sequence = obj.viterbi_fixed_lag_decode(obs_lik, 2);
             else
