@@ -240,28 +240,44 @@ classdef HMM
             
         end
         
-        function results = do_inference(obj, y, fname, inference_method, do_output)
+        function results = do_inference(obj, y, test_file, ...
+                inference_method, load_obslik)
             if obj.hmm_is_corrupt
                 error('@HMM/do_inference.m: HMM is corrupt\n');
             end
-            % compute observation likelihoods
-            if strcmp(obj.dist_type, 'RNN')
-                % normalize
-                % TODO: norm to max=0.95 instead of 1
-                for iR = 1:size(y, 2)
-                    y(: ,iR) = y(: ,iR) / max(y(: ,iR));
-                end
-                obs_lik = obj.rnn_format_obs_prob(y);
-                if obj.R  ~= size(y, 2)
-                    error('Dim of RNN probs should be equal to R!\n');
+            [fpath, fname, ~] = fileparts(test_file);
+            if exist('load_obslik', 'var') && (load_obslik == 1)
+                % load observation likelihood from file
+                fln = fullfile(fpath, 'beat_activations', [fname, '.obslik']);
+                if exist(fln, 'file')
+                   load(fln, '-mat');
+                   if (size(obs_lik, 1) ~= obj.R) || ...
+                           (size(obs_lik, 2) ~= obj.barGrid)
+                        error('@HMM/do_inference.m: HMM is corrupt, observation likelihood has wrong dimensions\n');
+                   end
+                else
+                    error('HMM.do_inference: did not find observation likelihood file %s\n', fln);
                 end
             else
-                obs_lik = obj.obs_model.compute_obs_lik(y);
+                % compute observation likelihoods
+                if strcmp(obj.dist_type, 'RNN')
+                    % normalize
+                    % TODO: norm to max=0.95 instead of 1
+                    for iR = 1:size(y, 2)
+                        y(: ,iR) = y(: ,iR) / max(y(: ,iR));
+                    end
+                    obs_lik = obj.rnn_format_obs_prob(y);
+                    if obj.R  ~= size(y, 2)
+                        error('Dim of RNN probs should be equal to R!\n');
+                    end
+                else
+                    obs_lik = obj.obs_model.compute_obs_lik(y);
+                end
             end
             if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
                 [~, ~, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
-                    do_output, fname, y);
+                    0, fname, y);
             elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 fprintf('    Decoding (viterbi) .');

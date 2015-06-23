@@ -74,6 +74,9 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'outlier_percentile')
                 obj.Params.outlier_percentile = 5;
             end
+            if ~isfield(obj.Params, 'load_obslik')
+                obj.Params.load_obslik = 0;
+            end
         end
         
         
@@ -304,15 +307,19 @@ classdef BeatTracker < handle
             if ~exist('do_output', 'var')
                 do_output = 1;
             end
-            [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
-            % load feature
-            observations = obj.feature.load_feature(...
-                obj.test_data.file_list{test_file_id}, ...
-                obj.Params.save_features_to_file, ...
-                obj.Params.load_features_from_file);
+            if obj.Params.load_obslik
+                observations = [];
+            else
+                % load feature
+                observations = obj.feature.load_feature(...
+                    obj.test_data.file_list{test_file_id}, ...
+                    obj.Params.save_features_to_file, ...
+                    obj.Params.load_features_from_file);
+            end
             % compute observation likelihoods
-            results = obj.model.do_inference(observations, fname, ...
-                obj.inferenceMethod, do_output);
+            results = obj.model.do_inference(observations, ...
+                obj.test_data.file_list{test_file_id}, ...
+                obj.inferenceMethod, obj.Params.load_obslik);
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
@@ -328,6 +335,8 @@ classdef BeatTracker < handle
                         [m, n] = HMM.getpath(obj.model.Meff(r), annots, ...
                             obj.model.frame_length, size(observations, 1));
                         anns = [m, n, ones(length(m), 1) * r];
+                        [~, fname, ~] = ...
+                            fileparts(obj.test_data.file_list{test_file_id});
                         save(['/tmp/', fname, '_anns.mat'], 'anns');
                     end
                 end
