@@ -15,8 +15,12 @@ classdef BeatTracker < handle
     
     methods
         function obj = BeatTracker(Params, sim_id)
-            % parse probabilistic model
-            obj.inferenceMethod = Params.inferenceMethod;
+            % parse parameters and set defaults
+            if ~isfield(obj.Params, 'inferenceMethod')
+                obj.inferenceMethod = 'HMM_viterbi';
+            else
+                obj.inferenceMethod = Params.inferenceMethod;
+            end
             if exist('sim_id', 'var')
                 obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
                 if ~exist(obj.sim_dir, 'dir')

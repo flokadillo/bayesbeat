@@ -14,15 +14,15 @@ This setting is intended if the simulation class is used with systems apart from
 * `base_path`  
 Specifies the root folder of the bayes_beat package.
 * `data_path`  
-Folder where rhythm-cluster-assignments, sorted-features, etc. are stored.  
+Folder where rhythm-cluster-assignments, features, etc. are stored.  
 * `results_path`  
-Folder where results are stored:  
+Folder where results are stored. 
 
 
 ### Simulation settings
 
 * `n_depends_on_r` = 1  
-If n_depends_on_r=true, then use different tempo limits for each rhythm state:  
+If n_depends_on_r=true, then use different tempo limits for each rhythm state. 
 
 
 % If patternGiven=true, then take the pattern labels as given

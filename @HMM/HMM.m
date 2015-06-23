@@ -52,7 +52,6 @@ classdef HMM
             obj.Meff = round((bar_durations) ...
                 * (Params.M ./ (max(bar_durations))));
             obj.pattern_size = Params.pattern_size;
-            
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
             else
@@ -271,6 +270,7 @@ classdef HMM
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                 end
+                hidden_state_sequence = [];
             elseif strcmp(inference_method, 'HMM_viterbi_lag')
                 hidden_state_sequence = obj.viterbi_fixed_lag_decode(obs_lik, 2);
             else
@@ -300,7 +300,7 @@ classdef HMM
             meter = zeros(2, length(r_path));
             meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             beats = obj.find_beat_times(m_path, r_path, y);
-            if strcmp(obj.pattern_size, 'bar')
+            if strcmp(obj.pattern_size, 'bar') && ~isempty(n_path)
                 tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
                     (obj.Meff(r_path(idx)') * obj.frame_length);
             else
@@ -1065,7 +1065,9 @@ classdef HMM
                     end
                 end
             end
-            beats(:, 1) = beats(:, 1) * obj.frame_length;
+            if ~isempty(beats)
+                beats(:, 1) = beats(:, 1) * obj.frame_length;
+            end
         end
         
         function belief_func = make_belief_functions(obj, train_data, file_ids)
