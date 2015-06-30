@@ -120,6 +120,16 @@ classdef HMM
             % (in old models Meff and
             % rhythm2meter_state are row vectors [1 x K] but should be
             % column vectors)
+            % check for old MIREX model versions
+            if isempty(obj.Meff) && (size(obj.rhythm2meter, 1) == 1) && ...
+                    isempty(obj.rhythm2meter_state)
+                obj.rhythm2meter = [obj.rhythm2meter + 2; ...
+                    ones(size(obj.rhythm2meter)) * 4];
+                obj.obs_model = ...
+                    obj.obs_model.convert_to_new_model(obj.rhythm2meter);
+                obj.Meff = obj.M * obj.rhythm2meter(1, :) ./ ...
+                    obj.rhythm2meter(2, :);
+            end
             obj.Meff = obj.Meff(:);
             if length(obj.Meff) ~= obj.R
                 obj.Meff = obj.Meff(obj.rhythm2meter_state);
@@ -132,10 +142,10 @@ classdef HMM
             if (length(obj.trans_model.pr(:)) == 1) && (obj.R > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                pr_mat = ones(obj.R, obj.R) * (obj.trans_model.pr / (obj.R-1));
                 % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
-                obj.pr = pr_mat;
+                pr_mat(logical(eye(obj.R))) = (1 - obj.trans_model.pr);
+                obj.trans_model.pr = pr_mat;
             end
             if isempty(obj.rhythm2meter)
                 obj.rhythm2meter = obj.meter_state2meter(:, ...
@@ -242,7 +252,7 @@ classdef HMM
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
             if obj.hmm_is_corrupt
-                error('@HMM/do_inference.m: HMM is corrupt\n');
+                fprintf('    WARNING: @HMM/do_inference.m: HMM is corrupt or out of date\n');
             end
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
