@@ -252,7 +252,7 @@ classdef HMM
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
             if obj.hmm_is_corrupt
-                fprintf('    WARNING: @HMM/do_inference.m: HMM is corrupt or out of date\n');
+                error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
             end
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
@@ -1289,6 +1289,9 @@ classdef HMM
                 length(obj.trans_model.mapping_state_position);
                 length(obj.trans_model.mapping_state_rhythm);
                 length(obj.trans_model.mapping_tempo_state_id)];
+            % remove zeros which come from older model versions
+            num_states_hypothesis = ...
+                num_states_hypothesis(num_states_hypothesis > 0);
             if any(diff(num_states_hypothesis))
                 hmm_corrupt = true;
             else
