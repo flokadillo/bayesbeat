@@ -12,6 +12,8 @@ function [ ] = compute_beats_mirex_2013( input_file_name, output_file_name )
 %
 % 30.08.2013 by Florian Krebs
 % ----------------------------------------------------------------------
+% add path to base class
+addpath('../..')
 fprintf('Processing %s ',input_file_name);
 % ---------- SET PARAMETERS --------------------------------------------
 Params.model_fln = 'mirex_2013_hmm.mat';
