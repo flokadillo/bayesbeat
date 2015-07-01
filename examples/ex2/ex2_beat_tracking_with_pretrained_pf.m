@@ -5,7 +5,7 @@ path_to_bayes_beat = '../../';
 % 2) audio file to be analysed (flac or wav supported):
 audio_test = '~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train1.flac';
 % ------------------------------------------------------------------------
-% specify a simulation id. The script will create a subirectory "sim_id" in 
+% Specify a simulation id. The script will create a subirectory "sim_id" in 
 % the results folder to save the results
 sim_id = 1;
 % load config file

@@ -143,7 +143,7 @@ classdef HMM
                 pr_mat = ones(obj.R, obj.R) * (obj.trans_model.pr / (obj.R-1));
                 % pattern self transitions
                 pr_mat(logical(eye(obj.R))) = (1 - obj.trans_model.pr);
-                obj.trans_model.pr = pr_mat;
+                obj.trans_model.set_pr(pr_mat);
             end
             if isempty(obj.rhythm2meter)
                 obj.rhythm2meter = obj.meter_state2meter(:, ...
@@ -272,9 +272,15 @@ classdef HMM
                     do_output, fname, y);
             elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
-                fprintf('    Decoding (viterbi) .');
+                fprintf('* Decoding (viterbi) .');
                 if obj.use_mex_viterbi
-                    hidden_state_sequence = obj.viterbi_decode_mex(obs_lik, fname);
+                    try
+                        hidden_state_sequence = ...
+                            obj.viterbi_decode_mex(obs_lik, fname);
+                    catch 
+                        fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
+                        hidden_state_sequence = obj.viterbi_decode(obs_lik, fname); 
+                    end
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                 end

@@ -15,6 +15,8 @@ classdef BeatTracker < handle
     
     methods
         function obj = BeatTracker(Params, sim_id)
+            % save parameters
+            obj.Params = Params;
             % parse parameters and set defaults
             if ~isfield(obj.Params, 'inferenceMethod')
                 obj.inferenceMethod = 'HMM_viterbi';
@@ -30,7 +32,7 @@ classdef BeatTracker < handle
             if isfield(Params, 'temp_path')
                 obj.temp_path = Params.temp_path;
             end
-            obj.Params = Params;
+            
             % Set default values if not specified otherwise
             if ~isfield(obj.Params, 'learn_tempo_ranges')
                 obj.Params.learn_tempo_ranges = 1;
