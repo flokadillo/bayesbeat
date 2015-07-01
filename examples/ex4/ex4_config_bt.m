@@ -16,7 +16,7 @@ Params.system = 'BeatTracker';
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    Params.base_path = '../../';
 end
 if ~exist(Params.base_path, 'dir')
     error('Please specify path to bayes_beat class in the config file\n');
@@ -41,6 +41,8 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'PF';
+% Use mex implementation of viterbi decoding
+Params.use_mex_viterbi = 0;
 
 % SYSTEM PARAMETERS:
 % ==================

@@ -6,7 +6,7 @@
 % the results folder to save the results
 sim_id = 1;
 % load config file
-Params = ex1_config_bt;
+Params = ex1_config_bt('../../');
 % create beat tracker object
 BT = BeatTracker(Params, sim_id);
 % set up test data

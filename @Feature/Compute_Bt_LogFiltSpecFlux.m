@@ -85,7 +85,7 @@ else
     winsize = param.fftsize - 1;
     type = 0; % 1=complex, use smaller windows at beginning and end
     online = 0; % 1=time frame corresponds to right part of window
-    [S, t, f] = Feature.STFT(x, winsize, param.hopsize, param.fftsize, fs, type, online, 0, param.norm);
+    [S, t, f] = Feature.STFT(x, winsize, param.hopsize, param.fftsize, fs, type, online, 0);
     S = S'; % make S = [N x K]
     fr = 1 / mean(diff(t));
     magnitude = abs(S);

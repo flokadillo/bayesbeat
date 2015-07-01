@@ -18,7 +18,7 @@ Params.system = 'BeatTracker';
 if exist('base_path', 'var')
     Params.base_path = base_path;
 else
-    Params.base_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+    Params.base_path = '../../';
 end
 if ~exist(Params.base_path, 'dir')
     error('Please specify path to bayes_beat class in the config file\n');
@@ -43,6 +43,8 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 % Inference and model settings {'HMM_viterbi', 'HMM_forward', 'PF',
 % 'PF_viterbi'}
 Params.inferenceMethod = 'HMM_viterbi';
+% Use mex implementation of viterbi decoding
+Params.use_mex_viterbi = 0;
 
 % SYSTEM PARAMETERS:
 % ==================
@@ -77,14 +79,8 @@ Params.pr = 0;
 % --------------
 % Probability of tempo acceleration (and deceleration)
 Params.pn = 0.01;  
-% Settings for Viterbi learning: tempo_tying
-%   0) p_n tied across position states (different p_n for each n)
-%   1) Global p_n for all changes (only one p_n)
-%   2) Separate p_n for tempo increase and decrease (two different p_n)
-Params.tempo_tying = 1; 
 % Probability of rhythmic pattern change
 Params.pr = 0;
-
 
 % Observation model
 % -----------------
@@ -95,7 +91,6 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
  Params.feat_type{1} = 'lo230_superflux.mvavg';
  Params.feat_type{2} = 'hi250_superflux.mvavg';
-
 % Feature dimension
 Params.featureDim = length(Params.feat_type);
 

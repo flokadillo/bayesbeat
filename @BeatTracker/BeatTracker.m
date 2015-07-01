@@ -64,6 +64,8 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
+            % load or create probabilistic model
+            obj.init_model();
         end
         
         
@@ -87,11 +89,8 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                if isempty(obj.train_data) % no training data given -> set defaults
-                    obj.train_data.rhythm_names = cellfun(@(x) num2str(x), ...
-                        num2cell(1:obj.Params.R), 'UniformOutput', false);
-                end
-                
+                % initialise training data
+                obj.init_train_data();
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(obj.Params, ...

@@ -61,10 +61,11 @@ classdef HMM
             else
                 obj.save_inference_data = 0;
             end
-            obj.tempo_tying = Params.tempo_tying;
+            
             if isfield(Params, 'viterbi_learning_iterations')
                 obj.viterbi_learning_iterations = ...
                     Params.viterbi_learning_iterations;
+                obj.tempo_tying = Params.tempo_tying;
             else
                 obj.viterbi_learning_iterations = 0;
             end
@@ -834,6 +835,7 @@ classdef HMM
             validstate_to_state=unique(state_ids_j);
             valid_states=zeros(max(state_ids_j), 1);
             valid_states(validstate_to_state)=1:length(validstate_to_state);
+            
             bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
                 obj.initial_prob, obs_lik, obj.obs_model.state2obs_idx, ...
                 valid_states, validstate_to_state);

@@ -1,7 +1,7 @@
 % Train a HMM model from data
 
 % Add the path to your local copy of the bayes_beat package here:
-Params = ex4_config_bt('~/diss/src/matlab/beat_tracking/bayes_beat');
+Params = ex4_config_bt('../../');
 % specify a simulation id
 sim_id = 1;
 
