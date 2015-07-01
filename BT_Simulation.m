@@ -30,14 +30,12 @@ system(['cd ', bayes_beat_path]);
 system('cd -');
 fprintf('Git SHA-1: %s\n', cmdout);
 fprintf('Process ID: %i\n', feature('getpid'));
-% create folder for results
-if ~exist(['./results/', num2str(sim_id)], 'dir')
-    system(['mkdir ./results/', num2str(sim_id)]);
-end
 % load parameters ...
 if exist('params', 'var')
     if isstruct(params)
         % from struct
+        % make results folder
+        system(['mkdir ', fullfile(params.results_path, num2str(sim_id))]);
         sim = Simulation(params, sim_id);   
     else
         if exist(params, 'file')
@@ -52,9 +50,13 @@ else
 end
 if exist('config_fln', 'var')
     % load parameters from config file
-    fprintf(['* Copy ', config_fln, ' to ', num2str(sim_id), '/config_bt_dir.m\n']);
-    system(['cp ./', config_fln, ' ./results/', num2str(sim_id), '/config_bt_dir.m']);
-    sim = Simulation('config_bt_dir', sim_id, ['./results/', num2str(sim_id)]);
+    [config_path, fname, ~] = fileparts(config_fln);
+    addpath(config_path);
+    params = eval(fname);
+    results_dir = fullfile(params.results_path, num2str(sim_id));
+    fprintf(['* Copy ', config_fln, ' to ', results_dir, '/config_bt_dir.m\n']);
+    system(['cp ', config_fln, ' ', fullfile(results_dir, 'config_bt_dir.m')]);
+    sim = Simulation('config_bt_dir', sim_id, results_dir);
 end
 % start training
 sim = sim.train_system();

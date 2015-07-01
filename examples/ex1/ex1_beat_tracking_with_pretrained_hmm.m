@@ -1,12 +1,16 @@
-% Use the beat tracker with a predefined (and trained) model. Please make 
-% sure to add the path to your local copy of the
-% bayes_beat package in the config file ex1_config_bt.m.
-
+% Use the beat tracker with a predefined (and trained) model. Please set
+% the following paths:
+% 1) bayes beat base folder
+path_to_bayes_beat = '../..';
+% 2) audio file to be analysed (flac or wav supported):
+audio_test = '~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train1.flac';
+% ------------------------------------------------------------------------
+% load config file
+Params = ex1_config_bt(path_to_bayes_beat);
+Params.testLab = audio_test;
 % specify a simulation id. The script will create a subirectory "sim_id" in 
 % the results folder to save the results
 sim_id = 1;
-% load config file
-Params = ex1_config_bt('../../');
 % create beat tracker object
 BT = BeatTracker(Params, sim_id);
 % set up test data

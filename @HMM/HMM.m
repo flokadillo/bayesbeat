@@ -14,8 +14,6 @@ classdef HMM
         % compatibility
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
-        frames_per_beat     % frames_per_beat for each rhythmic pattern
-        % cell array of values for each r
         frame_length        % audio frame length in [sec]
         dist_type           % type of parametric distribution
         trans_model         % transition model
@@ -49,19 +47,16 @@ classdef HMM
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.init_n_gauss = Params.init_n_gauss;
             obj.rhythm2meter = rhythm2meter;
             % effective number of bar positions per rhythm
             obj.Meff = round((bar_durations) ...
                 * (Params.M ./ (max(bar_durations))));
             obj.pattern_size = Params.pattern_size;
-            
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
             else
                 obj.save_inference_data = 0;
             end
-            
             if isfield(Params, 'viterbi_learning_iterations')
                 obj.viterbi_learning_iterations = ...
                     Params.viterbi_learning_iterations;
@@ -69,7 +64,16 @@ classdef HMM
             else
                 obj.viterbi_learning_iterations = 0;
             end
-            obj.n_depends_on_r = Params.n_depends_on_r;
+            if isfield(Params, 'init_n_gauss')
+                obj.init_n_gauss = Params.init_n_gauss;
+            else
+                obj.init_n_gauss = 0;
+            end
+            if isfield(Params, 'n_depends_on_r')
+                obj.n_depends_on_r = Params.n_depends_on_r;
+            else
+                obj.n_depends_on_r = 1;
+            end
             if isfield(Params, 'online')
                 obj.max_shift = Params.online.max_shift;
                 obj.update_interval = Params.online.update_interval;
@@ -114,6 +118,16 @@ classdef HMM
             % (in old models Meff and
             % rhythm2meter_state are row vectors [1 x K] but should be
             % column vectors)
+            % check for old MIREX model versions
+            if isempty(obj.Meff) && (size(obj.rhythm2meter, 1) == 1) && ...
+                    isempty(obj.rhythm2meter_state)
+                obj.rhythm2meter = [obj.rhythm2meter + 2; ...
+                    ones(size(obj.rhythm2meter)) * 4];
+                obj.obs_model = ...
+                    obj.obs_model.convert_to_new_model(obj.rhythm2meter);
+                obj.Meff = obj.M * obj.rhythm2meter(1, :) ./ ...
+                    obj.rhythm2meter(2, :);
+            end
             obj.Meff = obj.Meff(:);
             if length(obj.Meff) ~= obj.R
                 obj.Meff = obj.Meff(obj.rhythm2meter_state);
@@ -126,10 +140,10 @@ classdef HMM
             if (length(obj.trans_model.pr(:)) == 1) && (obj.R > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                pr_mat = ones(obj.R, obj.R) * (obj.trans_model.pr / (obj.R-1));
                 % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
-                obj.pr = pr_mat;
+                pr_mat(logical(eye(obj.R))) = (1 - obj.trans_model.pr);
+                obj.trans_model.pr = pr_mat;
             end
             if isempty(obj.rhythm2meter)
                 obj.rhythm2meter = obj.meter_state2meter(:, ...
@@ -137,89 +151,23 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
+            %
+            obj.tm_type = obj.trans_model.tm_type;
         end
         
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
                 alpha, pn, pr)
             position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
-            if strcmp(obj.tm_type, 'whiteley')
-                % convert from BPM into barpositions / audio frame
-                if strcmp(obj.pattern_size, 'bar')
-                    minN = floor(position_states_per_beat .* ...
-                        obj.frame_length .* min_tempo_bpm ./ 60);
-                    maxN = ceil(position_states_per_beat .* ...
-                        obj.frame_length .* max_tempo_bpm ./ 60);
-                else
-                    minN = floor(obj.M * obj.frame_length * min_tempo_bpm ./ 60);
-                    maxN = ceil(obj.M * obj.frame_length * max_tempo_bpm ./ 60);
-                end
-                if max(maxN) ~= obj.N
-                    obj.N = max(maxN);
-                end
-                if ~obj.n_depends_on_r % no dependency between n and r
-                    minN = ones(1, obj.R) * min(minN);
-                    maxN = ones(1, obj.R) * max(maxN);
-                    obj.N = max(maxN);
-                end
-                frames_per_beat = cell(obj.R, 1);
-                for ri = 1:obj.R
-                    frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
-                        (minN(ri):maxN(ri));
-                end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
-                        r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
-                end
-            elseif strcmp(obj.tm_type, '2015')
-                % number of frames per beat (slowest tempo)
-                % (python: max_tempo_states)
-                max_frames_per_beat = ceil(60 ./ (min_tempo_bpm * ...
-                    obj.frame_length));
-                % number of frames per beat (fastest tempo)
-                % (python: min_tempo_states)
-                min_frames_per_beat = floor(60 ./ (max_tempo_bpm * ...
-                    obj.frame_length));
-                % compute number of position states
-                frames_per_beat = cell(obj.R, 1);
-                if isnan(obj.N)
-                    % use max number of tempi and position states:
-                    for ri=1:obj.R
-                        frames_per_beat{ri} = ...
-                            max_frames_per_beat(ri):-1:min_frames_per_beat(ri);
-                    end
-                else
-                    % use N tempi and position states and distribute them
-                    % log2 wise
-                    for ri=1:obj.R
-                        frames_per_beat{ri} = ...
-                            2.^(linspace(log2(min_frames_per_beat(ri)), ...
-                            log2(max_frames_per_beat(ri)), obj.N));
-                        % remove duplicates which would have the same tempo
-                        frames_per_beat{ri} = unique(round(frames_per_beat{ri}));
-                    end
-                end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (frames_per_beat{r_i} * obj.frame_length);
-                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
-                        r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
-                        (bpms(end)-bpms(end-1)));
-                end
-            else
-                error('Transition model %s unknown!\n', obj.tm_type);
-            end
-            
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
-                frames_per_beat, obj.frame_length, ...
+                min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
                 obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');
             end
-            
         end
         
         function obj = make_observation_model(obj, train_data)
@@ -241,7 +189,7 @@ classdef HMM
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
-            n_states = obj.trans_model.num_states;
+            n_states = length(obj.trans_model.mapping_state_position);
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
@@ -301,6 +249,9 @@ classdef HMM
         end
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
+            if obj.hmm_is_corrupt
+                error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
+            end
             % compute observation likelihoods
             if strcmp(obj.dist_type, 'RNN')
                 % normalize
@@ -356,7 +307,7 @@ classdef HMM
             meter = zeros(2, length(r_path));
             meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             beats = obj.find_beat_times(m_path, r_path, y);
-            if strcmp(obj.pattern_size, 'bar')
+            if strcmp(obj.pattern_size, 'bar') && ~isempty(n_path)
                 tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
                     (obj.Meff(r_path(idx)') * obj.frame_length);
             else
@@ -816,6 +767,7 @@ classdef HMM
             fprintf(' done\n');
         end
         
+        
         function bestpath = viterbi_decode_mex(obj, obs_lik, fname)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
             % initial_prob)
@@ -832,13 +784,25 @@ classdef HMM
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
-            validstate_to_state=unique(state_ids_j);
-            valid_states=zeros(max(state_ids_j), 1);
-            valid_states(validstate_to_state)=1:length(validstate_to_state);
-            
+            % state_ids_j have to be sorted for the mex viterbi.
+            % maybe this can be skipped, if find always sorts indices?
+            [state_ids_j, idx] = sort(state_ids_j, 'ascend');
+            state_ids_i = state_ids_i(idx);
+            trans_prob_ij = trans_prob_ij(idx);
+            % As there might be wholes in the state spaces, we first compress
+            % the state space in order to have lower state ids.
+            % mapping from compressed state (cs) to state (s)
+            [s_from_cs, ~, state_ids_j] = unique(state_ids_j);
+            % mapping from state (s) to compressed state (s)
+            cs_from_s = zeros(s_from_cs(end), 1);
+            cs_from_s(s_from_cs) = 1:length(s_from_cs);
+            % compress states_i
+            state_ids_i = cs_from_s(state_ids_i);
             bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
-                obj.initial_prob, obs_lik, obj.obs_model.state2obs_idx, ...
-                valid_states, validstate_to_state);
+                obj.initial_prob(s_from_cs), obs_lik, ...
+                obj.obs_model.state2obs_idx(s_from_cs, :));
+            % uncompress states
+            bestpath = s_from_cs(bestpath);
             fprintf(' done\n');
         end
         
@@ -1033,8 +997,8 @@ classdef HMM
             % set up cell array with beat position for each meter
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
-                    beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                        obj.rhythm2meter(i_r, 1) + 1));
+                beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
+                    obj.rhythm2meter(i_r, 1) + 1));
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
             
@@ -1108,7 +1072,9 @@ classdef HMM
                     end
                 end
             end
-            beats(:, 1) = beats(:, 1) * obj.frame_length;
+            if ~isempty(beats)
+                beats(:, 1) = beats(:, 1) * obj.frame_length;
+            end
         end
         
         function belief_func = make_belief_functions(obj, train_data, file_ids)
@@ -1312,6 +1278,24 @@ classdef HMM
             possible_successors = [successors, ...
                 extended_states];
         end
+        
+        function hmm_corrupt = hmm_is_corrupt(obj)
+            num_states_hypothesis = [length(obj.initial_prob);
+                size(obj.obs_model.state2obs_idx, 1);
+                size(obj.trans_model.A, 1);
+                length(obj.trans_model.mapping_state_tempo);
+                length(obj.trans_model.mapping_state_position);
+                length(obj.trans_model.mapping_state_rhythm);
+                length(obj.trans_model.mapping_tempo_state_id)];
+            % remove zeros which come from older model versions
+            num_states_hypothesis = ...
+                num_states_hypothesis(num_states_hypothesis > 0);
+            if any(diff(num_states_hypothesis))
+                hmm_corrupt = true;
+            else
+                hmm_corrupt = false;
+            end
+        end
     end
     
     methods (Static)
@@ -1319,9 +1303,7 @@ classdef HMM
         [m, n] = getpath(M, annots, frame_length, nFrames);
         
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
-            initial_prob, obs_lik, state2obs_idx, ...
-            valid_states, validstate_to_state);
-        
+            initial_prob, obs_lik, state2obs_idx);
         
     end
     
