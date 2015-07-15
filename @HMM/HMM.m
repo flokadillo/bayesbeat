@@ -102,7 +102,7 @@ classdef HMM
             else
                 obj.tm_type = '2015';
             end
-            if isfield(Params, 'N')
+            if isfield(Params, 'N') && strcmp(obj.tm_type, '2015')
                 obj.N = Params.N;
             else
                 obj.N = nan;
@@ -164,6 +164,8 @@ classdef HMM
                 min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
                 obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
+            % set N of the model to N of the transition model
+            obj.N = obj.trans_model.N;
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');
@@ -215,7 +217,7 @@ classdef HMM
                     if strcmp(obj.tm_type, 'whiteley')
                         obj.initial_prob = zeros(n_states, 1);
                         % compute number of valid states:
-                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(1, obj.R);
+                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(obj.R, 1);
                         n_valid_states = obj.Meff(:)' * n_range(:);
                         prob = 1/n_valid_states;
                         for r_i = 1:obj.R
@@ -1298,6 +1300,7 @@ classdef HMM
                 num_states_hypothesis(num_states_hypothesis > 0);
             if any(diff(num_states_hypothesis))
                 hmm_corrupt = true;
+                num_states_hypothesis
             else
                 hmm_corrupt = false;
             end

@@ -10,24 +10,14 @@ classdef Simulation
         sim_id              % id of simulation (= name of folder in the results dir)
         sim_dir             % folder where results are saved
         save_results2file
-        Params              % parameters of simulation (from config_bt)
+        Params              % parameters of simulation (from config)
         system              % system that is evaluated (e.g., BeatTracker object)
     end
     
     methods
-        function obj = Simulation(config_fun, sim_id, config_path)
-            if exist('config_path', 'var')
-                addpath(config_path);
-                obj.Params = eval(config_fun);
-                fprintf('* Reading %s\n', fullfile(config_path, [config_fun, '.m']));
-            else
-                if isstruct(config_fun)
-                    obj.Params = config_fun;
-                else
-                    obj.Params = eval(config_fun);
-                    fprintf('* Reading %s\n', ['./', config_fun, '.m']);
-                end
-            end
+        function obj = Simulation(params, sim_id)
+            obj.Params = params;
+
             if ~isfield(obj.Params, 'system')
                 obj.Params.system = 'BeatTracker';
             end
@@ -127,6 +117,10 @@ classdef Simulation
         
         function obj = set_comp_time(obj, comp_time)
             obj.Params.compTime = comp_time;
+        end
+        
+        function obj = set_git_sha1(obj, git_sha1)
+            obj.Params.git_sha1 = git_sha1;
         end
         
         function save_params(obj)
