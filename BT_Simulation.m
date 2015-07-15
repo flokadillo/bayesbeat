@@ -62,7 +62,7 @@ if ~isstruct(params) && exist(params, 'file')
     system(['cp ', params, ' ', fullfile(Params.results_path, 'config.m')]);
 end
 % create Simulation object
-sim = Simulation(Params, sim_id);
+sim = Simulation(Params);
 % start training
 sim = sim.train_system();
 fprintf('\n');

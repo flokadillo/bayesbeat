@@ -7,17 +7,14 @@ classdef Simulation
     % ----------------------------------------------------------------------
     properties
         nFolds              % number of folds (= number of times parameter training is performed)
-        sim_id              % id of simulation (= name of folder in the results dir)
-        sim_dir             % folder where results are saved
         save_results2file
         Params              % parameters of simulation (from config)
         system              % system that is evaluated (e.g., BeatTracker object)
     end
     
     methods
-        function obj = Simulation(params, sim_id)
+        function obj = Simulation(params)
             obj.Params = params;
-
             if ~isfield(obj.Params, 'system')
                 obj.Params.system = 'BeatTracker';
             end
@@ -29,7 +26,7 @@ classdef Simulation
             end
             sys_constructor = str2func(obj.Params.system);
             % create beat tracker object
-            obj.system = sys_constructor(obj.Params, sim_id);
+            obj.system = sys_constructor(obj.Params);
             % create test_data object
             obj.system.init_test_data();
             if  obj.Params.n_folds_for_cross_validation > 1
@@ -53,18 +50,12 @@ classdef Simulation
                 error('Parameter n_folds_for_cross_validation is invalid (=%.2f)', obj.Params.n_folds_for_cross_validation)
             end
             obj.save_results2file = 1;
-            obj.sim_id = sim_id;
-            obj.sim_dir = fullfile(obj.Params.results_path, num2str(sim_id));
-            obj.Params.logFileName = num2str(obj.sim_id);
-            obj.Params.paramsName = fullfile(obj.sim_dir, 'params.mat');
+            obj.Params.paramsName = fullfile(obj.Params.results_path, 'params.mat');
         end
         
-        function obj = set_up_results_dir(obj, sim_id)
-            obj.sim_id = sim_id;
+        function obj = set_up_results_dir(obj)
             % set up folder where results are stored
-            obj.sim_dir = fullfile(obj.Params.results_path, num2str(obj.sim_id));
-            obj.Params.logFileName = num2str(obj.sim_id);
-            obj.Params.paramsName = fullfile(obj.sim_dir, 'params.mat');
+            obj.Params.paramsName = fullfile(obj.Params.results_path, 'params.mat');
             %                 Params.obsFileName = fullfile(obj.sim_dir, 'observationModel.mat');
             %                 Params.transitionMatrixFile = fullfile(obj.sim_dir, 'transitionMatrix.mat');
             % copy config file to simulation folder
@@ -88,7 +79,7 @@ classdef Simulation
                     results = obj.test(iFile);
                     if obj.save_results2file
                         % save to file
-                        obj.system.save_results(results, obj.sim_dir, fname);
+                        obj.system.save_results(results, obj.Params.results_path, fname);
                     end
                     fileCount = fileCount + 1;
                 end

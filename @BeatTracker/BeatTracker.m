@@ -14,7 +14,7 @@ classdef BeatTracker < handle
     end
     
     methods
-        function obj = BeatTracker(Params, sim_id)
+        function obj = BeatTracker(Params)
             % save parameters
             obj.Params = Params;
             % parse parameters and set defaults
@@ -23,16 +23,9 @@ classdef BeatTracker < handle
             else
                 obj.inferenceMethod = Params.inferenceMethod;
             end
-            if exist('sim_id', 'var')
-                obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
-                if ~exist(obj.sim_dir, 'dir')
-                    system(['mkdir ', obj.sim_dir]);
-                end
-            end
             if isfield(Params, 'temp_path')
                 obj.temp_path = Params.temp_path;
             end
-            
             % Set default values if not specified otherwise
             if ~isfield(obj.Params, 'learn_tempo_ranges')
                 obj.Params.learn_tempo_ranges = 1;
@@ -205,7 +198,7 @@ classdef BeatTracker < handle
                 obj.model = obj.model.make_initial_distribution(...
                     [tempo_min_per_cluster; tempo_max_per_cluster]);
                 
-                fln = fullfile(obj.sim_dir, 'model.mat');
+                fln = fullfile(obj.Params.results_path, 'model.mat');
                 switch obj.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
@@ -215,7 +208,7 @@ classdef BeatTracker < handle
                         save(fln, 'pf');
                 end
                 fprintf('* Saved model (Matlab) to %s\n', fln);
-            end            
+            end
             %  obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
             
             if isfield(obj.Params, 'viterbi_learning_iterations') && ...
@@ -295,8 +288,8 @@ classdef BeatTracker < handle
                 fprintf('* Viterbi training: iteration %i\n', i);
                 [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
                 hmm = obj.model;
-                save(fullfile(obj.sim_dir, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
-                save(fullfile(obj.sim_dir, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
+                save(fullfile(obj.Params.results_path, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
+                save(fullfile(obj.Params.results_path, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
             end
         end
         
