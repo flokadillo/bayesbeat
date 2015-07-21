@@ -185,9 +185,10 @@ classdef Data < handle
             end
         end
         
-        function obj = extract_feats_per_file_pattern_barPos_dim(obj, whole_note_div, barGrid_eff, ...
-                featureDim, featuresFln, featureType, frame_length, reorganize_bars_into_cluster)
-            
+        function obj = extract_feats_per_file_pattern_barPos_dim(obj, ...
+                whole_note_div, featuresFln, featureType, frame_length, ...
+                reorganize_bars_into_cluster)
+            featureDim = length(featureType);
             obj.feat_type = featureType;
             % Extract audio features and sort them according to bars and position
             if exist(featuresFln, 'file') && ~reorganize_bars_into_cluster

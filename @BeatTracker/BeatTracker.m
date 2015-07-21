@@ -66,8 +66,8 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
-            if ~isfield(obj.Params, 'outlier_percentile')
-                obj.Params.outlier_percentile = 5;
+            if ~isfield(obj.Params, 'tempo_outlier_percentile')
+                obj.Params.tempo_outlier_percentile = 5;
             end
             % load or create probabilistic model
             obj.init_model();
@@ -127,21 +127,16 @@ classdef BeatTracker < handle
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
-            for iDim = 1:obj.Params.featureDim
+            for iDim = 1:length(obj.Params.feat_type)
                 featType = strrep(obj.Params.feat_type{iDim}, '.', '-');
                 featStr = [featStr, featType];
             end
             featuresFln = fullfile(obj.Params.data_path, ['features_', ...
                 clusterFName, '_', featStr, '.mat']);
-            barGrid_eff = obj.Params.whole_note_div * ...
-                (obj.train_data.rhythm2meter(:, 1) ./ ...
-                obj.train_data.rhythm2meter(:, 2));
             obj.train_data = ...
                 obj.train_data.extract_feats_per_file_pattern_barPos_dim(...
-                obj.Params.whole_note_div, barGrid_eff, ...
-                obj.Params.featureDim, featuresFln, obj.Params.feat_type, ...
-                obj.Params.frame_length, ...
-                obj.Params.reorganize_bars_into_cluster);
+                obj.Params.whole_note_div, featuresFln, obj.Params.feat_type, ...
+                obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
             % process silence data
             if obj.Params.use_silence_state
                 fid = fopen(obj.Params.silence_lab, 'r');
@@ -171,7 +166,7 @@ classdef BeatTracker < handle
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
                         obj.train_data.get_tempo_per_cluster(...
-                        obj.Params.outlier_percentile);
+                        obj.Params.tempo_outlier_percentile);
                     % find min/max for each pattern
                     tempo_min_per_cluster = min(tempo_min_per_cluster)';
                     tempo_max_per_cluster = max(tempo_max_per_cluster)';

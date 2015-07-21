@@ -35,13 +35,12 @@ Params.results_path = fullfile(Params.base_path, 'results');
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
 Params.n_depends_on_r = 1;
-% If patternGiven=true, then take the pattern labels as given
-Params.patternGiven = 0;
-% n_folds_for_cross_validation
-%   0) use train and test set as described below
-%   1) use leave-one-out splitting (train and test are the same)
-%   k) use k-fold cross-validation (train and test are the same)
-Params.n_folds_for_cross_validation = 0;
+% validation_type
+%   'holdout' use train and test set as described below
+%   'leave_one_out' use leave-one-out splitting (train and test are the same)
+%   'cross_validation' use k-fold cross-validation (train and test are the same)
+Params.validation_type = 'cross_validation';
+Params.n_folds = 10;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
 Params.save_inference_data = 0;
@@ -199,8 +198,6 @@ Params.observationModelType = 'MOG';
 % Features (extension) to be used
 Params.feat_type{1} = 'lo230_superflux.mvavg';
 Params.feat_type{2} = 'hi250_superflux.mvavg';
-% Feature dimension
-Params.featureDim = length(Params.feat_type);
 
 % DATA:
 % =====
@@ -213,18 +210,15 @@ Params.train_set = 'ballroom';
 % Path to lab file
 Params.trainLab =  ['~/diss/data/beats/lab_files/', Params.train_set, '.lab'];
 % Path to file where bar to rhythm assignments are stored
-Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(Params.featureDim), 'd-', ...
+Params.clusterIdFln = fullfile(Params.data_path, ['ca-', Params.train_set, '-', num2str(length(Params.feat_type)), 'd-', ...
     num2str(Params.R), 'R-meter.mat']);
 
 % Test data
 % ----------
 
 % Test dataset
-Params.test_set = 'rwc_2_3_4';
+Params.test_set = 'ballroom';
 % Path to lab file (.lab) or to test song (.wav)
 Params.testLab = ['~/diss/data/beats/lab_files/', Params.test_set, '.lab'];
-% Params.testLab = '~/diss/data/beats/boeck/train12.wav';
-% Params.testLab = '~/diss/projects/ismir_beats_2014/data/orig/sh_003.beats.txt';
-% Params.testLab = '~/diss/projects/ismir_beats_2014/lab_files/hainsworth_orig.lab';
 
 end

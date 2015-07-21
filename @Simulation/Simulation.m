@@ -18,8 +18,8 @@ classdef Simulation
             if ~isfield(obj.Params, 'system')
                 obj.Params.system = 'BeatTracker';
             end
-            if ~isfield(obj.Params, 'n_folds_for_cross_validation')
-                obj.Params.n_folds_for_cross_validation = 0;
+            if ~isfield(obj.Params, 'validation_type')
+                obj.Params.validation_type = 'holdout';
             end
             if ~isfield(obj.Params, 'viterbi_learning_iterations')
                 obj.Params.viterbi_learning_iterations = 0;
@@ -29,25 +29,25 @@ classdef Simulation
             obj.system = sys_constructor(obj.Params);
             % create test_data object
             obj.system.init_test_data();
-            if  obj.Params.n_folds_for_cross_validation > 1
+            if strcmp(obj.Params.validation_type, 'cross_validation')
                 if ~strcmp(obj.Params.testLab, obj.Params.trainLab)
                     error('Train and test set should be the same for cross validation\n');
                 end
                 % do k-fold cross validation: check if lab files for folds are present
-                [fpath, fname, ~] = fileparts(obj.Params.testLab);
-                for k=1:obj.Params.n_folds_for_cross_validation
+                [fpath, fname, ~] = fileparts(obj.Params.trainLab);
+                for k=1:obj.Params.n_folds
                     obj.Params.foldLab{k} = fullfile(fpath, [fname, '-fold', num2str(k), '.lab']);
                     if ~exist(obj.Params.foldLab{k}, 'file')
                         error('Lab file for %i th fold not found: %s', k, obj.Params.foldLab{k});
                     end
                 end
-                obj.nFolds = obj.Params.n_folds_for_cross_validation;
-            elseif obj.Params.n_folds_for_cross_validation == 1
+                obj.nFolds = obj.Params.n_folds;
+            elseif strcmp(obj.Params.validation_type, 'leave_one_out')
                 obj.nFolds = length(obj.system.test_data.file_list);
-            elseif obj.Params.n_folds_for_cross_validation == 0
+            elseif strcmp(obj.Params.validation_type, 'holdout')
                 obj.nFolds = 1;
             else
-                error('Parameter n_folds_for_cross_validation is invalid (=%.2f)', obj.Params.n_folds_for_cross_validation)
+                error('Parameter validation_type is invalid (=%s)', obj.Params.validation_type)
             end
             obj.save_results2file = 1;
             obj.Params.paramsName = fullfile(obj.Params.results_path, 'params.mat');
@@ -88,10 +88,10 @@ classdef Simulation
         
         function test_file_ids = retrain(obj, k)
             % Retrain is used to only update parts of the parameters
-            if obj.Params.n_folds_for_cross_validation == 1 % leave one out
+            if strcmp(obj.Params.validation_type, 'leave_one_out') % leave one out
                 test_file_ids = k;
                 obj.system.retrain_model(test_file_ids);
-            elseif obj.Params.n_folds_for_cross_validation > 1 % k-fild cross validation
+            elseif strcmp(obj.Params.validation_type, 'cross_validation') % k-fild cross validation
                 % load filenames of fold k
                 fid = fopen(obj.Params.foldLab{k}, 'r');
                 file_list = textscan(fid, '%s'); file_list = file_list{1};
