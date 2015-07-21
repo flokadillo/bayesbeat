@@ -414,8 +414,6 @@ classdef RhythmCluster < handle
             end
             bar2rhythm = [];
             obj.bar2file = [];
-            %             dancestyles = {'ChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', ...
-            %               'VienneseWaltz', 'Waltz'};
             % check if there are songs that should be excluded
             if isempty(obj.exclude_songs_fln)
                 ok_songs = 1:length(obj.train_file_list);
