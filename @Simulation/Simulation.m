@@ -89,9 +89,8 @@ classdef Simulation
         function test_file_ids = retrain(obj, k)
             % Retrain is used to only update parts of the parameters
             if strcmp(obj.Params.validation_type, 'leave_one_out') % leave one out
-                test_file_ids = k;
-                obj.system.retrain_model(test_file_ids);
-            elseif strcmp(obj.Params.validation_type, 'cross_validation') % k-fild cross validation
+                test_file_ids = obj.system.retrain_model(k);
+            elseif strcmp(obj.Params.validation_type, 'cross_validation') % k-fold cross validation
                 % load filenames of fold k
                 fid = fopen(obj.Params.foldLab{k}, 'r');
                 file_list = textscan(fid, '%s'); file_list = file_list{1};

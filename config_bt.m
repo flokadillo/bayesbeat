@@ -39,7 +39,7 @@ Params.n_depends_on_r = 1;
 %   'holdout' use train and test set as described below
 %   'leave_one_out' use leave-one-out splitting (train and test are the same)
 %   'cross_validation' use k-fold cross-validation (train and test are the same)
-Params.validation_type = 'cross_validation';
+Params.validation_type = 'leave_one_out';
 Params.n_folds = 10;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
