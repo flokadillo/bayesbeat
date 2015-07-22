@@ -156,6 +156,7 @@ classdef HMM
                 min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
                 obj.use_silence_state, obj.p2s, obj.pfs, ...
                 obj.tm_type);
+            obj.N = obj.trans_model.N;   % Important to set this correctly, might have changed inside
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');

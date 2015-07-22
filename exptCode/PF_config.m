@@ -44,7 +44,7 @@ Params.inferenceMethod = 'PF';
 Params.store_name = 'PF';  % Placeholder, changed later in this script depending on the method
 % If n_depends_on_r=true, then use different tempo limits for each rhythm
 % state
-Params.n_depends_on_r = 0;
+Params.n_depends_on_r = 1;
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
 Params.save_inference_data = 0;
@@ -66,9 +66,9 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 % Maximum position state (used for the meter with the longest duration)
 Params.M = 1600;
 % Maximum tempo state 
-Params.N = 16;
+Params.N = 15;
 % Number of rhythmic pattern states
-Params.R = 1;
+Params.R = 4;
 
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
@@ -176,8 +176,8 @@ Params.learn_tempo_ranges = 1;
 % Set tempo limits (same for all rhythmic patterns). If 
 % learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
 % a certain range given by min_tempo and max_tempo [BPM]
-Params.min_tempo = 60;
-Params.max_tempo = 230;
+% Params.min_tempo = 60;
+% Params.max_tempo = 230;
 % Params.min_tempo = 1;       % Corresponds to about 48 bpm on 4/4, a cycle length of 8 seconds at M = 1600: minN = 4 for Carnatic, 6 for Ballroom, 10 for Cretan
 % Params.max_tempo = 16;      % Corresponds to about 180 bpm on 4/4, a cycle length of 2.13 seconds at M = 1600: maxN = 15 for Carnatic, 24 for Ballroom, 24 for Cretan, 32 for Quickstep only
 % When learning tempo ranges, outlier beat intervals can be ignored, e.g.,
@@ -221,20 +221,28 @@ Params.featureDim = length(Params.feat_type);
 %% MUSIC PARAMETERS
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
 % **Carnatic
-Params.meters = [3, 5, 7, 8; 4, 8, 8, 8];   % Make sure its in increasing order, bug in code otherwise!
+Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
 Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
+Params.min_tempo = [60 60 60 60];
+Params.max_tempo = [230 230 230 230];
 
 % **Ballroom
 % Params.meters = [4,4,4,4,4,4,3,3; 4,4,4,4,4,4,4,4];   
 % Params.meterNames = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
+% Params.min_tempo = [60 60 60 60];
+% Params.max_tempo = [230 230 230 230];
 
 % **Hindustani
 % Params.meters = [7, 10, 12, 16; 8, 8, 8, 8];   
 % Params.meterNames = {'rupak', 'jhap', 'ek', 'teen'};
+% Params.min_tempo = [60 60 60 60];
+% Params.max_tempo = [230 230 230 230];
 
 % **Cretan
 % Params.meters = [2; 4];   
 % Params.meterNames = {'cretan'};
+% Params.min_tempo = [60];
+% Params.max_tempo = [230];
 
 %% OUTPUT PARAMETERS
 % If save_inference_data=true, then save complete posterior probability to

@@ -219,7 +219,6 @@ classdef BeatTracker < handle
                 fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
-                obj.model.N = obj.model.trans_model.N;   % Important to set this correctly.
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);

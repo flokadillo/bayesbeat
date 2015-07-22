@@ -8,9 +8,11 @@ function [y, L] = normalizeLogspace(x)
 %%
 
 % This file is from pmtk3.googlecode.com
-
-L = logsumexp(x, 2);
-%y = x - repmat(L, 1, size(x,2));
-y = bsxfun(@minus, x, L);
- 
+if size(x,2) == 1
+    L = logsumexp(x);
+    y = x - L; 
+else
+    L = logsumexp(x, 2);
+    %y = x - repmat(L, 1, size(x,2));
+    y = bsxfun(@minus, x, L); 
 end

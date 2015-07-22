@@ -1,4 +1,4 @@
-function r = log_sum_exp(X,dim)
+function r = logsumexp(X,dim)
 %LOG_SUM_EXP Numerically stable computation of log(sum(exp(X), dim))
 % [r] = log_sum_exp(X, dim)
 %
@@ -8,7 +8,10 @@ function r = log_sum_exp(X,dim)
 %
 % dim : Sum Dimension <default = 1>, means summing over the columns
 %
-
+if nargin == 1, 
+    % Determine which dimension sum will use
+    dim = 1;
+end
 maxval = max(X,[],dim);
 sizes = size(X);
 if dim == 1

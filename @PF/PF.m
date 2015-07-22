@@ -7,8 +7,12 @@ classdef PF < handle
         R                           % number of rhythmic pattern states
         T                           % number of meters
         pr                          % probability of a switch in rhythmic pattern
-        rhythm2meter                % assigns each rhythmic pattern to a
-        %                           meter [R x 1]
+        prprior                     % prior probability of a pattern
+        frames_per_beat             % cell arrays with tempi relative to the framerate
+        % frames_per_beat{1} is a row vector with tempo
+        % values in [audio frames per beat] for pattern 1
+        rhythm2meter                % assigns each rhythmic pattern to a meter [R x 1]
+        rhythm2meterID              % assigns each rhythmic pattern to a meter state (better if present)
         rhythm2meter_state          % assigns each rhythmic pattern to a
         % meter state (1, 2, ...)  - var not needed anymore but keep due to
         % compatibility
@@ -35,7 +39,6 @@ classdef PF < handle
         resampling_interval         % fixed resampling interval [samples]
         resampling_scheme           % type of resampling employed
         warp_fun                    % function that warps the weights w to a compressed space
-        do_viterbi_filtering
         save_inference_data         % save intermediate output of particle filter for visualisation
         state_distance_coefficients % distance factors for k-means clustering [1 x nDims]
         cluster_merging_thr         % if distance < thr: merge
@@ -48,6 +51,11 @@ classdef PF < handle
         pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
         use_silence_state           % state that describes non-musical content
         n_depends_on_r              % Flag to say if tempo depends on the style/pattern/rhythm
+        patt_trans_opt              % Flag to say how pattern transitions need to be done
+        pattWtMatInit               % Pattern weight matrix, init
+        currBarStartInit            % A pointer to the frame the current bar started, init
+        peakInfMode                 % If inference is to be done only at peaks
+        peakParam                   % Peak finder params
     end
     
     methods
@@ -64,13 +72,18 @@ classdef PF < handle
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
             obj.rhythm2meter = rhythm2meter;
+            for iR = 1:obj.R
+                obj.rhythm2meterID(iR) = find(ismember(Params.meters',rhythm2meter(iR,:),'rows'));
+            end
+            obj.pr = Params.pr;
+            obj.prprior = Params.prprior;
             bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
             obj.Meff = round((bar_durations) ...
-                * (Params.M ./ (max(bar_durations)))); obj.Meff = obj.Meff(:);
+                * (Params.M ./ (max(bar_durations)))); 
+            obj.Meff = obj.Meff(:);
             obj.ratio_Neff = Params.ratio_Neff;
             obj.resampling_scheme = Params.resampling_scheme;
             obj.warp_fun = Params.warp_fun;
-            obj.do_viterbi_filtering = Params.do_viterbi_filtering;
             obj.save_inference_data = Params.save_inference_data;
             obj.state_distance_coefficients = Params.state_distance_coefficients;
             obj.cluster_merging_thr = Params.cluster_merging_thr;
@@ -82,6 +95,7 @@ classdef PF < handle
             obj.resampling_interval = Params.res_int;
             obj.use_silence_state = Params.use_silence_state;
             obj.n_depends_on_r = Params.n_depends_on_r;
+            obj.patt_trans_opt = Params.patt_trans_opt;
             tempVar = ver('matlab');
             if str2double(tempVar.Release(3:6)) < 2011
                 % Matlab 2010
@@ -137,14 +151,16 @@ classdef PF < handle
                 obj.initial_m(c:end) = m_between_0_and_1 .* ...
                     (obj.Meff(obj.initial_r(c:end))-1) + 1;
             end
+            if (obj.patt_trans_opt == 2 || obj.patt_trans_opt == 3)
+                obj.pattWtMatInit = ones(obj.nParticles,1) * obj.prprior;  % Use from prior specified
+                obj.currBarStartInit = ones(obj.nParticles,1);  % The curr bar started just now
+            end
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
                 alpha, sigmaN, pr, prprior)
-            
+            position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
             obj.sigma_N = sigmaN;
-            % convert from BPM into barpositions / audio frame
-            meter_num = obj.rhythm2meter(:, 1);
             % save pattern change probability and save as matrix [RxR]
             if (length(pr(:)) == 1) && (obj.R > 1)
                 % expand pr to a matrix [R x R]
@@ -159,25 +175,31 @@ classdef PF < handle
             else
                 error('p_r has wrong dimensions!\n');
             end
-            if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
-            else
-                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
-                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
-            end
-            if max(obj.maxN) > obj.N
+            % convert from BPM into barpositions / audio frame
+            obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
+            obj.minN = obj.minN(:)';
+            obj.maxN = ceil(position_states_per_beat .* obj.frame_length .* maxTempo ./ 60);
+            obj.maxN = obj.maxN(:)';
+            if max(obj.maxN) ~= obj.N
                 fprintf('    N should be %i instead of %i -> corrected\n', ...
                     max(obj.maxN), obj.N);
-                obj.N = ceil(max(obj.maxN));
-            end
-            if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
                 obj.N = max(obj.maxN);
-                fprintf('    Tempo limited to %i - %i bpm\n', ...
-                    round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
-                    round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
+            end
+
+            % if ~n_depends_on_r % no dependency between n and r
+            %     obj.minN = ones(1, obj.R) * min(obj.minN);
+            %     obj.maxN = ones(1, obj.R) * max(obj.maxN);
+            %     obj.N = max(obj.maxN);
+            % end
+            obj.frames_per_beat = cell(obj.R, 1);
+            for ri = 1:obj.R
+                obj.frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
+                    ([obj.minN(ri) obj.maxN(ri)]);
+            end
+            for r_i = 1:obj.R
+                bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
+                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm \n', ...
+                    r_i, bpms(1), bpms(end));
             end
             % Transition function to propagate particles
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
@@ -218,7 +240,26 @@ classdef PF < handle
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            obj = obj.forward_filtering(obs_lik, fname);
+            obs_lik(obs_lik < eps) = eps;       % Prevent underflow       
+            % If peak inference mode is ON: Find peaks
+            if obj.peakInfMode == 1
+                feat1 = y(:,obj.peakParam.featID);
+                feat1 = feat1 + abs(min(feat1));
+                feat1 = feat1./max(feat1);
+                [pkInd dummy] = findpeaks_new(feat1, 'M', obj.peakParam.mode, ...
+                    'wdTol',obj.peakParam.wdTol, 'ampTol',obj.peakParam.ampTol,...
+                    'prominence',obj.peakParam.prominence);
+                pkInd = pkInd(:)';
+                if (pkInd(1) ~= 1)
+                    pkInd = [1 pkInd];
+                end
+            elseif obj.peakInfMode == 2
+                pkInd = 1:obj.peakInfSkip:size(y,1);
+            else
+                pkInd = 1:size(y,1);
+            end
+            
+            obj = obj.forward_filtering(obs_lik, fname, pkInd);
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             
             % strip of silence state
@@ -231,7 +272,7 @@ classdef PF < handle
             meter = zeros(2, length(r_path));
             meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             % compute beat times and bar positions of beats
-            beats = obj.find_beat_times(m_path, r_path);
+            beats = obj.find_beat_times(m_path, r_path, pkInd);
             if strcmp(obj.pattern_size, 'bar')
                 tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
                     (obj.Meff(r_path(idx)) * obj.frame_length);
@@ -302,6 +343,27 @@ classdef PF < handle
             end
         end
         
+        % Compute observation likelihood of a block
+        function lik = compute_obs_lik_blk(obj, states_m, iFrame, obslik, m_per_grid)
+            % states_m_r:   is a [nParts x 1] matrix, where (:, 1) are the
+            %               m-values 
+            % R is the total number of patterns
+            % obslik:       likelihood values [R, barGrid, nFrames]
+            % lik is [nParts x R] matrix of likelihood for all patterns 
+            nParts = size(states_m,1);
+            subind = floor((states_m-1) / m_per_grid) + 1;
+            obslik = obslik(:, :, iFrame);
+            %             r_ind = bsxfun(@times, (1:obj.R)', ones(1, obj.nParticles));
+            try
+                states_r = ones(nParts,1)*[1:obj.R];
+                ind = sub2ind([obj.R, obj.barGrid], states_r(:), repmat(subind(:), obj.R,1));
+                lik = reshape(obslik(ind),nParts,obj.R);
+            catch exception
+                fprintf('dimensions R=%i, barGrid=%i, states_m=%.2f - %.2f, subind = %i - %i, m_per_grid=%.2f\n', ...
+                    obj.R, obj.barGrid, min(states_m(:, 1)), max(states_m(:, 1)), ...
+                    min(subind), max(subind), m_per_grid);
+            end
+        end
         function [m_path, n_path, r_path] = path_via_best_weight(obj)
             % use particle with highest weight
             % ------------------------------------------------------------
@@ -314,9 +376,9 @@ classdef PF < handle
             r_path = r_path(:)';
         end
         
-        
-        function obj = forward_filtering(obj, obs_lik, fname)
-            nFrames = size(obs_lik, 3);
+        function obj = forward_filtering(obj, obs_lik, fname, pkInd)
+            nTotFrames = size(obs_lik, 3);  % Number of total observation frames
+            nFrames = length(pkInd);      % This is the number of peaks
             if obj.save_inference_data
                 logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
             end
@@ -328,17 +390,54 @@ classdef PF < handle
             m(:, iFrame) = obj.initial_m;
             n(:, iFrame) = obj.initial_n;
             r(:, iFrame) = obj.initial_r;
-            if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                obj.particles_grid = Particles(obj.nParticles, nFrames);
-                obj.particles_grid.m(:, iFrame) = obj.initial_m;
-                obj.particles_grid.n(:, iFrame) = obj.initial_n;
-                obj.particles_grid.r(:, iFrame) = obj.initial_r;
+            % Initializing values
+            if  obj.patt_trans_opt == 3     % Full model
+                % pattWtMat = obj.pattWtMatInit;
+                % But equal weight is not the best, the pattWtMat should be
+                % set based on the initialization of particles also
+                pattParticleMask = (obj.pr(obj.initial_r,:) > 0);
+                weightMat = log(double(pattParticleMask > 0) .* obj.pattWtMatInit);
+                weightMat = normalizeLogProb(weightMat) - log(obj.nParticles);
+                % Or start with flat weights
+                % weightMat = ones(obj.nParticles,obj.R) .* log(1./(obj.nParticles*obj.R));
+                weight = logsumexp(weightMat,2);
+                currBarStart = obj.currBarStartInit;
+            elseif obj.patt_trans_opt == 2  % ISMIR'15: mixture obs model
+                pattParticleMask = (obj.pr(obj.initial_r,:) > 0);
+                weight = obj.prprior(obj.initial_r);
+                weight = log(weight/sum(weight));
+                weight = weight(:);
+                % set based on the initialization of particles also
+                % weight = log(ones(obj.nParticles,1)/obj.nParticles);
+            else
+                weight = log(obj.prprior(obj.initial_r));
+                weight = weight(:);
+                % Or start with flat weights
+                % weight = log(ones(obj.nParticles,1)/obj.nParticles);
+                weight = normalizeLogspace(weight);
             end
             % observation probability
             eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / ...
                 obj.barGrid);
-            obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
-            weight = log(obs / sum(obs));
+            eval_lik_blk = @(x, y) obj.compute_obs_lik_blk(x, y, obs_lik, obj.M /...
+                obj.barGrid);
+            
+            if obj.patt_trans_opt == 3      % Full model
+                obsMat = eval_lik_blk(m(:, iFrame), iFrame);
+                obsMat = obsMat.*pattParticleMask;
+                weightMat = weightMat + log(obsMat);    % Add to prior
+                weightMat = normalizeLogspace2D(weightMat);   % Normalize
+                weight = logsumexp(weightMat,2);
+            elseif obj.patt_trans_opt == 2  % ISMIR'15: mixture obs model
+                obsMat = eval_lik_blk(m(:, iFrame), iFrame);
+                obsMat = obsMat.*pattParticleMask;
+                weight = weight + log(sum(obsMat,2));    % Add to prior
+                weight = normalizeLogspace(weight);
+            else
+                obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
+                weight = normalizeLogspace(weight + log(obs));
+            end
+
             if obj.resampling_scheme > 1
                 % divide particles into clusters by kmeans
                 groups = obj.divide_into_fixed_cells([m(:, iFrame), n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; obj.R], obj.n_initial_clusters);
@@ -355,57 +454,92 @@ classdef PF < handle
                 logP_data_pf(:, 5, iFrame) = groups;
             end
             resampling_frames = zeros(nFrames, 1);
+            perc = round(0.1*nFrames);
+            fprintf('Particle filtering started');
             for iFrame=2:nFrames
                 % transition from iFrame-1 to iFrame
-                m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
+                m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1)*(pkInd(iFrame)-pkInd(iFrame-1));
                 m(:, iFrame) = mod(m(:, iFrame) - 1, ...
                     obj.Meff(r(:, iFrame-1))) + 1;
+                % Change the ones for which the bar changed
+                newBars = find(m(:, iFrame) < m(:, iFrame-1));
                 % Pattern transitions to be handled here
                 r(:, iFrame) = r(:, iFrame-1);
-                % Change the ones for which the bar changed
-                crossed_barline = find(m(:, iFrame) < m(:, iFrame-1));
-                for rInd = 1:length(crossed_barline)
-                    r(crossed_barline(rInd), iFrame) = ...
-                        randsample(obj.R, 1, true, ...
-                        obj.pr(r(crossed_barline(rInd),iFrame-1),:));
+                
+                if obj.patt_trans_opt == 3          
+                    % Full model
+                    [~, maxInds] = max(weightMat(newBars,:),[],2);
+                    for mInd = 1:length(newBars)
+                        r(newBars(mInd),currBarStart(newBars(mInd)):iFrame) = maxInds(mInd);
+                        currBarStart(newBars(mInd)) = iFrame;
+                    end
+                    currBarStart(newBars) = iFrame;
+                    weightMat(newBars,:) = bsxfun(@plus,log(obj.pr(r(newBars,iFrame-1),:)), weight(newBars));
+                    % Observation likelihoods
+                    obsMat = eval_lik_blk(m(:, iFrame), pkInd(iFrame));   %% CHANGE AS NEEDED
+                    obsMat = obsMat.*pattParticleMask;
+                    weightMat = weightMat + log(obsMat);    % Add to weights
+                    weightMat = normalizeLogspace2D(weightMat);   % Normalize
+                    weight = logsumexp(weightMat,2);
+                elseif obj.patt_trans_opt == 2      % Obs_model
+                    % Update the pattern weight matrix
+                    obsMat = eval_lik_blk(m(:, iFrame), pkInd(iFrame));        
+                    obsMat = obsMat.*pattParticleMask;
+                    weight = weight + log(sum(obsMat,2));
+                    weight = normalizeLogspace(weight);
+                elseif obj.patt_trans_opt == 1
+                    % Sampling from prior
+                    for rInd = 1:length(newBars)
+                        r(newBars(rInd), iFrame) = ...
+                            randsample(obj.R, 1, true, obj.pr(r(newBars(rInd),iFrame-1),:));
+                    end
+                    obs = eval_lik([m(:, iFrame), r(:, iFrame)], pkInd(iFrame));
+                    weight = weight + log(obs);
+                    weight = normalizeLogspace(weight);
+                else
+                    obs = eval_lik([m(:, iFrame), r(:, iFrame)], pkInd(iFrame));
+                    weight = weight + log(obs);
+                    weight = normalizeLogspace(weight);
                 end
-                % evaluate particle at iFrame-1
-                obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
-                weight = weight(:) + log(obs(:));
-                % Normalise importance weights
-                [weight, ~] = normalizeLogspace(weight');
                 % Resampling
                 % ------------------------------------------------------------
                 if obj.resampling_interval == 0
                     Neff = 1/sum(exp(weight).^2);
                     do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
                 else
-                    do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
+                    do_resampling = (rem(pkInd(iFrame), obj.resampling_interval) == 0);
                 end
                 if do_resampling && (iFrame < nFrames)
+                    if obj.patt_trans_opt == 3
+                        weightOld = weight;
+                    end
                     resampling_frames(iFrame) = iFrame;
                     if obj.resampling_scheme == 2 || obj.resampling_scheme == 3 % MPF or AMPF
-                        groups = obj.divide_into_clusters([m(:, iFrame), ...
-                            n(:, iFrame-1), r(:, iFrame)], ...
-                            [obj.M; obj.N; obj.R], groups);
+                        groups = obj.divide_into_clusters([m(:, iFrame), n(:, iFrame-1), r(:, iFrame)], [obj.M; obj.N; obj.R], groups);
                         n_clusters(iFrame) = length(unique(groups));
                     end
                     [weight, groups, newIdx] = obj.resample(weight, groups);
+                    weight = weight(:);
                     m(:, 1:iFrame) = m(newIdx, 1:iFrame);
                     r(:, 1:iFrame) = r(newIdx, 1:iFrame);
                     n(:, 1:iFrame) = n(newIdx, 1:iFrame);
+                    if obj.patt_trans_opt == 3
+                        currBarStart = currBarStart(newIdx);
+                        pattParticleMask = pattParticleMask(newIdx,:);
+                        weightMat = weightMat(newIdx,:);
+                        weightOld = weightOld(newIdx);
+                        weightMat = bsxfun(@plus, weightMat, weight - weightOld); 
+                    elseif obj.patt_trans_opt == 2
+                        pattParticleMask = pattParticleMask(newIdx,:);
+                    end
                 end
-                % transition from iFrame-1 to iFrame
+                % Tempo transition from iFrame-1 to iFrame
                 n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
                 out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
                 out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-                if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                    obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
-                    obj.particles_grid.n(:, iFrame) =  obj.particles.n(:, iFrame);
-                    obj.particles_grid.r(:, iFrame) =  obj.particles.r(:, iFrame);
-                end
+                
                 if obj.save_inference_data
                     % save particle data for visualizing
                     logP_data_pf(:, 1, iFrame) = m(:, iFrame);
@@ -414,11 +548,18 @@ classdef PF < handle
                     logP_data_pf(:, 4, iFrame) = weight;
                     logP_data_pf(:, 5, iFrame) = groups;
                 end
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
             end
+            fprintf('\n');
+            
             obj.particles.m = m;
             obj.particles.n = n;
             obj.particles.r = r;
+            obj.particles.ts = pkInd;
             obj.particles.weight = weight;
+            
             fprintf('    Average resampling interval: %.2f frames\n', ...
                 mean(diff(resampling_frames(resampling_frames>0))));
             if obj.resampling_scheme > 1
@@ -429,8 +570,8 @@ classdef PF < handle
             end
         end
         
-        function beats = find_beat_times(obj, positionPath, rhythmPath)
-            %   Find beat times from sequence of bar positions of the HMM beat tracker
+        function beats = find_beat_times(obj, positionPath, rhythmPath, pkInd)
+            %   Find beat times from sequence of bar positions of the PF beat tracker
             % ----------------------------------------------------------------------
             %INPUT parameter:
             % positionPath             : sequence of position states
@@ -469,16 +610,16 @@ classdef PF < handle
                 for beat_pos = 1:length(beatpositions{rhythmPath(i)})
                     if positionPath(i) == beatpositions{rhythmPath(i)}(beat_pos)
                         % current frame = beat frame
-                        beats = [beats; [i, beat_pos]];
+                        beats = [beats; [pkInd(i), beat_pos]];
                         break;
                     elseif ((positionPath(i+1) > beatpositions{rhythmPath(i)}(beat_pos)) && (positionPath(i+1) < positionPath(i)))
                         % bar transition between frame i and frame i+1
-                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[i; i+1],obj.M+beatpositions{rhythmPath(i)}(beat_pos));
+                        bt = interp1([positionPath(i); obj.M+positionPath(i+1)],[pkInd(i); pkInd(i+1)],obj.M+beatpositions{rhythmPath(i)}(beat_pos));
                         beats = [beats; [round(bt), beat_pos]];
                         break;
                     elseif ((positionPath(i) < beatpositions{rhythmPath(i)}(beat_pos)) && (beatpositions{rhythmPath(i)}(beat_pos) < positionPath(i+1)))
                         % beat position lies between frame i and frame i+1
-                        bt = interp1([positionPath(i); positionPath(i+1)],[i; i+1],beatpositions{rhythmPath(i)}(beat_pos));
+                        bt = interp1([positionPath(i); positionPath(i+1)],[pkInd(i); pkInd(i+1)],beatpositions{rhythmPath(i)}(beat_pos));
                         beats = [beats; [round(bt), beat_pos]];
                         break;
                     end
