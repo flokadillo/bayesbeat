@@ -4,7 +4,7 @@ classdef BeatTracker < handle
         input_fln               % input filename (.wav or feature file)
         model                   % probabilistic model
         inferenceMethod         % forward, viterbi, ...
-        feature
+        feature                 
         train_data
         test_data
         sim_dir                 % directory where results are saved
@@ -16,7 +16,7 @@ classdef BeatTracker < handle
     methods
         function obj = BeatTracker(Params, sim_id)
             % parse parameters and set defaults
-            if ~isfield(obj.Params, 'inferenceMethod')
+            if ~isfield(Params, 'inferenceMethod')
                 obj.inferenceMethod = 'HMM_viterbi';
             else
                 obj.inferenceMethod = Params.inferenceMethod;
@@ -130,6 +130,10 @@ classdef BeatTracker < handle
                 % if pr is given in cluster file save it here
                 obj.Params.pr = obj.train_data.pr;
             end
+            if ~isempty(obj.train_data.prprior)
+                % if prprior is given in cluster file save it here
+                obj.Params.prprior = obj.train_data.prprior;
+            end
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
             featStr = '';
@@ -137,8 +141,10 @@ classdef BeatTracker < handle
                 featType = strrep(obj.Params.feat_type{iDim}, '.', '-');
                 featStr = [featStr, featType];
             end
-            featuresFln = fullfile(obj.Params.data_path, ['features_', ...
-                clusterFName, '_', featStr, '.mat']);
+            % featuresFln = fullfile(obj.Params.data_path, ['features_', ...
+            %    clusterFName, '_', featStr, '.mat']);
+            featuresFln = fullfile(obj.Params.results_path, ...
+                [clusterFName, '_', featStr, '.mat']);
             barGrid_eff = obj.Params.whole_note_div * ...
                 (obj.train_data.rhythm2meter(:, 1) ./ ...
                 obj.train_data.rhythm2meter(:, 2));
@@ -173,6 +179,26 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
+                if length(obj.Params.min_tempo) == size(obj.Params.meters, 2);
+                    min_tempo_param_per_rhythm = obj.Params.min_tempo(obj.train_data.rhythm2meterID);
+                elseif length(obj.Params.min_tempo) == 1
+                    min_tempo_param_per_rhythm = repmat(obj.Params.min_tempo, 1, obj.Params.R);
+                else
+                    disp(strcat(['BeatTracker/train_model: min_tempo incorrectly specified.'],...
+                        ['Specify min_tempo with one value per meter, or just one value for all meters.']));
+                    disp('Taking only the first value of min_tempo...');
+                    min_tempo_param_per_rhythm = repmat(obj.Params.min_tempo(1),1,obj.Params.R);
+                end                
+                if length(obj.Params.max_tempo) == size(obj.Params.meters, 2);
+                    max_tempo_param_per_rhythm = obj.Params.max_tempo(obj.train_data.rhythm2meterID);
+                elseif length(obj.Params.max_tempo) == 1
+                    max_tempo_param_per_rhythm = repmat(obj.Params.max_tempo,1,obj.Params.R);
+                else
+                    disp(strcat(['BeatTracker/train_model: max_tempo incorrectly specified.'],...
+                        ['Specify max_tempo with one value per meter, or just one value for all meters.']));
+                    disp('Taking only the first value of max_tempo...');
+                    max_tempo_param_per_rhythm = repmat(obj.Params.max_tempo(1),1,obj.Params.R);
+                end
                 if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
@@ -182,19 +208,18 @@ classdef BeatTracker < handle
                     tempo_min_per_cluster = min(tempo_min_per_cluster)';
                     tempo_max_per_cluster = max(tempo_max_per_cluster)';
                     % restrict ranges
-                    tempo_min_per_cluster(tempo_min_per_cluster < ...
-                        obj.Params.min_tempo) = obj.Params.min_tempo;
-                    tempo_max_per_cluster(tempo_max_per_cluster > ...
-                        obj.Params.max_tempo) = obj.Params.max_tempo;
+                    lowInd = tempo_min_per_cluster < min_tempo_param_per_rhythm(:);
+                    highInd = tempo_max_per_cluster > max_tempo_param_per_rhythm(:);
+                    tempo_min_per_cluster(lowInd) = min_tempo_param_per_rhythm(lowInd);
+                    tempo_max_per_cluster(highInd) = max_tempo_param_per_rhythm(highInd);
                 else
-                    tempo_min_per_cluster = repmat(obj.Params.min_tempo, 1, ...
-                        obj.Params.R);
-                    tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, ...
-                        obj.Params.R);
+                    tempo_min_per_cluster = min_tempo_param_per_rhythm;
+                    tempo_max_per_cluster = max_tempo_param_per_rhythm;
                 end
                 fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
+                obj.model.N = obj.model.trans_model.N;   % Important to set this correctly.
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(obj.train_data);
@@ -236,15 +261,23 @@ classdef BeatTracker < handle
                 % use pr of config file
                 pr = obj.Params.pr;
             end
+            if isfield(obj.Params, 'cluster_prior_fln') && ...
+                    exist(obj.Params.cluster_prior_fln, 'file')
+                % load pr from separate file
+                prprior = dlmread(obj.Params.cluster_transitions_fln);
+            else
+                % use pr of config file
+                prprior = obj.Params.prprior;
+            end
             switch obj.inferenceMethod(1:2)
                 case 'HM'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
-                        obj.Params.alpha, obj.Params.pn, pr);
+                        obj.Params.alpha, obj.Params.pn, pr, prprior);
                 case 'PF'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
-                        obj.Params.alpha, obj.Params.sigmaN, pr);
+                        obj.Params.alpha, obj.Params.sigmaN, pr, prprior);
             end
         end
         
@@ -311,8 +344,10 @@ classdef BeatTracker < handle
                 obj.Params.save_features_to_file, ...
                 obj.Params.load_features_from_file);
             % compute observation likelihoods
+            tic;
             results = obj.model.do_inference(observations, fname, ...
                 obj.inferenceMethod, do_output);
+            results{end+1} = toc;
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...

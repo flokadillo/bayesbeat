@@ -5,7 +5,8 @@ classdef Data < handle
         lab_fln                         % lab file with list of files of dataset
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
-        pr                              % rhythmtransition probability matrix [R x R]
+        pr                              % rhythm transition probability matrix [R x R]
+        prprior                         % rhythm prior probability matrix [1 x R]
         meter                           % meter of each file [nFiles x 2]
         beats                           % beats of each file {nFiles x 1}[n_beats 3]
         n_bars                          % number of bars of each file [nFiles x 1]
@@ -15,6 +16,7 @@ classdef Data < handle
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
         rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
+        rhythm2meterID                  % specifies for each bar the corresponding meter ID [R x 1]
         feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
         feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
@@ -77,13 +79,19 @@ classdef Data < handle
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
-                if ismember(obj.rhythm2meter, [8, 4], 'rows')
-                   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
-                   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
-                end
+                obj.rhythm2meterID = C.rhythm2meterID;
+                % Adi tala should be 8/4 ideally
+                % if any(ismember(obj.rhythm2meter, [8, 4], 'rows'))   % Does not 
+                %   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
+                %   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
+                % end
                 if isfield(C, 'pr')
                     % only newer models
                     obj.pr = C.pr;
+                end
+                if isfield(C, 'prprior')
+                    % only newer models
+                    obj.prprior = C.prprior;
                 end
             else
                 error('Cluster file %s not found\n', cluster_fln);
@@ -174,7 +182,7 @@ classdef Data < handle
                     fprintf('   WARNING @Data/get_tempo_per_cluster.m: outlier_percentile too high!\n');
                     beat_periods = median(beat_periods);
                 end
-                styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
+                styleId = unique(obj.bar2cluster(obj.bar2file == iFile));  % This makes the styleID as a sorted array
                 if ~isempty(styleId)
                     tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);
                     tempo_max_per_cluster(iFile, styleId) = 60/min(beat_periods);
@@ -194,7 +202,7 @@ classdef Data < handle
                 fprintf('    Loading features from %s\n', featuresFln);
                 load(featuresFln, 'dataPerFile');
             else
-                fprintf('* Extract and organise trainings data: \n');
+                fprintf('* Extract and organise training data: \n');
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
                     TrainData = Data.extract_bars_from_feature(obj.file_list, ...

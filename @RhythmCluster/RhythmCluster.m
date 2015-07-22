@@ -24,9 +24,13 @@ classdef RhythmCluster < handle
         bar_2_meter         % [nBars x 2]
         file_2_meter        % [nFiles x 2]
         rhythm2meter        % [nRhythms x 2]
+        rhythm2meterID      % [nRhythms x 1] storing the mapping between rhythm pattern ID and meter ID
         rhythm_names        % {R x 1} strings
         file_2_nBars        % [nFiles x 1] number of bars per file
-        cluster_transition_matrix
+        cluster_transition_matrix  % The transition matrix between clusters
+        cluster_prior              % Cluster prior probability vector
+%         cluster_transitions_fln    % Filename to store cluster transition matrix
+%         cluster_prior_fln          % Filename to store cluster prior vector
     end
     
     methods
@@ -35,10 +39,10 @@ classdef RhythmCluster < handle
             %  obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)
             %  Construct Rhythmcluster object
             % ----------------------------------------------------------------------
-            %INPUT parameter:
+            % INPUT parameter:
             % dataset                 : path to lab file (list of training files)
             %
-            %OUTPUT parameter:
+            % OUTPUT parameter:
             % obj
             %
             % 09.04.2013 by Florian Krebs
@@ -131,7 +135,7 @@ classdef RhythmCluster < handle
                     Output = Data.extract_bars_from_feature(obj.train_file_list, ...
                         obj.feature.feat_type{iDim}, whole_note_div, ...
                         obj.feature.frame_length, obj.pattern_size, 1);
-                    % compute mean feature of each bar position cell
+                    % compute mean feature of each bar position cell. 
                     dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
                 end
                 % save data to object
@@ -161,7 +165,7 @@ classdef RhythmCluster < handle
             obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
         end
         
-        function [ca_fln, clust_trans_fln] = do_clustering(obj, n_clusters, ...
+        function [ca_fln, clust_trans_fln, clust_prior_fln] = do_clustering(obj, n_clusters, ...
                 pattern_scope, varargin)
             % Clusters the bars using a kmeans algorithm
             %
@@ -200,10 +204,10 @@ classdef RhythmCluster < handle
             addRequired(parser, 'obj', @isobject);
             addRequired(parser, 'n_clusters', @isnumeric);
             addOptional(parser, 'pattern_scope', default_scope, check_scope);
-            addParameter(parser, 'meter_names', '', @iscell);
-            addParameter(parser, 'meters', -1, @isnumeric);
-            addParameter(parser, 'save_pattern_fig', 1, @isnumeric);
-            addParameter(parser, 'plotting_path', default_plotting_path, @ischar);
+            addParamValue(parser, 'meter_names', '', @iscell);
+            addParamValue(parser, 'meters', -1, @isnumeric);
+            addParamValue(parser, 'save_pattern_fig', 1, @isnumeric);
+            addParamValue(parser, 'plotting_path', default_plotting_path, @ischar);
             parse(parser, obj, n_clusters, varargin{:});
             % -------------------------------------------------------------
             obj.n_clusters = n_clusters;
@@ -246,21 +250,21 @@ classdef RhythmCluster < handle
                     sort(meters(:, 1), 'ascend'));
             end
             % Ajay/Andre: distribute patterns equally among meters
-            % n_clusters_per_meter = ceil(n_clusters/size(meters,1))*ones(1,size(meters,1));
+            n_clusters_per_meter = ceil(n_clusters/size(meters,1))*ones(1,size(meters,1));
             
             % Florian: distribute patterns among meters according to the
             % amount of data we have per meter
-            clusters_per_meter = n_items_per_meter * obj.n_clusters ...
-                / sum(n_items_per_meter);
-            n_clusters_per_meter = ceil(clusters_per_meter);
-            while sum(n_clusters_per_meter) > obj.n_clusters % check because of ceil
-                % find least crowded cluster
-                overhead = clusters_per_meter - n_clusters_per_meter + 1;
-                % keep at least one cluster per meter 
-                overhead(n_clusters_per_meter==1) = 10;
-                [~, idx] = min(overhead);
-                n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - 1;
-            end
+            % clusters_per_meter = n_items_per_meter * obj.n_clusters ...
+            %    / sum(n_items_per_meter);
+            % n_clusters_per_meter = ceil(clusters_per_meter);
+            % while sum(n_clusters_per_meter) > obj.n_clusters % check because of ceil
+            %    % find least crowded cluster
+            %    overhead = clusters_per_meter - n_clusters_per_meter + 1;
+            %    % keep at least one cluster per meter 
+            %    overhead(n_clusters_per_meter==1) = 10;
+            %    [~, idx] = min(overhead);
+            %    n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - 1;
+            % end
             % normalise feature to treat them all equally when clustering
             bar_pos = size(S, 2) / obj.feature.feat_dim;
             for i_dim = 1:obj.feature.feat_dim
@@ -278,6 +282,7 @@ classdef RhythmCluster < handle
             % that contain nans
             S(isnan(S)) = -999;
             obj.rhythm2meter = zeros(obj.n_clusters, 2);
+            obj.rhythm2meterID = zeros(obj.n_clusters, 1);
             for iMeter=1:size(meters, 1)
                 idx_i = (meter_per_item(:, 1) == meters(iMeter, 1)) & ...
                     (meter_per_item(:, 2) == meters(iMeter, 2));
@@ -290,11 +295,14 @@ classdef RhythmCluster < handle
                     obj.rhythm2meter(p:p+n_clusters_per_meter(iMeter)-1, :) ...
                         = repmat(meters(iMeter, :), ...
                         n_clusters_per_meter(iMeter), 1);
+                    obj.rhythm2meterID(p:p+n_clusters_per_meter(iMeter)-1, :) ...
+                        = repmat(iMeter, n_clusters_per_meter(iMeter), 1);
                     p=p+n_clusters_per_meter(iMeter);
                 else % only one item per meter -> no kmeans necessary
                     ctrs(p, :) = mean(S(idx_i, :));
                     cidx(idx_i) = p;
                     obj.rhythm2meter(p, :) = meters(iMeter, :);
+                    obj.rhythm2meterID(p) = iMeter;
                     p=p+1;
                 end
             end
@@ -366,16 +374,21 @@ classdef RhythmCluster < handle
         
         function [] = compute_cluster_transitions(obj)
             A = zeros(obj.n_clusters, obj.n_clusters);
+            prior = zeros(1,obj.n_clusters);
             for iFile=1:length(obj.train_file_list)
                 bars = find(obj.bar2file==iFile);
                 for iBar=bars(1:end-1)
                     A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) = ...
                         A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) + 1;
+                    prior(obj.bar_2_cluster(iBar)) = prior(obj.bar_2_cluster(iBar)) + 1;
                 end
             end
+            prior = prior ./ sum(prior);
             % normalise transition matrix
             A = bsxfun(@rdivide, A , sum(A , 2));
             obj.cluster_transition_matrix = A;
+            obj.cluster_prior = prior;
+            % obj.cluster_transition_matrix = eye(size(A));
         end
         
         function [ca_fln] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
@@ -403,7 +416,7 @@ classdef RhythmCluster < handle
             % file2nBars        : [nFiles x 1] number of bars per file
             % rhythm_names      : {R x 1} string
             % rhythm2meter      : [R x 2] meter for each pattern
-            %
+            % rhythm2meterID      : [R x 1] meterID for each pattern
             % 09.07.2013 by Florian Krebs
             % ----------------------------------------------------------------------
             if nargin == 1
@@ -479,10 +492,12 @@ classdef RhythmCluster < handle
                 if strcmp(obj.pattern_size, 'bar')
                     obj.rhythm2meter(patternId, :) = ...
                         meter(fileCounter + 1, :);
+                    obj.rhythm2meterID(patternId, :) = patternId;
                 elseif strcmp(obj.pattern_size, 'beat')
                     obj.rhythm2meter(patternId, :) = [1, 4];
+                    obj.rhythm2meterID(patternId, :) = 1;
                 else
-                    error('Patternsize unknown!')
+                    error('Pattern size unknown!')
                 end
                 fileCounter = fileCounter + 1;
                 % determine number of bars
@@ -517,15 +532,17 @@ classdef RhythmCluster < handle
     methods (Access=protected)
         function [] = save_cluster_alignment_file(obj)
             rhythm2meter = obj.rhythm2meter;
+            rhythm2meterID = obj.rhythm2meterID;
             bar2file = obj.bar2file;
             bar2rhythm = obj.bar_2_cluster;
             rhythm_names = obj.rhythm_names;
             file2nBars = obj.file_2_nBars;
             pr = obj.cluster_transition_matrix;
+            prprior = obj.cluster_prior;
             save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
-                'file2nBars', 'rhythm_names', 'rhythm2meter', 'pr');
+                'file2nBars', 'rhythm_names', 'rhythm2meter', 'rhythm2meterID', 'pr', 'prprior');
             fprintf('    Saved bar2rhythm, bar2file, file2nBars, rhythm_names, ');
-            fprintf('rhythm2meter, pr to %s\n', obj.clusters_fln);
+            fprintf('rhythm2meter, rhythm2meterID, pr, prprior to %s\n', obj.clusters_fln);
         end
         
         function [] = plot_patterns(obj, cidx, ctrs, bar_pos, pattern_scope, ...

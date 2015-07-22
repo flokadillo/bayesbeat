@@ -97,7 +97,7 @@ classdef HMM
             if isfield(Params, 'use_mex_viterbi')
                 obj.use_mex_viterbi = Params.use_mex_viterbi;
             else
-                obj.use_mex_viterbi = 1;
+                obj.use_mex_viterbi = 0;
             end
             if isfield(Params, 'transition_model_type')
                 obj.tm_type = Params.transition_model_type;
@@ -149,7 +149,7 @@ classdef HMM
         
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
-                alpha, pn, pr)
+                alpha, pn, pr, prprior)
             position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
@@ -207,7 +207,7 @@ classdef HMM
                     if strcmp(obj.tm_type, 'whiteley')
                         obj.initial_prob = zeros(n_states, 1);
                         % compute number of valid states:
-                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(1, obj.R);
+                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(obj.R, 1);
                         n_valid_states = obj.Meff(:)' * n_range(:);
                         prob = 1/n_valid_states;
                         for r_i = 1:obj.R

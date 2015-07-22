@@ -140,7 +140,7 @@ classdef PF < handle
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
-                alpha, sigmaN, pr)
+                alpha, sigmaN, pr, prprior)
             
             obj.sigma_N = sigmaN;
             % convert from BPM into barpositions / audio frame
