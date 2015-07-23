@@ -22,7 +22,8 @@ classdef BeatTracker < handle
                 obj.inferenceMethod = Params.inferenceMethod;
             end
             if exist('sim_id', 'var')
-                obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+                % obj.sim_dir = fullfile(Params.results_path, num2str(sim_id));
+                obj.sim_dir = fullfile(Params.results_path);
                 if ~exist(obj.sim_dir, 'dir')
                     system(['mkdir ', obj.sim_dir]);
                 end
@@ -34,6 +35,9 @@ classdef BeatTracker < handle
             % Set default values if not specified otherwise
             if ~isfield(obj.Params, 'learn_tempo_ranges')
                 obj.Params.learn_tempo_ranges = 1;
+            end
+            if ~isfield(obj.Params, 'same_tempo_per_meter')
+                obj.Params.same_tempo_per_meter = 0;
             end
             if ~isfield(obj.Params, 'min_tempo')
                 obj.Params.min_tempo = 60;
@@ -215,6 +219,16 @@ classdef BeatTracker < handle
                 else
                     tempo_min_per_cluster = min_tempo_param_per_rhythm;
                     tempo_max_per_cluster = max_tempo_param_per_rhythm;
+                end
+                
+                if obj.Params.same_tempo_per_meter
+                    nMeters = unique(obj.train_data.rhythm2meterID);
+                    for iR = 1:length(nMeters)
+                        tempo_min_per_cluster(obj.train_data.rhythm2meterID == iR) = ...
+                            min(tempo_min_per_cluster(obj.train_data.rhythm2meterID == iR));
+                        tempo_max_per_cluster(obj.train_data.rhythm2meterID == iR) = ...
+                            max(tempo_max_per_cluster(obj.train_data.rhythm2meterID == iR));
+                    end
                 end
                 fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
@@ -418,7 +432,7 @@ classdef BeatTracker < handle
         
         function [] = save_tempo(tempo, save_fln)
             fid = fopen(save_fln, 'w');
-            fprintf(fid, '%i\n', median(tempo));
+            fprintf(fid, '%.2f\n', median(tempo));
             fclose(fid);
         end
         

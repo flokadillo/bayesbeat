@@ -32,8 +32,8 @@ else
     Params.base_path = '/homedtic/amurthy/UPFWork_Server/PhD';
 end
 Params.data_path = fullfile(Params.base_path, 'Data', Params.dataset);
-Params.results_path = fullfile(Params.base_path, 'BayesResults');
-Params.temp_path = fullfile(Params.base_path, 'bayesbeat', 'temp1');
+Params.results_path = fullfile(Params.base_path, 'BayesResultsFull');
+Params.temp_path = fullfile(Params.base_path, 'bayesbeatflo', 'temp1');
 if ~isdir(Params.temp_path)
     mkdir(Params.temp_path)
 end
@@ -117,7 +117,7 @@ Params.nParticles = 6000;
 %       3) Auxiliary mixture particle filter (AMPF)
 Params.resampling_scheme = 3;
 Params.resampling_scheme_name = {'SISR', 'APF', 'MPF', 'AMPF'};
-Params.store_name = Params.resampling_scheme_name{Params.resampling_scheme+1};
+Params.store_name = [Params.store_name '_' Params.resampling_scheme_name{Params.resampling_scheme+1}];
 % For SISR/APF: If the effective sample size is below ratio_Neff * nParticles, resampling is performed.
 Params.ratio_Neff = 0.1;
 % For MPF/AMPF: Resampling every res_int frame
@@ -144,13 +144,16 @@ Params.n_initial_clusters = 32;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 3; 
-
+Params.patt_trans_opt = 3;
+Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
+Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference
 %          0) Inference is done at every frame
 %          1) Inference done only at peaks (faster, but poorer)
 %          2) Inference done every peakInfSkip frames 
 Params.peakInfMode = 0;
+Params.peakInfModeName = {'NoHop', 'PeakHop', 'FixHop'};
+Params.store_name = [Params.store_name '_' Params.peakInfModeName{Params.peakInfMode+1}];
 Params.peakInfSkip = 10;
 % Peak picking params: Used only if peakInfMode = 1
 Params.peak.wdTol = 3;
@@ -173,6 +176,10 @@ Params.alpha = 100;     % NOT USED IN PF
 Params.transition_model_type = 'whiteley';
 % Learn tempo ranges from data
 Params.learn_tempo_ranges = 1;
+% Setting same_tempo_per_meter to 1, all patterns of a single meter will
+% have the same tempo range. 0 would mean rhythms of same meter can have
+% different tempo range
+Params.same_tempo_per_meter = 1;
 % Set tempo limits (same for all rhythmic patterns). If 
 % learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
 % a certain range given by min_tempo and max_tempo [BPM]

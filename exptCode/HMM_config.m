@@ -30,8 +30,8 @@ else
     Params.base_path = '/homedtic/amurthy/UPFWork_Server/PhD';
 end
 Params.data_path = fullfile(Params.base_path, 'Data', Params.dataset);
-Params.results_path = fullfile(Params.base_path, 'BayesResults');
-Params.temp_path = fullfile(Params.base_path, 'bayesbeat', 'temp');
+Params.results_path = fullfile(Params.base_path, 'BayesResultsFull');
+Params.temp_path = fullfile(Params.base_path, 'bayesbeatflo', 'temp');
 if ~isdir(Params.temp_path)
     mkdir(Params.temp_path)
 end
@@ -121,6 +121,10 @@ Params.alpha = 100;
 Params.transition_model_type = 'whiteley';
 % Learn tempo ranges from data
 Params.learn_tempo_ranges = 1;
+% Setting same_tempo_per_meter to 1, all patterns of a single meter will
+% have the same tempo range. 0 would mean rhythms of same meter can have
+% different tempo range
+Params.same_tempo_per_meter = 1;
 % Set tempo limits (same for all rhythmic patterns). If 
 % learn_tempo_ranges == 1, the tempi learned tempi can be restricted to
 % a certain range given by min_tempo and max_tempo [BPM]
