@@ -54,9 +54,15 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'save_tempo')
                 obj.Params.save_tempo = 0;
             end
+            if ~isfield(obj.Params, 'save_tempo_seq')
+                obj.Params.save_tempo_seq = 0;
+            end
             if ~isfield(obj.Params, 'save_rhythm')
                 obj.Params.save_rhythm = 0;
             end
+            if ~isfield(obj.Params, 'save_rhythm_seq')
+                obj.Params.save_rhythm_seq = 0;
+            end            
             if ~isfield(obj.Params, 'save_meter')
                 obj.Params.save_meter = 0;
             end
@@ -406,6 +412,10 @@ classdef BeatTracker < handle
                 BeatTracker.save_tempo(results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.txt']));
             end
+            if obj.Params.save_tempo_seq
+                BeatTracker.save_tempo_seq(results{2}, fullfile(save_dir, ...
+                    [fname, '.bpm.seq']));
+            end
             if obj.Params.save_meter
                 BeatTracker.save_meter(results{3}, fullfile(save_dir, ...
                     [fname, '.meter.txt']));
@@ -413,6 +423,11 @@ classdef BeatTracker < handle
             if obj.Params.save_rhythm
                 BeatTracker.save_rhythm(results{4}, fullfile(save_dir, ...
                     [fname, '.rhythm.txt']), obj.model.rhythm_names);
+            end
+            if obj.Params.save_rhythm_seq
+                BeatTracker.save_rhythm_seq(results{4}, ...
+                    round(results{1}(results{1}(:,2) == 1,1)/obj.Params.frame_length), ...
+                    fullfile(save_dir, [fname, '.rhythm.seq']), obj.model.rhythm_names);
             end
         end
     end
@@ -436,6 +451,10 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
+        function [] = save_tempo_seq(tempo, save_fln)
+            dlmwrite(save_fln, tempo(:), 'precision', '%.2f');
+        end
+        
         function [] = save_rhythm(rhythm, save_fln, rhythm_names)
             r = unique(rhythm);
             fid = fopen(save_fln, 'w');
@@ -445,6 +464,15 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
+        function [] = save_rhythm_seq(rhythm, downbeats, save_fln, rhythm_names)
+            ind = round((downbeats(1:end-1) + downbeats(2:end))/2);
+            r = rhythm(ind);
+            fid = fopen(save_fln, 'w');
+            for i=1:length(r)
+                fprintf(fid, '%s, %d\n', rhythm_names{r(i)}, r(i));
+            end
+            fclose(fid);
+        end
         
         function [] = save_meter(meter, save_fln)
             m = unique(meter', 'rows')';

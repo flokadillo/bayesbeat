@@ -272,8 +272,12 @@ Params.save_beats = 1;
 Params.save_downbeats = 1;
 % Save median tempo (.bpm.txt)
 Params.save_tempo = 1;
+% Save tempo sequence (.bpm.seq)
+Params.save_tempo_seq = 0;
 % Save rhythm (.rhythm.txt)
 Params.save_rhythm = 1;
+% Save rhythm sequence (.rhythm.seq)
+Params.save_rhythm_seq = 1;
 % Save time_signature (.meter.txt)
 Params.save_meter = 1;
 end
