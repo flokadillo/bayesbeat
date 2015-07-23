@@ -386,6 +386,9 @@ classdef BeatTracker < handle
                     end
                 end
             end
+            if do_output
+                fprintf('    Real time factor: %.2f\n', toc / (size(observations, 1) * obj.feature.frame_length));
+            end
         end
         
         
