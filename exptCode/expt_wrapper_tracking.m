@@ -15,7 +15,7 @@ end
 numExp = 3;
 folds = 2;
 nTalas = 4;
-numPatts = [4 2 1];
+numPatts = [1];
 talaIDs = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 % talaIDs = {'rupak', 'jhap', 'ek', 'teen'};
 % talaIDs = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};

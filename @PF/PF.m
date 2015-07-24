@@ -141,7 +141,7 @@ classdef PF < handle
                 % random pattern assignment
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) ...
                     * (obj.R-1) + 1;
-                n_between_0_and_1 = (r_n(c:end) + 0.5)';
+                n_between_0_and_1 = (r_n(c:end) + 0.5);
                 m_between_0_and_1 = (r_m(c:end) + 0.5);
                 % map n_between_0_and_1 to allowed tempo range
                 obj.initial_n(c:end) = n_between_0_and_1 .* obj.maxN(...
@@ -177,9 +177,9 @@ classdef PF < handle
             end
             % convert from BPM into barpositions / audio frame
             obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
-            obj.minN = obj.minN(:)';
+            obj.minN = obj.minN(:);
             obj.maxN = ceil(position_states_per_beat .* obj.frame_length .* maxTempo ./ 60);
-            obj.maxN = obj.maxN(:)';
+            obj.maxN = obj.maxN(:);
             if max(obj.maxN) ~= obj.N
                 fprintf('    N should be %i instead of %i -> corrected\n', ...
                     max(obj.maxN), obj.N);
