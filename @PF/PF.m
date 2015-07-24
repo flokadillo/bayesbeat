@@ -274,8 +274,10 @@ classdef PF < handle
             % compute beat times and bar positions of beats
             beats = obj.find_beat_times(m_path, r_path, pkInd);
             if strcmp(obj.pattern_size, 'bar')
+                tempArr = (obj.Meff(r_path(idx)) * obj.frame_length);
                 tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
-                    (obj.Meff(r_path(idx)) * obj.frame_length);
+                    tempArr(:);
+                clear tempArr
             else
                 tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
             end
@@ -535,9 +537,9 @@ classdef PF < handle
                 end
                 % Tempo transition from iFrame-1 to iFrame
                 n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
-                out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
+                out_of_range = n(:, iFrame) > obj.maxN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
-                out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
+                out_of_range = n(:, iFrame) < obj.minN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
                 
                 if obj.save_inference_data
