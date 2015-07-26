@@ -28,6 +28,7 @@ for ex = 1:numExp
         % Params = HMM_config(basepath);
         % For PF
         Params = PF_config(basepath);
+        Params.M = max(Params.M);
         % Set a name to store the results
         Params.store_name = [Params.store_name '_6000'];
         if Params.inferenceMethod(1:2) == 'HM'

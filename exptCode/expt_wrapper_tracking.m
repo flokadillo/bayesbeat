@@ -15,7 +15,7 @@ end
 numExp = 3;
 folds = 2;
 nTalas = 4;
-numPatts = [1];
+numPatts = [4 2 1];
 talaIDs = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 % talaIDs = {'rupak', 'jhap', 'ek', 'teen'};
 % talaIDs = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
@@ -26,7 +26,7 @@ Params.startTime = datestr(clock, timeFormat);
 frame_length = 0.02; 
 pattern_size = 'bar';
 for r = 1:length(numPatts)
-    for t = 4:nTalas
+    for t = 3:nTalas
         for ex = 1:numExp
             for fld = 1:folds
                 % specify a simulation id
@@ -42,7 +42,7 @@ for r = 1:length(numPatts)
                 Params.min_tempo = Params.min_tempo(t);
                 Params.max_tempo = Params.max_tempo(t);
                 Params.R = numPatts(r);
-                % Params.M = Params.M * Params.meters(1)/Params.meters(2);
+                Params.M = Params.M(t);% * Params.meters(1)/Params.meters(2);
                 % Set a name to store the results
                 if Params.inferenceMethod(1:2) == 'HM'
                     disp('An exact inference using HMM chosen');

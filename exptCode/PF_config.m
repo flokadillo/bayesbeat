@@ -144,7 +144,7 @@ Params.n_initial_clusters = 32;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 3;
+Params.patt_trans_opt = 2;
 Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
 Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference
@@ -175,7 +175,7 @@ Params.alpha = 100;     % NOT USED IN PF
 % Type of transition model and state organisation ('whiteley' or '2015')
 Params.transition_model_type = 'whiteley';
 % Learn tempo ranges from data
-Params.learn_tempo_ranges = 1;
+Params.learn_tempo_ranges = 0;
 % Setting same_tempo_per_meter to 1, all patterns of a single meter will
 % have the same tempo range. 0 would mean rhythms of same meter can have
 % different tempo range
@@ -230,8 +230,9 @@ Params.featureDim = length(Params.feat_type);
 % **Carnatic
 Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
 Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
-Params.min_tempo = [60 60 60 60];
-Params.max_tempo = [230 230 230 230];
+Params.min_tempo = [30 60 60 60];
+Params.max_tempo = [110 220 220 220];
+Params.M = [1200 1000 1400 1600];   % Used only for tracking, for inference, max is used
 
 % **Ballroom
 % Params.meters = [4,4,4,4,4,4,3,3; 4,4,4,4,4,4,4,4];   
@@ -244,13 +245,14 @@ Params.max_tempo = [230 230 230 230];
 % Params.meterNames = {'rupak', 'jhap', 'ek', 'teen'};
 % Params.min_tempo = [60 60 60 60];
 % Params.max_tempo = [230 230 230 230];
+% Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
 
 % **Cretan
 % Params.meters = [2; 4];   
 % Params.meterNames = {'cretan'};
 % Params.min_tempo = [60];
 % Params.max_tempo = [230];
-
+% Params.M = 1600;
 %% OUTPUT PARAMETERS
 % If save_inference_data=true, then save complete posterior probability to
 % file. This is useful for visualisations.
