@@ -26,7 +26,7 @@ Params.startTime = datestr(clock, timeFormat);
 frame_length = 0.02; 
 pattern_size = 'bar';
 for r = 1:length(numPatts)
-    for t = 3:nTalas
+    for t = 1:nTalas
         for ex = 1:numExp
             for fld = 1:folds
                 % specify a simulation id
