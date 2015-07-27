@@ -122,9 +122,21 @@ classdef TransitionModel
                     % use N tempi and position states and distribute them
                     % log2 wise
                     for ri=1:obj.R
+                        gridpoints = obj.N;
+                        max_tempi = max_frames_per_beat(ri) - ...
+                            min_frames_per_beat(ri) + 1;
+                        N_ri = min([max_tempi, obj.N]);
                         obj.frames_per_beat{ri} = ...
                             2.^(linspace(log2(min_frames_per_beat(ri)), ...
-                            log2(max_frames_per_beat(ri)), obj.N));
+                            log2(max_frames_per_beat(ri)), gridpoints));
+                        % slowly increase gridpoints, until we have 
+                        % num_tempo_states tempo states
+                        while (length(unique(round(obj.frames_per_beat{ri}))) < N_ri)
+                           gridpoints = gridpoints + 1; 
+                            obj.frames_per_beat{ri} = ...
+                            2.^(linspace(log2(min_frames_per_beat(ri)), ...
+                            log2(max_frames_per_beat(ri)), gridpoints));
+                        end
                         % remove duplicates which would have the same tempo
                         obj.frames_per_beat{ri} = unique(round(...
                             obj.frames_per_beat{ri}));
