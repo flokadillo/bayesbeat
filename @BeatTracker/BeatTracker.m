@@ -69,6 +69,10 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'tempo_outlier_percentile')
                 obj.Params.tempo_outlier_percentile = 5;
             end
+            if ~isfield(obj.Params, 'reorganize_bars_into_cluster')
+                obj.Params.reorganize_bars_into_cluster = 0;
+            end
+            
             % load or create probabilistic model
             obj.init_model();
         end
