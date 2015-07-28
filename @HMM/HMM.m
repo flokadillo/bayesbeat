@@ -57,7 +57,8 @@ classdef HMM
             else
                 obj.save_inference_data = 0;
             end
-            if isfield(Params, 'viterbi_learning_iterations')
+            if isfield(Params, 'viterbi_learning_iterations') && ...
+                    Params.viterbi_learning_iterations > 0
                 obj.viterbi_learning_iterations = ...
                     Params.viterbi_learning_iterations;
                 obj.tempo_tying = Params.tempo_tying;
