@@ -144,7 +144,7 @@ Params.n_initial_clusters = 32;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 2;
+Params.patt_trans_opt = 1;
 Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
 Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference

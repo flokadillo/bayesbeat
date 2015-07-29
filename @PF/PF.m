@@ -338,6 +338,7 @@ classdef PF < handle
             try
                 ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
                 lik = obslik(ind);
+                lik = lik(:);
             catch exception
                 fprintf('dimensions R=%i, barGrid=%i, states_m=%.2f - %.2f, subind = %i - %i, m_per_grid=%.2f\n', ...
                     obj.R, obj.barGrid, min(states_m_r(:, 1)), max(states_m_r(:, 1)), ...
@@ -437,7 +438,7 @@ classdef PF < handle
                 weight = normalizeLogspace(weight);
             else
                 obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
-                weight = normalizeLogspace(weight + log(obs));
+                weight = normalizeLogspace(weight + log(obs(:)));
             end
 
             if obj.resampling_scheme > 1
@@ -496,11 +497,11 @@ classdef PF < handle
                             randsample(obj.R, 1, true, obj.pr(r(newBars(rInd),iFrame-1),:));
                     end
                     obs = eval_lik([m(:, iFrame), r(:, iFrame)], pkInd(iFrame));
-                    weight = weight + log(obs);
+                    weight = weight + log(obs(:));
                     weight = normalizeLogspace(weight);
                 else
                     obs = eval_lik([m(:, iFrame), r(:, iFrame)], pkInd(iFrame));
-                    weight = weight + log(obs);
+                    weight = weight + log(obs(:));
                     weight = normalizeLogspace(weight);
                 end
                 % Resampling
