@@ -41,16 +41,29 @@ classdef HMM
     
     methods
         function obj = HMM(Params, rhythm2meter, rhythm_names)
-            obj.M = Params.M;
+            if isfield(Params, 'transition_model_type')
+                obj.tm_type = Params.transition_model_type;
+            else
+                obj.tm_type = '2015';
+            end
+            if strcmp(obj.tm_type, '2015')
+                obj.M = max(rhythm2meter(:, 1));
+            else
+                obj.M = Params.M;
+            end
             obj.R = Params.R;
             bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
-            obj.dist_type = Params.observationModelType;
+            if isfield(Params, 'observationModelType')
+                obj.dist_type = Params.observationModelType;
+            else
+                obj.dist_type = 'MOG';
+            end
             obj.rhythm2meter = rhythm2meter;
             % effective number of bar positions per rhythm
             obj.Meff = round((bar_durations) ...
-                * (Params.M ./ (max(bar_durations))));
+                * (obj.M ./ (max(bar_durations))));
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -98,11 +111,7 @@ classdef HMM
             else
                 obj.use_mex_viterbi = 1;
             end
-            if isfield(Params, 'transition_model_type')
-                obj.tm_type = Params.transition_model_type;
-            else
-                obj.tm_type = '2015';
-            end
+            
             if isfield(Params, 'N') && strcmp(obj.tm_type, '2015')
                 obj.N = Params.N;
             else
@@ -326,7 +335,6 @@ classdef HMM
             results{2} = tempo;
             results{3} = meter;
             results{4} = r_path;
-            results{5} = hidden_state_sequence;
         end
         
         function [obj, bar2cluster] = viterbi_training(obj, features, train_data)

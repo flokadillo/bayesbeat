@@ -3,7 +3,6 @@ classdef BeatTracker < handle
     properties
         input_fln               % input filename (.wav or feature file)
         model                   % probabilistic model
-        inferenceMethod         % forward, viterbi, ...
         feature
         train_data
         test_data
@@ -19,9 +18,9 @@ classdef BeatTracker < handle
             obj.Params = Params;
             % parse parameters and set defaults
             if ~isfield(obj.Params, 'inferenceMethod')
-                obj.inferenceMethod = 'HMM_viterbi';
+                obj.Params.inferenceMethod = 'HMM_viterbi';
             else
-                obj.inferenceMethod = Params.inferenceMethod;
+                obj.Params.inferenceMethod = Params.inferenceMethod;
             end
             if isfield(Params, 'temp_path')
                 obj.temp_path = Params.temp_path;
@@ -30,11 +29,28 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'learn_tempo_ranges')
                 obj.Params.learn_tempo_ranges = 1;
             end
+            if ~isfield(obj.Params, 'pattern_size')
+                obj.Params.pattern_size = 'bar';
+            end
             if ~isfield(obj.Params, 'min_tempo')
                 obj.Params.min_tempo = 60;
             end
             if ~isfield(obj.Params, 'max_tempo')
                 obj.Params.max_tempo = 220;
+            end
+            if ~isfield(obj.Params, 'frame_length')
+                obj.Params.frame_length = 0.02;
+            end
+            if ~isfield(obj.Params, 'whole_note_div')
+                obj.Params.whole_note_div = 64;
+            end
+            if strfind(obj.Params.inferenceMethod, 'HMM') && ...
+                    ~isfield(obj.Params, 'pn')
+                obj.Params.pn = 0.01;  
+            end
+            if ~isfield(obj.Params, 'feat_type')
+                obj.Params.feat_type = {'lo230_superflux.mvavg', ...
+                    'hi250_superflux.mvavg'};
             end
             if ~isfield(obj.Params, 'save_beats')
                 obj.Params.save_beats = 1;
@@ -198,7 +214,7 @@ classdef BeatTracker < handle
                     [tempo_min_per_cluster; tempo_max_per_cluster]);
                 
                 fln = fullfile(obj.Params.results_path, 'model.mat');
-                switch obj.inferenceMethod(1:2)
+                switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
                         hmm = obj.model;
                         save(fln, 'hmm');
@@ -229,7 +245,7 @@ classdef BeatTracker < handle
                 % use pr of config file
                 pr = obj.Params.pr;
             end
-            switch obj.inferenceMethod(1:2)
+            switch obj.Params.inferenceMethod(1:2)
                 case 'HM'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
@@ -310,7 +326,7 @@ classdef BeatTracker < handle
                 obj.Params.load_features_from_file);
             % compute observation likelihoods
             results = obj.model.do_inference(observations, fname, ...
-                obj.inferenceMethod, do_output);
+                obj.Params.inferenceMethod, do_output);
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...

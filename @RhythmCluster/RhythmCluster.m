@@ -30,42 +30,56 @@ classdef RhythmCluster < handle
     end
     
     methods
-        function obj = RhythmCluster(dataset, feat_type, frame_length, ...
-                data_save_path, pattern_size)
+        function obj = RhythmCluster(dataset_labfile, varargin)
             %  obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)
             %  Construct Rhythmcluster object
             % ----------------------------------------------------------------------
             %INPUT parameter:
-            % dataset                 : path to lab file (list of training files)
-            %
+            % dataset_labfile   : path to lab file (list of training files)
+            % feat_type         : [{'lo230_superflux.mvavg', 'hi250_superflux.mvavg'}]
+            % frame_length      : [0.02]
+            % data_save_path    : ['./data']
+            % pattern_size      : ['bar']
+            % plotting_path     : ['/tmp']
+            % 
             %OUTPUT parameter:
             % obj
             %
-            % 09.04.2013 by Florian Krebs
+            %Created 09.04.2013 by Florian Krebs
+            %Changelog:
+            % 30.07.2015 Florian Krebs: use inputParser
             % ----------------------------------------------------------------------
-            if nargin == 1
-                feat_type = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'};
-                frame_length = 0.02;
-                data_save_path = './data';
-                pattern_size = 'bar';
+            % parse arguments
+            parser = inputParser;
+            % set defaults
+            default_pattern_size = 'bar';
+            valid_pattern_size = {'bar','beat'};
+            check_pattern_size = @(x) any(validatestring(x, ...
+                valid_pattern_size));
+            % add inputs
+            addRequired(parser, 'dataset_labfile', @ischar);
+            addParameter(parser, 'pattern_size', default_pattern_size, ...
+                check_pattern_size);
+            addParameter(parser, 'feat_type', {'lo230_superflux.mvavg', ...
+                'hi250_superflux.mvavg'}, @iscell);
+            addParameter(parser, 'frame_length', 0.02, @isnumeric);
+            addParameter(parser, 'data_save_path', './data', @ischar);
+            addParameter(parser, 'plotting_path', '/tmp/', @ischar);
+            parse(parser, dataset_labfile, varargin{:});
+            % -------------------------------------------------------------
+            obj.feature = Feature(parser.Results.feat_type, ...
+                parser.Results.frame_length);
+            if ~exist(parser.Results.data_save_path, 'dir')
+                system(['mkdir ', parser.Results.data_save_path]);
             end
-            obj.feature = Feature(feat_type, frame_length);
-            if ~exist(data_save_path, 'dir')
-                system(['mkdir ', data_save_path]);
-            end
-            obj.data_save_path = data_save_path;
-            if exist('pattern_size', 'var')
-                obj.pattern_size = pattern_size;
-            else
-                obj.pattern_size = 'bar';
-            end
+            obj.data_save_path = parser.Results.data_save_path;
             % load list of training files
-            if strfind(dataset, '.lab')
-                obj.train_lab_fln = dataset;
-                [~, obj.dataset, ~] = fileparts(dataset);
+            if exist(parser.Results.dataset_labfile, 'file')
+                obj.train_lab_fln = parser.Results.dataset_labfile;
+                [~, obj.dataset, ~] = fileparts(parser.Results.dataset_labfile);
             else
-                obj.train_lab_fln = fullfile('~/diss/data/beats/lab_files', [dataset, '.lab']);
-                obj.dataset = dataset;
+                error('Labfile doesn''t exist: %s\n', ...
+                    parser.Results.dataset_labfile);
             end
             if exist(obj.train_lab_fln, 'file')
                 train_data = Data(obj.train_lab_fln, 1);
@@ -73,6 +87,7 @@ classdef RhythmCluster < handle
             else
                 error('ERROR RhythmCluster.m: %s not found\n', obj.train_lab_fln);
             end
+            obj.pattern_size = parser.Results.pattern_size;
         end
         
         
