@@ -69,7 +69,6 @@ Params.M = 1600;
 Params.N = 15;
 % Number of rhythmic pattern states
 Params.R = 4;
-
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid.
 Params.whole_note_div = 64; 
@@ -144,14 +143,14 @@ Params.n_initial_clusters = 32;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 1;
+Params.patt_trans_opt = 2;
 Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
 Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference
 %          0) Inference is done at every frame
 %          1) Inference done only at peaks (faster, but poorer)
 %          2) Inference done every peakInfSkip frames 
-Params.peakInfMode = 0;
+Params.peakInfMode = 1;
 Params.peakInfModeName = {'NoHop', 'PeakHop', 'FixHop'};
 Params.store_name = [Params.store_name '_' Params.peakInfModeName{Params.peakInfMode+1}];
 Params.peakInfSkip = 10;
@@ -232,6 +231,8 @@ Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order,
 Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 Params.min_tempo = [30 60 60 60];
 Params.max_tempo = [110 220 220 220];
+% Params.min_tempo = [60 60 60 60];
+% Params.max_tempo = [220 220 220 220];
 Params.M = [1200 1000 1400 1600];   % Used only for tracking, for inference, max is used
 
 % **Ballroom

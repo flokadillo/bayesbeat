@@ -236,6 +236,8 @@ classdef BeatTracker < handle
                             max(tempo_max_per_cluster(obj.train_data.rhythm2meterID == iR));
                     end
                 end
+                tempo_min_per_cluster = tempo_min_per_cluster(:);
+                tempo_max_per_cluster = tempo_max_per_cluster(:);
                 fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
@@ -416,7 +418,7 @@ classdef BeatTracker < handle
                     [fname, '.bpm.txt']));
             end
             if obj.Params.save_tempo_seq
-                BeatTracker.save_tempo_seq(results{2}, fullfile(save_dir, ...
+                BeatTracker.save_tempo_seq(results{5}, results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.seq']));
             end
             if obj.Params.save_meter
@@ -428,8 +430,8 @@ classdef BeatTracker < handle
                     [fname, '.rhythm.txt']), obj.model.rhythm_names);
             end
             if obj.Params.save_rhythm_seq
-                BeatTracker.save_rhythm_seq(results{4}, ...
-                    round(results{1}(results{1}(:,2) == 1,1)/obj.Params.frame_length), ...
+                BeatTracker.save_rhythm_seq(results{5}, results{4}, ...
+                    results{1}(results{1}(:,2) == 1,1), ...
                     fullfile(save_dir, [fname, '.rhythm.seq']), obj.model.rhythm_names);
             end
         end
@@ -454,8 +456,8 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-        function [] = save_tempo_seq(tempo, save_fln)
-            dlmwrite(save_fln, tempo(:), 'precision', '%.2f');
+        function [] = save_tempo_seq(ts, tempo, save_fln)
+            dlmwrite(save_fln, [ts(:) tempo(:)], 'precision', '%.2f');
         end
         
         function [] = save_rhythm(rhythm, save_fln, rhythm_names)
@@ -467,12 +469,13 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-        function [] = save_rhythm_seq(rhythm, downbeats, save_fln, rhythm_names)
-            ind = round((downbeats(1:end-1) + downbeats(2:end))/2);
-            r = rhythm(ind);
+        function [] = save_rhythm_seq(ts, rhythm, downbeats, save_fln, rhythm_names)
+            ind = (downbeats(1:end-1) + downbeats(2:end))/2;
             fid = fopen(save_fln, 'w');
-            for i=1:length(r)
-                fprintf(fid, '%s, %d\n', rhythm_names{r(i)}, r(i));
+            for i=1:length(ind)
+                [dummy ii] = min(abs(ts - ind(i)));
+                r = rhythm(ii);
+                fprintf(fid, '%s, %d\n', rhythm_names{r}, r);
             end
             fclose(fid);
         end
