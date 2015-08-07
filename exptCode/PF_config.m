@@ -18,12 +18,11 @@ function Params = PF_config(base_path)
 % Name the system here
 Params.system = 'PF_MeterTracker';
 % The name of the dataset
-Params.dataset = 'CMCMDa_small';
+% Params.dataset = 'CMCMDa_small';
 % Params.dataset = 'BallroomDataset';
 % Params.dataset = 'CretanLeapingDances';
 % Params.dataset = 'CMCMDa_v2';
-% Params.dataset = 'CMHMDa_small';
-
+Params.dataset = 'HMDs';
 
 % Path settings
 if exist('base_path', 'var')
@@ -150,7 +149,7 @@ Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.pat
 %          0) Inference is done at every frame
 %          1) Inference done only at peaks (faster, but poorer)
 %          2) Inference done every peakInfSkip frames 
-Params.peakInfMode = 1;
+Params.peakInfMode = 0;
 Params.peakInfModeName = {'NoHop', 'PeakHop', 'FixHop'};
 Params.store_name = [Params.store_name '_' Params.peakInfModeName{Params.peakInfMode+1}];
 Params.peakInfSkip = 10;
@@ -174,7 +173,7 @@ Params.alpha = 100;     % NOT USED IN PF
 % Type of transition model and state organisation ('whiteley' or '2015')
 Params.transition_model_type = 'whiteley';
 % Learn tempo ranges from data
-Params.learn_tempo_ranges = 0;
+Params.learn_tempo_ranges = 1;
 % Setting same_tempo_per_meter to 1, all patterns of a single meter will
 % have the same tempo range. 0 would mean rhythms of same meter can have
 % different tempo range
@@ -227,30 +226,30 @@ Params.featureDim = length(Params.feat_type);
 %% MUSIC PARAMETERS
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
 % **Carnatic
-Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
-Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
-Params.min_tempo = [30 60 60 60];
-Params.max_tempo = [110 220 220 220];
-% Params.min_tempo = [60 60 60 60];
-% Params.max_tempo = [220 220 220 220];
-Params.M = [1200 1000 1400 1600];   % Used only for tracking, for inference, max is used
+% Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
+% Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
+% Params.min_tempo = [30 60 60 60];
+% Params.max_tempo = [110 220 220 220];
+% % Params.min_tempo = [60 60 60 60];
+% % Params.max_tempo = [220 220 220 220];
+% Params.M = [1200 1000 1400 1600];   % Used only for tracking, for inference, max is used
 
 % **Ballroom
 % Params.meters = [4,4,4,4,4,4,3,3; 4,4,4,4,4,4,4,4];   
-% Params.meterNames = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
+% Params.meter_names = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
 % Params.min_tempo = [60 60 60 60];
 % Params.max_tempo = [230 230 230 230];
 
 % **Hindustani
-% Params.meters = [7, 10, 12, 16; 8, 8, 8, 8];   
-% Params.meterNames = {'rupak', 'jhap', 'ek', 'teen'};
-% Params.min_tempo = [60 60 60 60];
-% Params.max_tempo = [230 230 230 230];
-% Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
+Params.meters = [7, 10, 12, 16; 8, 8, 8, 8];   
+Params.meter_names = {'rupak', 'jhap', 'ek', 'teen'};
+Params.min_tempo = [60 60 60 60];
+Params.max_tempo = [320 320 320 320];
+Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
 
 % **Cretan
 % Params.meters = [2; 4];   
-% Params.meterNames = {'cretan'};
+% Params.meter_names = {'cretan'};
 % Params.min_tempo = [60];
 % Params.max_tempo = [230];
 % Params.M = 1600;
