@@ -119,7 +119,7 @@ classdef PF < handle
             n_m_cells = floor(obj.nParticles / length(n_grid));
             m_grid_size = sum(obj.Meff) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
-            r_n = rand(obj.nParticles, 1) - 0.5;
+            r_n = rand(obj.nParticles, 1);
             nParts = zeros(obj.R, 1);
             c=1;
             for iR = 1:obj.R
@@ -131,8 +131,11 @@ classdef PF < handle
                 temp = repmat(m_grid, length(n_grid_iR), 1);
                 obj.initial_m(c:c+nParts(iR)-1) = temp(:)+ ...
                     r_m(c:c+nParts(iR)-1) * m_grid_size;
-                obj.initial_n(c:c+nParts(iR)-1) = repmat(n_grid_iR, 1, ...
-                    length(m_grid))' + r_n(c:c+nParts(iR)-1);
+                temp = repmat(n_grid_iR, 1, length(m_grid))' + r_n(c:c+nParts(iR)-1);
+                % redistribute points outside the allowed ranges
+                temp(temp > obj.maxN(iR)) = rand(sum(temp > obj.maxN(iR)),1) * ...
+                    (obj.maxN(iR) - obj.minN(iR)) + obj.minN(iR);
+                obj.initial_n(c:c+nParts(iR)-1) = temp;                
                 obj.initial_r(c:c+nParts(iR)-1) = iR;
                 c = c + nParts(iR);
             end
@@ -141,7 +144,7 @@ classdef PF < handle
                 % random pattern assignment
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) ...
                     * (obj.R-1) + 1;
-                n_between_0_and_1 = (r_n(c:end) + 0.5);
+                n_between_0_and_1 = r_n(c:end);
                 m_between_0_and_1 = (r_m(c:end) + 0.5);
                 % map n_between_0_and_1 to allowed tempo range
                 obj.initial_n(c:end) = n_between_0_and_1 .* obj.maxN(...
@@ -176,8 +179,12 @@ classdef PF < handle
                 error('p_r has wrong dimensions!\n');
             end
             % convert from BPM into barpositions / audio frame
-            obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
+            % obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
+            obj.minN = position_states_per_beat .* obj.frame_length .* minTempo ./ 60; 
             obj.minN = obj.minN(:);
+            obj.minN(obj.minN > 1) = floor(obj.minN(obj.minN > 1)); % Floor for minN > 1
+            obj.minN(obj.minN < 1) = obj.minN(obj.minN < 1)*0.8; % A small 20% allowance for minN < 1
+            obj.minN(obj.minN < 0.2) = 0.2;  % THIS IS THE MINIMUM TEMPO POSSIBLE, approx 6 bpm. 
             obj.maxN = ceil(position_states_per_beat .* obj.frame_length .* maxTempo ./ 60);
             obj.maxN = obj.maxN(:);
             if max(obj.maxN) ~= obj.N
@@ -185,6 +192,8 @@ classdef PF < handle
                     max(obj.maxN), obj.N);
                 obj.N = max(obj.maxN);
             end
+            % fprintf('    minN = %s\n', sprintf('%.2f ',minN))
+            % fprintf('    maxN = %s\n', sprintf('%.2f ',maxN))
 
             % if ~n_depends_on_r % no dependency between n and r
             %     obj.minN = ones(1, obj.R) * min(obj.minN);
@@ -198,8 +207,8 @@ classdef PF < handle
             end
             for r_i = 1:obj.R
                 bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
-                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm \n', ...
-                    r_i, bpms(1), bpms(end));
+                fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm, with minN = %.2f and maxN = %.2f\n', ...
+                    r_i, bpms(1), bpms(end), obj.minN(r_i),obj.maxN(r_i));
             end
             % Transition function to propagate particles
             obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);

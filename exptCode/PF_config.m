@@ -22,7 +22,8 @@ Params.system = 'PF_MeterTracker';
 % Params.dataset = 'BallroomDataset';
 % Params.dataset = 'CretanLeapingDances';
 % Params.dataset = 'CMCMDa_v2';
-Params.dataset = 'HMDs';
+% Params.dataset = 'HMDs';
+Params.dataset = 'HMDf';
 
 % Path settings
 if exist('base_path', 'var')
@@ -142,7 +143,7 @@ Params.n_initial_clusters = 32;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 2;
+Params.patt_trans_opt = 3;
 Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
 Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference
@@ -243,7 +244,7 @@ Params.featureDim = length(Params.feat_type);
 % **Hindustani
 Params.meters = [7, 10, 12, 16; 8, 8, 8, 8];   
 Params.meter_names = {'rupak', 'jhap', 'ek', 'teen'};
-Params.min_tempo = [60 60 60 60];
+Params.min_tempo = [10 10 10 10];
 Params.max_tempo = [320 320 320 320];
 Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
 

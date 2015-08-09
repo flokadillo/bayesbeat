@@ -238,6 +238,8 @@ classdef BeatTracker < handle
                 end
                 tempo_min_per_cluster = tempo_min_per_cluster(:);
                 tempo_max_per_cluster = tempo_max_per_cluster(:);
+                % fprintf('%s\n',sprintf('%.2f ',tempo_min_per_cluster));
+                % fprintf('%s\n',sprintf('%.2f ',tempo_max_per_cluster));  
                 fprintf('* Set up transition model\n');
                 obj = obj.train_transition_model(tempo_min_per_cluster, ...
                     tempo_max_per_cluster);
