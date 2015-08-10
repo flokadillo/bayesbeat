@@ -1,7 +1,9 @@
 function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
     verbose)
-%  [nBars, beatIdx] = find_full_bars(beats, [tolInt, verbose])
-%  returns complete bars within a sequence of beat numbers
+%  [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
+%  returns complete bars within a sequence of beats. If there are multiple
+%  time signature within the beat sequence, only the main meter is
+%  counted.
 % ----------------------------------------------------------------------
 %INPUT parameter:
 % beats                     : [nBeats x 2]
@@ -15,7 +17,6 @@ function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
 % beatIdx                   : [nBeats x 1] of boolean: determines if beat
 %                               belongs to a full bar (=1) or not (=0)
 % barStartIdx               : index of first beat of each bar
-
 %
 % 11.07.2013 by Florian Krebs
 % ----------------------------------------------------------------------
@@ -32,9 +33,9 @@ nBeats = length(btype);
 % find most frequent occuring maximum beat type
 frequency = histc(btype, 1:max(btype));
 for i_meter = max(btype):-1:2
-    % the beat id of the main meter should appear more often as the
-    % downbeat - 10
-    if frequency(i_meter) >= (frequency(1) - 10)
+    % the beat id of the main meter should appear at most in half of the 
+    % bars
+    if (frequency(i_meter) / frequency(1)) > 0.5
         meter = i_meter;
         break;
     end

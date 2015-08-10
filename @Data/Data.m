@@ -138,7 +138,6 @@ classdef Data < handle
             meters = obj.meters;
         end
         
-        
         function beats = get.beats(obj)
             % This method calls obj.load_annotations_bt and loads beats and
             % downbeats for each file to a cell array {nFiles x 1}[n_beats 2]
@@ -157,7 +156,6 @@ classdef Data < handle
             end
             beats = obj.beats;
         end
-        
         
         function [tempo_min_per_cluster, tempo_max_per_cluster] = ...
                 get_tempo_per_cluster(obj, outlier_percentile)
@@ -203,7 +201,6 @@ classdef Data < handle
             end
         end
         
-        
         feat_from_bar_and_gmm = organise_feats_into_bars(obj, ...
             whole_note_div);
         % obj = organise_feats_into_bars(obj, whole_note_div)
@@ -241,7 +238,49 @@ classdef Data < handle
         
         [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
             verbose);
+        %  [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
+        %  returns complete bars within a sequence of beats. If there are multiple
+        %  time signature within the beat sequence, only the main meter is
+        %  counted.
+        % ----------------------------------------------------------------------
+        %INPUT parameter:
+        % beats                     : [nBeats x 2]
+        %                               first col: beat times, second col metrical position
+        % tolInt                    : pauses are detected if the interval between
+        %                               two beats is bigger than tolInt times the last beat period
+        %                               [default 1.8]
+        %
+        %OUTPUT parameter:
+        % nBars                     : number of complete bars
+        % beatIdx                   : [nBeats x 1] of boolean: determines if beat
+        %                               belongs to a full bar (=1) or not (=0)
+        % barStartIdx               : index of first beat of each bar
+        %
+        % 11.07.2013 by Florian Krebs
+        % ----------------------------------------------------------------------
         
         [data, error] = load_annotations_bt(filename, ann_type);
+        % [data, error] = load_annotations_bt( filename, ann_type)
+        %
+        %   Loads annotations according to the extension of the file from file.
+        %   Supports .beats, .bpm, .meter, .rhythm, .dancestyle, .onsets.
+        %   The following cases are supported
+        %   1) The extension does not match the supported ones. Please specify
+        %   ann_type in this case
+        %   2) The path represents the audio-folder (dataset/audio). Here, the
+        %   path is updated to point to dataset/annotations/xxx
+        % ----------------------------------------------------------------------
+        % INPUT Parameter:
+        % filename          : filename of annotation file including extension
+        % datatype          : [optional, only if extension is not standard]
+        %                       e.g., 'beats', 'bpm', 'onsets', 'meter'
+        %
+        % OUTPUT Parameter:
+        % data              : annotations
+        % error             : > 0 if some of the requested entities could not be
+        %                       loaded
+        %
+        % 16.05.2014 by Florian Krebs
+        % ----------------------------------------------------------------------
     end
 end
