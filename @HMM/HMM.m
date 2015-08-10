@@ -177,16 +177,11 @@ classdef HMM
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
                 obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
-                train_data.feat_type, obj.use_silence_state, ...
+                train_data.feature.feat_type, obj.use_silence_state, ...
                 obj.trans_model.mapping_state_position, ...
                 obj.trans_model.mapping_state_rhythm);
             % Train model
-            if obj.use_silence_state
-                obj.obs_model = obj.obs_model.train_model(train_data);
-            else
-                obj.obs_model = obj.obs_model.train_model(train_data);
-            end
-            
+            obj.obs_model = obj.obs_model.train_model(train_data);
             obj.train_dataset = train_data.dataset;
             
         end

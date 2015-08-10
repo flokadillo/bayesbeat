@@ -31,7 +31,11 @@ Number of folds in the case that *validation_type='cross_validation'*
 * `save_inference_data` = 0  
 If *true*, then save complete posterior probability to a file. This is useful for visualisations.  
 * `reorganize_bars_into_cluster` = 0  
-If *true*, then reorganise features into patterns as given by the cluster_assignment_file. Otherwise, the organised features are loaded from file.
+If *true*, then reorganise features into patterns as given by the cluster_assignment_file. Otherwise, the organised features are loaded from file.  
+* `store_training_data` = 0  
+If *true*, the features of the training data are saved to disk in order to save time when experimenting with different model parameters.
+* `stored_train_data_fln`  
+This is the filename where the training data instance is saved to (and loaded from).  
 
 
 

@@ -39,7 +39,6 @@ if ~exist(filename, 'file')
     error = 1;
     return;
 end
-
 error = 0;
 if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
     % Load meter
@@ -54,6 +53,7 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
     % Load beat annotations
     fid = fopen(filename, 'r');
     temp = textscan(fid, '%f64%s', 'delimiter', '\t');
+    fclose(fid);
     data = temp{1};
     if size(temp, 2) == 2
         % get bar id and beat number
@@ -69,7 +69,6 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
 %         data = [data, bar_id, beat_number];
         data = [data, beat_number];
     end
-    fclose(fid);
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile
     data = load('-ascii', filename);

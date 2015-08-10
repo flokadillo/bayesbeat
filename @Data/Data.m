@@ -6,47 +6,39 @@ classdef Data < handle
         bar2file                        % specifies for each bar the file id [nBars x 1]
         bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
         pr                              % rhythmtransition probability matrix [R x R]
-        meter                           % meter of each file [nFiles x 2]
+        meters                           % meter of each file [nFiles x 2]
         beats                           % beats of each file {nFiles x 1}[n_beats 3]
-        n_bars                          % number of bars of each file [nFiles x 1]
+        n_bars                          % number of (complete) bars of each file [nFiles x 1]
         bar_start_id                    % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats                  % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
         rhythm_names                    % cell array of rhythmic pattern names
         rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
-        feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
+        features_organised              % feature values organized by file, pattern, barpos and dim
+                                        % cell(n_files, n_clusters, bar_grid_max, featureDim)
         feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
         barpos_per_frame                % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
         pattern_per_frame               % cell array [nFiles x 1] of rhythm of each frame
-        feat_type                       % cell array (features (extension) to be used)
+        feature                         % Feature object
     end
     
     
     methods
-        function obj = Data(lab_fln, train)
+        function obj = Data(lab_fln, feat_type, frame_length, pattern_size)
             % read lab_fln (a file where all data files are listed)
             % lab_fln:  text file with filenames and path
             % train:    [0, 1] indicates whether training should be
             %           performed or not
             if exist(lab_fln, 'file')
-                [fpath, obj.dataset, ext] = fileparts(lab_fln);
+                [~, obj.dataset, ext] = fileparts(lab_fln);
                 if strcmpi(ext, '.lab')
                     fid = fopen(lab_fln, 'r');
-                    obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); obj.file_list = obj.file_list{1};
+                    obj.file_list = textscan(fid, '%s', 'delimiter', '\n'); 
+                    obj.file_list = obj.file_list{1};
                     fclose(fid);
-                    % check excluded files
-                    fln = fullfile(fpath, [obj.dataset, '-exclude.txt']);
-                    if train && exist(fln, 'file')
-                        fid = fopen(fln, 'r');
-                        exclude_songs = textscan(fid, '%s');
-                        fclose(fid);
-                        exclude_songs = exclude_songs{1};
-                        fprintf('    Excluding %i songs (listed in %s)\n', length(exclude_songs), fln);
-                        obj.file_list = obj.file_list(~ismember(obj.file_list, exclude_songs));
-                    end
                 else
                     obj.file_list{1} = lab_fln;
                 end
@@ -55,31 +47,35 @@ classdef Data < handle
             end
             % replace paths by absolute paths
             for i_file = 1:length(obj.file_list)
-                absolute_path_present = strcmp(obj.file_list{i_file}(1), '~') ...
-                    || strcmp(obj.file_list{i_file}(1), filesep) || ...
+                absolute_path_present = strcmp(obj.file_list{i_file}(1), ...
+                    '~') || strcmp(obj.file_list{i_file}(1), filesep) || ...
                     strcmp(obj.file_list{i_file}(2), ':');  % For windows
                 if ~absolute_path_present
-                    obj.file_list{i_file} = fullfile(pwd, obj.file_list{i_file});
+                    obj.file_list{i_file} = fullfile(pwd, ...
+                        obj.file_list{i_file});
                 end
             end
             obj.lab_fln = lab_fln;
+            % create feature object
+            obj.feature = Feature(feat_type, frame_length);
+            obj.pattern_size = pattern_size;
         end
         
-        function obj = read_pattern_bars(obj, cluster_fln, pattern_size)
+        function [] = read_pattern_bars(obj, cluster_fln, pattern_size)
             % read cluster_fln (where cluster ids for each bar in the dataset are specified)
             % and generate obj.bar2file, obj.n_bars, and obj.rhythm2meter
             % loads bar2file, n_bars, rhythm_names, bar2cluster, and rhythm2meter
             % creates n_clusters
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
-                obj.bar2file = C.bar2file;
+                obj.bar2file = C.bar2file(:);
                 obj.n_bars = C.file2nBars;
                 obj.rhythm_names = C.rhythm_names;
                 obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
                 if ismember(obj.rhythm2meter, [8, 4], 'rows')
-                   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
-                   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
+                    fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
+                    obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
                 end
                 if isfield(C, 'pr')
                     % only newer models
@@ -101,53 +97,41 @@ classdef Data < handle
             end
         end
         
-        function obj = read_meter(obj)
-            obj.meter = zeros(length(obj.file_list), 2);
-            meter_files_available = 1;
-            for iFile = 1:length(obj.file_list)
-                [fpath, fname, ~] = fileparts(obj.file_list{iFile});
-                meter_fln = fullfile(strrep(fpath, 'audio', 'annotations/meter'), [fname, '.meter']);
-                if exist(meter_fln, 'file')
-                    meter = Data.load_annotations_bt(obj.file_list{iFile}, 'meter');
-                    if length(meter) == 1
-                        obj.meter(iFile, 1) = meter;
-                        obj.meter(iFile, 2) = 4;
-                        fprintf('Data.read_meter: No denominator in meter file %s found -> adding 4\n', [fname, '.meter']);
+        function meters = get.meters(obj)
+            % This method calls obj.load_annotations_bt
+            if isempty(obj.meters)
+                obj.meters = zeros(length(obj.file_list), 2);
+                meter_files_available = 1;
+                for iFile = 1:length(obj.file_list)
+                    if strcmp(obj.pattern_size, 'bar')
+                        [fpath, fname, ~] = fileparts(obj.file_list{iFile});
+                        meter_fln = fullfile(strrep(fpath, 'audio', ...
+                            'annotations/meter'), [fname, '.meter']);
+                        if exist(meter_fln, 'file')
+                            meter = Data.load_annotations_bt(...
+                                obj.file_list{iFile}, 'meter');
+                            if length(meter) == 1
+                                obj.meters(iFile, 1) = meter;
+                                obj.meters(iFile, 2) = 4;
+                                fprintf('Data.read_meter: No denominator in meter file %s found -> adding 4\n', [fname, '.meter']);
+                            else
+                                obj.meters(iFile, :) = meter;
+                            end
+                        else
+                            meter_files_available = 0;
+                            fname = meter_fln;
+                        end
+                        if ~meter_files_available
+                            fprintf('Data.read_meter: One or several meter files not available for this dataset (e.g., %s)\n', fname);
+                        end
                     else
-                        obj.meter(iFile, :) = meter;
+                        obj.meters(iFile, :) = [1, 4];
                     end
-                else
-                    meter_files_available = 0;
-                    fname = meter_fln;
-                end
-                if ~meter_files_available
-                    fprintf('Data.read_meter: One or several meter files not available for this dataset (e.g., %s)\n', fname);
                 end
             end
+            meters = obj.meters;
         end
         
-        function obj = filter_out_meter(obj, allowed_meters)
-            % e.g., allowed_meters = [3, 4]
-            if isempty(obj.meter)
-                obj = obj.read_meter();
-            end
-            good_files = ismember(obj.meter, allowed_meters);
-            obj.file_list = obj.file_list(good_files);
-            obj.meter = obj.meter(good_files);
-            if ~isempty(obj.n_bars), obj.n_bars = obj.n_bars(good_files); end
-            
-            if ~isempty(obj.bar2file)
-                bad_files = find(good_files == 0);
-                for iFile = 1:length(bad_files)
-                    obj.bar2file(obj.bar2file >= bad_files(iFile)) = obj.bar2file(obj.bar2file >= bad_files(iFile)) - 1;
-                end
-            end
-            
-            % Check consistency cluster_fln - train_lab
-            if sum(obj.n_bars) ~= length(obj.bar2file)
-                error('Number of bars not consistent !');
-            end
-        end
         
         function [tempo_min_per_cluster, tempo_max_per_cluster] = ...
                 get_tempo_per_cluster(obj, outlier_percentile)
@@ -188,6 +172,26 @@ classdef Data < handle
         function obj = extract_feats_per_file_pattern_barPos_dim(obj, ...
                 whole_note_div, featuresFln, featureType, frame_length, ...
                 reorganize_bars_into_cluster)
+            % obj = extract_feats_per_file_pattern_barPos_dim(obj, ...
+            %       whole_note_div, featuresFln, featureType, frame_length, ...
+            %       reorganize_bars_into_cluster)
+            %
+            %   Extracts or loads features and organise them into bars and 
+            %   bar/beatrom file.
+            % ----------------------------------------------------------------------
+            % INPUT Parameter:
+            % obj, ...
+            %    whole_note_div, featuresFln, featureType, frame_length, ...
+            %    reorganize_bars_into_cluster
+            %
+            % OUTPUT Parameter:
+            % obj.features_organised  ...
+            %   cell(n_files, obj.n_clusters, bar_grid_max, featureDim)
+            %
+            % 03.08.2015 by Florian Krebs
+            % ----------------------------------------------------------------------
+            % extract features and organise them into bars and bar/beat
+            % positions (obj.features_organised  cell(n_files, obj.n_clusters, bar_grid_max, featureDim);)
             featureDim = length(featureType);
             obj.feat_type = featureType;
             % Extract audio features and sort them according to bars and position
@@ -218,22 +222,28 @@ classdef Data < handle
                 save(featuresFln, 'dataPerFile', 'barpos_per_frame', 'pattern_per_frame', '-v7');
                 fprintf('    Saved organized features to %s\n', featuresFln);
             end
-            obj.feats_file_pattern_barPos_dim = dataPerFile;
+            obj.features_organised = dataPerFile;
             
         end
         
         
-        function obj = read_beats(obj)
+        function beats = get.beats(obj)
             % reads beats and downbeats from file and stores them in the
             % data object
-            for iFile = 1:length(obj.file_list)
-                [obj.beats{iFile}, ~ ] = Data.load_annotations_bt(obj.file_list{iFile}, 'beats');
-                if strcmp(obj.pattern_size, 'bar')
-                    [obj.n_bars(iFile), obj.full_bar_beats{iFile}, obj.bar_start_id{iFile}] = obj.get_full_bars(obj.beats{iFile});
-                else
-                    obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
+            if isempty(obj.beats) % oonly do this if not already done
+                for iFile = 1:length(obj.file_list)
+                    [obj.beats{iFile}, ~ ] = Data.load_annotations_bt(...
+                        obj.file_list{iFile}, 'beats');
+                    if strcmp(obj.pattern_size, 'bar')
+                        [obj.n_bars(iFile), obj.full_bar_beats{iFile}, ...
+                            obj.bar_start_id{iFile}] = ...
+                            obj.get_full_bars(obj.beats{iFile});
+                    else
+                        obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
+                    end
                 end
             end
+            beats = obj.beats;
         end
         
         
@@ -244,12 +254,12 @@ classdef Data < handle
             %             for i_file = 1:length(obj.file_list)
             for i_file = 1:length(obj.file_list)
                 % determine meter state of current file
-                r_state = find((obj.rhythm2meter(:, 1) == obj.meter(i_file, 1)) &...
-                    (obj.rhythm2meter(:, 2) == obj.meter(i_file, 2)));
+                r_state = find((obj.rhythm2meter(:, 1) == obj.meters(i_file, 1)) &...
+                    (obj.rhythm2meter(:, 2) == obj.meters(i_file, 2)));
                 % determine correct M of current file
                 M_i = model.Meff(t_state);
                 
-                tol_win = floor(ol_win_perc_of_ibi * model.M / obj.meter(i_file, 2));
+                tol_win = floor(ol_win_perc_of_ibi * model.M / obj.meters(i_file, 2));
                 % determine beat type of each beat
                 btype = round(rem(obj.beats{i_file}(:, 2), 1) * 10); % position of beat in a bar: 1, 2, 3, 4
                 % compute bar position m for each beat
@@ -294,31 +304,18 @@ classdef Data < handle
                 belief_func{i_file, 2} = logical(sparse(i_rows, j_cols, s_vals, n_beats_i, n_states));
             end
         end
+        
+       feat_from_bar_and_gmm = organise_feats_into_bars(obj, whole_note_div, pattern_size);
+       
+       [] = sort_bars_into_clusters(obj, dataPerBar, bar2cluster);
     end
     
     methods (Static)
-        function make_k_folds(lab_fln, K)
-            if exist(lab_fln, 'file')
-                fid = fopen(lab_fln, 'r');
-                file_list = textscan(fid, '%s'); file_list = file_list{1};
-                fclose(fid);
-            else
-                error('Lab file %s not found\n', lab_fln);
-            end
-            [fpath, fname, ext] = fileparts(lab_fln);
-            C = cvpartition(length(file_list), 'Kfold', K);
-            for i=1:K
-                fln = fullfile(fpath, [fname, '-fold', num2str(i), ext]);
-                dlmwrite(fln, find(test(C, i)), 'delimiter', '\n');
-            end
-        end
         
         [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose);
         
         Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
         
-        dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
-        
-        [ data, error ] = load_annotations_bt( filename, ann_type );
+        [data, error] = load_annotations_bt( filename, ann_type );
     end
 end

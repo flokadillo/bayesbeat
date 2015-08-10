@@ -1,7 +1,6 @@
 classdef BeatTracker < handle
     % Beat tracker Class
     properties
-        input_fln               % input filename (.wav or feature file)
         model                   % probabilistic model
         inferenceMethod         % forward, viterbi, ...
         feature
@@ -72,9 +71,28 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'reorganize_bars_into_cluster')
                 obj.Params.reorganize_bars_into_cluster = 0;
             end
-            
+            if ~isfield(obj.Params, 'clusterIdFln') && ...
+                    ~isfield(obj.Params, 'cluster_type')
+                obj.Params.cluster_type = 'meter';
+            end
+            if ~isfield(obj.Params, 'store_training_data')
+                obj.Params.store_training_data = 0;
+            end
+            if ~isfield(obj.Params, 'stored_train_data_fln')
+                % generate name
+                featStr = '';
+                for iDim = 1:length(obj.Params.feat_type)
+                    featType = strrep(obj.Params.feat_type{iDim}, ...
+                        '.', '-');
+                    featStr = [featStr, '_', featType];
+                end
+                obj.Params.stored_train_data_fln = fullfile(...
+                    obj.Params.data_path, ['data_', ...
+                    obj.Params.cluster_type, featStr, '.mat']);
+            end
             % load or create probabilistic model
             obj.init_model();
+            
         end
         
         
@@ -98,7 +116,8 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                % initialise training data
+                % initialise training data to see how many pattern states
+                % we need and which time signatures have to be modelled
                 obj.init_train_data();
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
@@ -114,54 +133,75 @@ classdef BeatTracker < handle
                             obj.Params.inferenceMethod);
                 end
             end
-            
         end
         
         
         function init_train_data(obj)
+            % set up the training data and load or compute the cluster
+            % assignments of the bars/beats
             fprintf('* Set up training data ...\n');
-            obj.train_data = Data(obj.Params.trainLab, 1);
-            if ~isfield(obj.Params, 'clusterIdFln'), return;  end
-            obj.train_data = obj.train_data.read_pattern_bars(...
-                obj.Params.clusterIdFln, obj.Params.pattern_size);
-            if ~isempty(obj.train_data.pr)
-                % if pr is given in cluster file save it here
-                obj.Params.pr = obj.train_data.pr;
-            end
-            % make filename of features
-            [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
-            featStr = '';
-            for iDim = 1:length(obj.Params.feat_type)
-                featType = strrep(obj.Params.feat_type{iDim}, '.', '-');
-                featStr = [featStr, featType];
-            end
-            featuresFln = fullfile(obj.Params.data_path, ['features_', ...
-                clusterFName, '_', featStr, '.mat']);
-            obj.train_data = ...
-                obj.train_data.extract_feats_per_file_pattern_barPos_dim(...
-                obj.Params.whole_note_div, featuresFln, obj.Params.feat_type, ...
-                obj.Params.frame_length, obj.Params.reorganize_bars_into_cluster);
-            % process silence data
-            if obj.Params.use_silence_state
-                fid = fopen(obj.Params.silence_lab, 'r');
-                silence_files = textscan(fid, '%s\n'); silence_files = ...
-                    silence_files{1};
-                fclose(fid);
-                obj.train_data.feats_silence = [];
-                for iFile=1:length(silence_files)
-                    obj.train_data.feats_silence = ...
-                        [obj.train_data.feats_silence;  ...
-                        obj.feature.load_feature(silence_files{iFile})];
+            % check if features are already saved
+            if isfield(obj.Params, 'stored_train_data_fln') && ...
+                    exist(obj.Params.stored_train_data_fln, 'file')
+                fprintf('    Loading features from %s\n', ...
+                    obj.Params.stored_train_data_fln);
+                load(obj.Params.stored_train_data_fln, 'data');
+                obj.train_data = data;
+            else
+                obj.train_data = Data(obj.Params.trainLab, ...
+                    obj.Params.feat_type, ...
+                    obj.Params.frame_length, obj.Params.pattern_size);
+                feat_from_bar_and_gmm = ...
+                    obj.train_data.organise_feats_into_bars(...
+                    obj.Params.whole_note_div);
+                % process silence data
+                if obj.Params.use_silence_state
+                    fid = fopen(obj.Params.silence_lab, 'r');
+                    silence_files = textscan(fid, '%s\n'); silence_files = ...
+                        silence_files{1};
+                    fclose(fid);
+                    obj.train_data.feats_silence = [];
+                    for iFile=1:length(silence_files)
+                        obj.train_data.feats_silence = ...
+                            [obj.train_data.feats_silence;  ...
+                            obj.train_data.feature.load_feature(...
+                            silence_files{iFile})];
+                    end
+                end
+                % Check if cluster assignment file is given. If yes load
+                % cluster assignments from yes, if no compute them.
+                if isfield(obj.Params, 'clusterIdFln') && ...
+                        exist(obj.Params.clusterIdFln, 'file')
+                    obj.train_data = obj.train_data.read_pattern_bars(...
+                        obj.Params.clusterIdFln, obj.Params.pattern_size);
+                    if ~isempty(obj.train_data.pr)
+                        % if pr is given in cluster file save it here
+                        obj.Params.pr = obj.train_data.pr;
+                    end
+                else
+                    clustering = RhythmCluster(obj.train_data);
+                    if strcmp(obj.Params.cluster_type, 'meter')
+                        obj.train_data = clustering.cluster_from_labels(...
+                            obj.train_data, obj.Params.cluster_type);
+                    elseif strcmp(obj.Params.cluster_type, 'kmeans')
+                        obj.train_data = clustering.cluster_from_features(...
+                            obj.train_data, feat_from_bar_and_gmm, 2);
+                    end
+                    obj.train_data.sort_bars_into_clusters(feat_from_bar_and_gmm);
+                end
+                % save organised training data to disk
+                % save extracted training data
+                if obj.Params.store_training_data
+                    data = obj.train_data;
+                    save(obj.Params.stored_train_data_fln, 'data');
                 end
             end
         end
         
         function init_test_data(obj)
             % create test_data object
-            obj.test_data = Data(obj.Params.testLab, 0);
-            if isfield(obj.Params, 'test_annots_folder')
-                obj.test_data = obj.test_data.set_annots_path(obj.Params.test_annots_folder);
-            end
+            obj.test_data = Data(obj.Params.testLab, obj.Params.feat_type, ...
+                obj.Params.frame_length, obj.Params.pattern_size);
         end
         
         function train_model(obj)
@@ -194,9 +234,10 @@ classdef BeatTracker < handle
                 else
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 end
+                fprintf('* Set up initial distribution\n');
                 obj.model = obj.model.make_initial_distribution(...
                     [tempo_min_per_cluster; tempo_max_per_cluster]);
-                
+                % save trained model
                 fln = fullfile(obj.Params.results_path, 'model.mat');
                 switch obj.inferenceMethod(1:2)
                     case 'HM'
@@ -208,12 +249,8 @@ classdef BeatTracker < handle
                 end
                 fprintf('* Saved model (Matlab) to %s\n', fln);
             end
-            %  obj.model.save_hmm_data_to_hdf5('~/diss/src/matlab/beat_tracking/bayes_beat/data/filip/');
-            
             if isfield(obj.Params, 'viterbi_learning_iterations') && ...
                     obj.Params.viterbi_learning_iterations > 0
-                %    obj.model.trans_model = TransitionModel(obj.model.M, obj.model.Meff, obj.model.N, obj.model.R, obj.model.pn, obj.model.pr, ...
-                %       obj.model.rhythm2meter_state, ones(1, obj.model.R), ones(1, obj.model.R)*obj.model.N);
                 obj.refine_model(obj.Params.viterbi_learning_iterations);
             end
         end
@@ -242,8 +279,8 @@ classdef BeatTracker < handle
         end
         
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
-            % test_files_to_exclude can be either a scalar 
-            % (index of the file to be excluded for leave-one-out 
+            % test_files_to_exclude can be either a scalar
+            % (index of the file to be excluded for leave-one-out
             % validation) or a cell array of file names to be excluded.
             fprintf('* Retraining observation model ');
             file_idx = zeros(length(obj.train_data.file_list), 1);
@@ -286,8 +323,6 @@ classdef BeatTracker < handle
                 iter_start = 1;
             end
             % read annotations and add them to train_data object:
-            obj.train_data.read_beats;
-            obj.train_data.read_meter;
             for i = iter_start:iter_start+iterations-1
                 fprintf('* Viterbi training: iteration %i\n', i);
                 [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
@@ -403,38 +438,7 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-        
-        function smoothedBeats = smooth_beats_sequence(inputBeats, win)
-            % smooth_inputBeats(inputBeatFile, outputBeatFile, win)
-            %   smooth beat sequence according to Dixon et al., Perceptual Smoothness
-            %   of Tempo in Expressively Performed Music (2004)
-            % ----------------------------------------------------------------------
-            % INPUT Parameter:
-            %   win                 :
-            %
-            % OUTPUT Parameter:
-            %   Params            : structure array with beat tracking Paramseters
-            %
-            % 11.06.2012 by Florian Krebs
-            % ----------------------------------------------------------------------
-            if win < 1
-                smoothedBeats = inputBeats;
-                return
-            end
-            d = diff(inputBeats);
-            % to correct for missing values at the ends, the sequence d is extended by
-            % defining
-            d = [d(1+win:-1:2); d; d(end-1:-1:end-win)];
-            dSmooth = zeros(length(d), 1);
-            for iBeat = 1+win:length(d)-win
-                dSmooth(iBeat) = sum(d(iBeat-win:iBeat+win)) / (2*win+1);
-            end
-            dSmooth=dSmooth(win+1:end-win);
-            smoothedBeats = inputBeats;
-            smoothedBeats(2:end) = inputBeats(1) + cumsum(dSmooth);
-            
-        end
-        
+                
         function new_model = convert_to_new_model_format(old_model)
             new_model = old_model.convert_old_model_to_new();
         end
