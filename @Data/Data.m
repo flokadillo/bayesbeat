@@ -4,24 +4,17 @@ classdef Data < handle
         file_list            % list of files in the dataset
         lab_fln              % lab file with list of files of dataset
         bar2file             % specifies for each bar the file id [nBars x 1]
-        bar2cluster          % specifies for each bar the cluster id [nBars x 1]
-        pr                   % rhythmtransition probability matrix [R x R]
         meters               % meter of each file [nFiles x 2]
         beats                % beats of each file {nFiles x 1}[n_beats 2]
         n_bars               % number of (complete) bars of each file [nFiles x 1]
         bar_start_id         % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats       % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln          % file with cluster id of each bar
-        n_clusters           % total number of clusters
-        rhythm_names         % cell array of rhythmic pattern names
-        rhythm2meter         % specifies for each bar the corresponding meter [R x 2]
         features_organised   % feature values organized by file, pattern, barpos and dim
                              % cell(n_files, n_clusters, bar_grid_max, featureDim)
         feats_silence        % feature vector of silence
         pattern_size         % size of one rhythmical pattern {'beat', 'bar'}
         dataset              % name of the dataset
-        barpos_per_frame     % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
-        pattern_per_frame    % cell array [nFiles x 1] of rhythm of each frame
         feature              % Feature object
         clustering           % a RhythmCluster object
     end
@@ -202,13 +195,13 @@ classdef Data < handle
                 % discard upper and lower 5% of the beat intervals
                 outlier_percentile = 0;
             end
-            if isempty(obj.n_clusters),
+            if isempty(obj.clustering.n_clusters),
                 error('Please perform clustering first\n');
             end
             tempo_min_per_cluster = NaN(length(obj.file_list), ...
-                obj.n_clusters);
+                obj.clustering.n_clusters);
             tempo_max_per_cluster = NaN(length(obj.file_list), ...
-                obj.n_clusters);
+                obj.clustering.n_clusters);
             beats = obj.beats;
             for iFile = 1:length(obj.file_list)
                 beat_periods = sort(diff(beats{iFile}(:, 1)), 'descend');
@@ -224,7 +217,8 @@ classdef Data < handle
                         'outlier_percentile too high!\n']);
                     beat_periods = median(beat_periods);
                 end
-                styleId = unique(obj.bar2cluster(obj.bar2file == iFile));
+                styleId = unique(obj.clustering.bar2cluster(...
+                    obj.bar2file == iFile));
                 if ~isempty(styleId)
                     tempo_min_per_cluster(iFile, styleId) = ...
                         60/max(beat_periods);

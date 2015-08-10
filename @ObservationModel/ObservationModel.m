@@ -63,11 +63,13 @@ classdef ObservationModel
             obj.learned_params_all = obj.learned_params;
         end
         
-        function obj = retrain_model(obj, data_file_pattern_barpos_dim, pattern_id)
+        function obj = retrain_model(obj, data_file_pattern_barpos_dim, ...
+                pattern_id)
             % restore learned_params to params trained on all files
             obj.learned_params = obj.learned_params_all;
             % update parameters of pattern_id
-            obj.learned_params(pattern_id, :) = obj.fit_distribution(data_file_pattern_barpos_dim(:, pattern_id, :, :));
+            obj.learned_params(pattern_id, :) = obj.fit_distribution(...
+                data_file_pattern_barpos_dim(:, pattern_id, :, :));
         end
         
         function obsLik = compute_obs_lik(obj, observations)

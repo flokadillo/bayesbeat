@@ -122,12 +122,12 @@ classdef BeatTracker < handle
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(obj.Params, ...
-                            obj.train_data.rhythm2meter, ...
-                            obj.train_data.rhythm_names);
+                            obj.train_data.clustering.rhythm2meter, ...
+                            obj.train_data.clustering.rhythm_names);
                     case 'PF'
                         obj.model = PF(obj.Params, ...
-                            obj.train_data.rhythm2meter, ...
-                            obj.train_data.rhythm_names);
+                            obj.train_data.clustering.rhythm2meter, ...
+                            obj.train_data.clustering.rhythm_names);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', ...
                             obj.Params.inferenceMethod);
@@ -149,16 +149,16 @@ classdef BeatTracker < handle
                 obj.train_data = data;
             else
                 obj.train_data = Data(obj.Params.trainLab, ...
-                    obj.Params.feat_type, ...
-                    obj.Params.frame_length, obj.Params.pattern_size);
+                    obj.Params.feat_type, obj.Params.frame_length, ...
+                    obj.Params.pattern_size);
                 feat_from_bar_and_gmm = ...
                     obj.train_data.organise_feats_into_bars(...
                     obj.Params.whole_note_div);
                 % process silence data
                 if obj.Params.use_silence_state
                     fid = fopen(obj.Params.silence_lab, 'r');
-                    silence_files = textscan(fid, '%s\n'); silence_files = ...
-                        silence_files{1};
+                    silence_files = textscan(fid, '%s\n'); 
+                    silence_files = silence_files{1};
                     fclose(fid);
                     obj.train_data.feats_silence = [];
                     for iFile=1:length(silence_files)
@@ -179,18 +179,16 @@ classdef BeatTracker < handle
                         obj.Params.pr = obj.train_data.pr;
                     end
                 else
-                    clustering = RhythmCluster(obj.train_data);
                     if strcmp(obj.Params.cluster_type, 'meter')
-                        obj.train_data = clustering.cluster_from_labels(...
+                        obj.train_data.cluster_from_labels(...
                             obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')
-                        obj.train_data = clustering.cluster_from_features(...
-                            feat_from_bar_and_gmm, 2);
+                        obj.train_data.cluster_from_features(obj, ...
+                            n_clusters, feat_from_bar_and_gmm);
                     end
                     obj.train_data.sort_bars_into_clusters(...
                         feat_from_bar_and_gmm);
                 end
-                % save organised training data to disk
                 % save extracted training data
                 if obj.Params.store_training_data
                     data = obj.train_data;
@@ -288,8 +286,9 @@ classdef BeatTracker < handle
             if length(test_files_to_exclude) == 1
                 % leave one out: get pattern idx of test file to only
                 % retrain the remaining patterns
-                r_i = unique(obj.train_data.bar2cluster(...
-                    obj.train_data.bar2file == test_files_to_exclude));
+                r_i = unique(obj.train_data.clustering.bar2cluster(...
+                    obj.train_data.clustering.bar2file == ...
+                    test_files_to_exclude));
                 file_idx(test_files_to_exclude) = 1;
                 test_file_ids = test_files_to_exclude;
             else
@@ -326,7 +325,7 @@ classdef BeatTracker < handle
             % read annotations and add them to train_data object:
             for i = iter_start:iter_start+iterations-1
                 fprintf('* Viterbi training: iteration %i\n', i);
-                [obj.model, bar2cluster] = obj.model.viterbi_training(obj.feature, obj.train_data);
+                [obj.model, ~] = obj.model.viterbi_training(obj.feature, obj.train_data);
                 hmm = obj.model;
                 save(fullfile(obj.Params.results_path, ['hmm-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'hmm');
                 save(fullfile(obj.Params.results_path, ['bar2cluster-', obj.train_data.dataset, '-', num2str(i), '.mat']), 'bar2cluster');
