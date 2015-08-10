@@ -16,13 +16,14 @@ classdef Data < handle
         rhythm_names         % cell array of rhythmic pattern names
         rhythm2meter         % specifies for each bar the corresponding meter [R x 2]
         features_organised   % feature values organized by file, pattern, barpos and dim
-        % cell(n_files, n_clusters, bar_grid_max, featureDim)
+                             % cell(n_files, n_clusters, bar_grid_max, featureDim)
         feats_silence        % feature vector of silence
         pattern_size         % size of one rhythmical pattern {'beat', 'bar'}
         dataset              % name of the dataset
         barpos_per_frame     % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
         pattern_per_frame    % cell array [nFiles x 1] of rhythm of each frame
         feature              % Feature object
+        clustering           % a RhythmCluster object
     end
     
     
@@ -71,31 +72,66 @@ classdef Data < handle
             obj.pattern_size = pattern_size;
         end
         
+        function [] = cluster_from_features(obj, n_clusters, input_args)
+            %  [] = cluster_from_features(obj, n_clusters, input_args)
+            %  Performs clustering of the bars by a kmeans in the feature
+            %  space.
+            % ------------------------------------------------------------
+            %INPUT parameter:
+            % n_clusters    number of clusters (should be at least one per 
+            %               time signature)
+            % input_args    can be either a cell array with features already
+            %               organised by bar and bar position or the number 
+            %               of grid points per whole note
+            %
+            % 10.08.2015 by Florian Krebs
+            % ------------------------------------------------------------
+            obj.clustering = RhythmCluster(obj);
+            % get features per bar
+            if iscell(input_args)
+                feat_from_bar_and_gmm = input_args;
+            else
+                feat_from_bar_and_gmm = ...
+                    obj.organise_feats_into_bars(input_args);
+            end
+            obj.clustering.cluster_from_features(feat_from_bar_and_gmm, ...
+                n_clusters);
+        end
+        
+        function [] = cluster_from_labels(obj, cluster_type)
+            %  [] = cluster_from_labels(obj, cluster_type)
+            %  Performs clustering of the bars by labels.
+            % ------------------------------------------------------------
+            %INPUT parameter:
+            % cluster_type  {'meter', 'rhythm', 'none'}
+            %
+            % 10.08.2015 by Florian Krebs
+            % ------------------------------------------------------------
+            obj.clustering = RhythmCluster(obj);
+            obj.clustering.cluster_from_labels(cluster_type);
+        end
+        
+        
         function [] = read_pattern_bars(obj, cluster_fln)
             % Reads bar2file, n_bars, rhythm_names, bar2cluster, and
             % rhythm2meter from file.
             if exist(cluster_fln, 'file')
+                obj.clustering = RhythmCluster(obj);
                 C = load(cluster_fln);
                 obj.bar2file = C.bar2file(:);
                 obj.n_bars = C.file2nBars;
-                obj.rhythm_names = C.rhythm_names;
-                obj.bar2cluster = C.bar2rhythm;
-                obj.rhythm2meter = C.rhythm2meter;
-                if ismember(obj.rhythm2meter, [8, 4], 'rows')
-                    fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
-                    obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
-                end
+                obj.clustering.rhythm_names = C.rhythm_names;
+                obj.clustering.bar2cluster = C.bar2rhythm;
+                obj.clustering.rhythm2meter = C.rhythm2meter;
                 if isfield(C, 'pr')
                     % only newer models
-                    obj.pr = C.pr;
+                    obj.clustering.pr = C.pr;
                 end
             else
                 error('Cluster file %s not found\n', cluster_fln);
             end
-            obj.cluster_fln = cluster_fln;
-            if ismember(0, obj.bar2cluster), obj.bar2cluster = ...
-                    obj.bar2cluster + 1; end
-            obj.n_clusters = max(obj.bar2cluster);
+            obj.clustering.cluster_fln = cluster_fln;
+            obj.clustering.n_clusters = max(obj.clustering.bar2cluster);
         end
         
         function meters = get.meters(obj)

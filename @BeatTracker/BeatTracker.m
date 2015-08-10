@@ -182,12 +182,13 @@ classdef BeatTracker < handle
                     clustering = RhythmCluster(obj.train_data);
                     if strcmp(obj.Params.cluster_type, 'meter')
                         obj.train_data = clustering.cluster_from_labels(...
-                            obj.train_data, obj.Params.cluster_type);
+                            obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')
                         obj.train_data = clustering.cluster_from_features(...
-                            obj.train_data, feat_from_bar_and_gmm, 2);
+                            feat_from_bar_and_gmm, 2);
                     end
-                    obj.train_data.sort_bars_into_clusters(feat_from_bar_and_gmm);
+                    obj.train_data.sort_bars_into_clusters(...
+                        feat_from_bar_and_gmm);
                 end
                 % save organised training data to disk
                 % save extracted training data
