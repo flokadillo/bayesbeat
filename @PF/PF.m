@@ -115,25 +115,38 @@ classdef PF < handle
             obj.initial_r = zeros(obj.nParticles, 1);
             
             % use pseudo random monte carlo
-            n_grid = min(obj.minN):max(obj.maxN);
-            n_m_cells = floor(obj.nParticles / length(n_grid));
+            % n_grid = min(obj.minN):max(obj.maxN);
+            % n_m_cells = floor(obj.nParticles / length(n_grid));
+            m_grid_size_init = min(obj.Meff ./ obj.rhythm2meter(:, 1))/8;  % 8th of a beat resolution for initial grid
+            m_grid_points = ceil(sum(obj.Meff) / m_grid_size_init);
+            n_grid_points = floor(obj.nParticles / m_grid_points);
+            n_inv_grid = linspace(1/max(obj.maxN), 1/min(obj.minN), n_grid_points);
+            
+            n_m_cells = floor(obj.nParticles / length(n_inv_grid));
             m_grid_size = sum(obj.Meff) / n_m_cells;
             r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
-            r_n = rand(obj.nParticles, 1);
+            r_n = rand(obj.nParticles, 1) - 0.5;
             nParts = zeros(obj.R, 1);
             c=1;
             for iR = 1:obj.R
                 % create positions between 1 and obj.Meff(obj.rhythm2meter_state(iR))
                 m_grid = (1+m_grid_size/2):m_grid_size:...
                     (obj.Meff(iR)-m_grid_size/2);
-                n_grid_iR = obj.minN(iR):obj.maxN(iR);
-                nParts(iR) = length(m_grid) * length(n_grid_iR);
-                temp = repmat(m_grid, length(n_grid_iR), 1);
+                % n_grid_iR = obj.minN(iR):obj.maxN(iR);
+                n_inv_grid_iR = linspace(1/obj.maxN(iR), 1/obj.minN(iR), n_grid_points);
+                n_inv_grid_unit_iR = diff(n_inv_grid_iR(1:2));
+                nParts(iR) = length(m_grid) * length(n_inv_grid_iR);
+                temp = repmat(m_grid, length(n_inv_grid_iR), 1);
                 obj.initial_m(c:c+nParts(iR)-1) = temp(:)+ ...
                     r_m(c:c+nParts(iR)-1) * m_grid_size;
-                temp = repmat(n_grid_iR, 1, length(m_grid))' + r_n(c:c+nParts(iR)-1);
+                % Randomize tempo values based on the value of tempo
+                temp = repmat(n_inv_grid_iR, 1, length(m_grid))' + ...
+                    (n_inv_grid_unit_iR * r_n(c:c+nParts(iR)-1)); 
+                temp = flipud(1./temp);
                 % redistribute points outside the allowed ranges
                 temp(temp > obj.maxN(iR)) = rand(sum(temp > obj.maxN(iR)),1) * ...
+                    (obj.maxN(iR) - obj.minN(iR)) + obj.minN(iR);
+                temp(temp < obj.minN(iR)) = rand(sum(temp < obj.minN(iR)),1) * ...
                     (obj.maxN(iR) - obj.minN(iR)) + obj.minN(iR);
                 obj.initial_n(c:c+nParts(iR)-1) = temp;                
                 obj.initial_r(c:c+nParts(iR)-1) = iR;
@@ -144,7 +157,7 @@ classdef PF < handle
                 % random pattern assignment
                 obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) ...
                     * (obj.R-1) + 1;
-                n_between_0_and_1 = r_n(c:end);
+                n_between_0_and_1 = (r_n(c:end) + 0.5);
                 m_between_0_and_1 = (r_m(c:end) + 0.5);
                 % map n_between_0_and_1 to allowed tempo range
                 obj.initial_n(c:end) = n_between_0_and_1 .* obj.maxN(...

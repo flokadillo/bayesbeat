@@ -2,23 +2,24 @@ clear
 close all
 clc
 % dataset = 'BallroomDataset';
-dataset = 'CMCMDa_small';
-% dataset = 'CMHMDa_small';
+% dataset = 'CMCMDa_small';
+% dataset = 'HMDs';
+dataset = 'HMDf';
 % dataset = 'CMCMDa_v2';
 % dataset = 'CretanLeapingDances';
 addpath('../../CommonPoolCodeGeneral/Davies_beat_error_histogram/');
 bpath = ['/media/Code/UPFWork/PhD/BayesResultsFull/' dataset '/Tracking/'];
 annpath = ['/media/Code/UPFWork/PhD/Data/' dataset '/annotations/beats/'];
-exptName = 'PF_AMPF_Full_NoHop_6000_m3200';
+exptName = 'PF_AMPF_MixObs_NoHop_6000';
 exppath = [bpath exptName filesep];
-talaID = [10:13];
-% talaID = [20:23];
+% talaID = [10:13];
+talaID = [20:23];
 % talaID = [11:18];
 nExp = 3;
 nFold = 2;
 numPatts = [1 2 4];
-talaName = {'adi', 'rupaka', 'mChapu', 'kChapu'};
-% talaName = {'teen', 'ek', 'jhap', 'rupak'};
+% talaName = {'adi', 'rupaka', 'mChapu', 'kChapu'};
+talaName = {'teen', 'ek', 'jhap', 'rupak'};
 % talaName = {'cretan'};
 % talaName = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
 for t = 1:length(talaName)
