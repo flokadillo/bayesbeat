@@ -1,20 +1,20 @@
-function [] = sort_bars_into_clusters(obj, dataPerBar)
-% [dataPerFile] = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file)
-%   Sorts dataPerBar according to clusters
+function [] = sort_bars_into_clusters(obj, data_per_bar)
+% [] = sort_bars_into_clusters(obj, data_per_bar)
+%   Sort the features according to clusters
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% dataPerBar      :
-% clusterIdx      :
-%
-% bar2file        :
+% data_per_bar    : feature values organised by bar, bar position and
+%                   feature dimension: cell(n_bars, num_bar_positions, 
+%                   feature_dimensions)
 %
 %OUTPUT parameter:
-% dataPerFile       : cell(n_files, n_clusters, bar_grid_max, featureDim)
+% obj.features_organised  : cell(n_files, n_clusters, 
+%                   num_bar_positions, feature_dimensions)
 %
-% 26.7.2012 by Florian Krebs
+% 10.08.2015 by Florian Krebs
 % ----------------------------------------------------------------------
 nFiles = length(obj.file_list);
-[~, num_cells, ~] = size(dataPerBar);
+[~, num_cells, ~] = size(data_per_bar);
 features_organised = cell(nFiles, obj.n_clusters, num_cells, ...
     obj.feature.feat_dim);
 nchar=0;
@@ -28,7 +28,7 @@ for iFile=1:nFiles
                 features_organised{iFile, obj.bar2cluster(iBar), ...
                     iPos, iDim} = [features_organised{iFile, ...
                     obj.bar2cluster(iBar), iPos, iDim}; ...
-                    dataPerBar{iBar, iPos, iDim}];
+                    data_per_bar{iBar, iPos, iDim}];
             end
         end
     end

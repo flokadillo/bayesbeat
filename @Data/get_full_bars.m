@@ -4,7 +4,7 @@ function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
 %  returns complete bars within a sequence of beat numbers
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% beats                     : [nBeats x 3]
+% beats                     : [nBeats x 2]
 %                               first col: beat times, second col metrical position
 % tolInt                    : pauses are detected if the interval between
 %                               two beats is bigger than tolInt times the last beat period
