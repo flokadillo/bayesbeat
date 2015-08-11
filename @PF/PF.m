@@ -193,12 +193,13 @@ classdef PF < handle
             end
             % convert from BPM into barpositions / audio frame
             % obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
-            obj.minN = position_states_per_beat .* obj.frame_length .* minTempo ./ 60; 
+            obj.minN = 0.8*position_states_per_beat .* obj.frame_length .* minTempo ./ 60; % 20% allowance on lower side
             obj.minN = obj.minN(:);
-            obj.minN(obj.minN > 1) = floor(obj.minN(obj.minN > 1)); % Floor for minN > 1
-            obj.minN(obj.minN < 1) = obj.minN(obj.minN < 1)*0.8; % A small 20% allowance for minN < 1
+            % obj.minN(obj.minN > 1) = floor(obj.minN(obj.minN > 1)); % Floor for minN > 1
+            % obj.minN(obj.minN < 1) = obj.minN(obj.minN < 1)*0.8; % A small 20% allowance for minN < 1
             obj.minN(obj.minN < 0.2) = 0.2;  % THIS IS THE MINIMUM TEMPO POSSIBLE, approx 6 bpm. 
-            obj.maxN = ceil(position_states_per_beat .* obj.frame_length .* maxTempo ./ 60);
+            % obj.maxN = ceil(position_states_per_beat .* obj.frame_length .* maxTempo ./ 60);
+            obj.maxN = 1.2*position_states_per_beat .* obj.frame_length .* maxTempo ./ 60; % 20% allowance on the higher side
             obj.maxN = obj.maxN(:);
             if max(obj.maxN) ~= obj.N
                 fprintf('    N should be %i instead of %i -> corrected\n', ...
