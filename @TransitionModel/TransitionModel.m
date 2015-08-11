@@ -96,11 +96,6 @@ classdef TransitionModel
                     obj.frames_per_beat{ri} = position_states_per_beat(ri) ./ ...
                         (obj.minN(ri):obj.maxN(ri));
                 end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
-                    fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution %.1f bpm)\n', ...
-                        r_i, bpms(1), bpms(end), (bpms(end)-bpms(end-1)));
-                end
             elseif strcmp(obj.tm_type, '2015')
                 % number of frames per beat (slowest tempo)
                 % (python: max_tempo_states)
@@ -146,16 +141,19 @@ classdef TransitionModel
                             obj.frames_per_beat{ri}(end:-1:1);
                     end
                 end
-                for r_i = 1:obj.R
-                    bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
-                    if length(bpms) > 1
-                        fprintf('    R=%i: Tempo limited to %.1f - %.1f bpm (resolution between %.1f and %.1f bpm)\n', ...
-                            r_i, bpms(1), bpms(end), (bpms(2)-bpms(1)), ...
-                            (bpms(end)-bpms(end-1)));
-                    end
-                end
             else
                 error('Transition model %s unknown!\n', obj.tm_type);
+            end
+            for r_i = 1:obj.R
+                bpms = 60 ./ (obj.frames_per_beat{r_i} * obj.frame_length);
+                if length(bpms) == 1
+                    bpm_resolution = 0;
+                else
+                    bpm_resolution = bpms(end)-bpms(end-1);
+                end
+                    fprintf(['    R=%i: Tempo limited to %.1f - %.1f bpm', ...
+                        ' (resolution %.1f bpm)\n'], r_i, bpms(1), ...
+                        bpms(end), bpm_resolution);
             end
             % check if a valid pattern transition probability is given. If
             % not correct it

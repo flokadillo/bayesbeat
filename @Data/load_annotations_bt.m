@@ -1,5 +1,5 @@
-function [ data, error ] = load_annotations_bt( filename, ann_type )
-% [data, error] = load_annotations_bt( filename, dooutput )
+function [ data, error ] = load_annotations_bt(filename, ann_type)
+% [data, error] = load_annotations_bt( filename, ann_type)
 %
 %   Loads annotations according to the extension of the file from file.
 %   Supports .beats, .bpm, .meter, .rhythm, .dancestyle, .onsets.
@@ -12,7 +12,7 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 % INPUT Parameter:
 % filename          : filename of annotation file including extension
 % datatype          : [optional, only if extension is not standard]
-%                       e.g., 'beats', 'bpm', 'onsets', 'meter', ...
+%                       e.g., 'beats', 'bpm', 'onsets', 'meter'
 %
 % OUTPUT Parameter:
 % data              : annotations
@@ -23,7 +23,8 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 % ----------------------------------------------------------------------
 
 % supported extensions:
-sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', '.rhythm'};
+sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', ...
+    '.rhythm'};
 % get extension of filename
 [path, fname, ext] = fileparts(filename);
 if sum(strcmp(sup_ext, ext)) > 0
@@ -39,7 +40,6 @@ if ~exist(filename, 'file')
     error = 1;
     return;
 end
-
 error = 0;
 if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
     % Load meter
@@ -54,22 +54,21 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
     % Load beat annotations
     fid = fopen(filename, 'r');
     temp = textscan(fid, '%f64%s', 'delimiter', '\t');
+    fclose(fid);
     data = temp{1};
     if size(temp, 2) == 2
         % get bar id and beat number
         temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
             'UniformOutput', 0);
         if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
-            bar_id = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
-            beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{2}, temp2));
+            beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{2}, ...
+                temp2));
         else % no bar_id given, set bar_id to nan
-            beat_number = cellfun(@(x) str2num(x), cellfun(@(x) x{1}, temp2));
-            bar_id = nan(size(beat_number));
+            beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{1}, ...
+                temp2));
         end
-%         data = [data, bar_id, beat_number];
         data = [data, beat_number];
     end
-    fclose(fid);
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile
     data = load('-ascii', filename);
@@ -85,4 +84,3 @@ elseif strcmp(ext, '.rhythm') || strcmp(ann_type, 'rhythm')
     fclose(fid);
 end
 end
-

@@ -1,187 +1,53 @@
 classdef RhythmCluster < handle
-    % WORKFLOW:
-    %
-    % if patterns are given via labels
-    % 1) RhythmCluster
-    % 2) make_cluster_assignment_file
+% This class contains functions to cluster bars of a training set according
+% to features (kmeans) or labels (meter, rhythm).
     
     properties
         feature             % feature object
-        feat_matrix_fln     % fln where feature values of dataset are stored
-        clusters_fln        % fln where cluster ids are stored
-        dataset             % training dataset on which clustering is performed
-        train_lab_fln       % lab file with training data files
-        train_file_list     % list of training files
+        data                % Data object on which clustering is 
+                            %  performed
         data_save_path      % path where cluster ids per bar are stored
-        exclude_songs_fln   % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
-        pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
-        data_per_bar        % [nBars x feat_dim*bar_grid]
-        data_per_song       % [nSongs x feat_dim*bar_grid]
-        bar2file            % [1 x nBars] vector
-        bar_2_cluster
-        file_2_cluster
-        bar_2_meter         % [nBars x 2]
-        file_2_meter        % [nFiles x 2]
+        bar2file            % [nBars x 1] vector
+        bar2cluster         % [nBars x 1] vector
+        file2meter          % [nFiles x 2]
         rhythm2meter        % [nRhythms x 2]
         rhythm_names        % {R x 1} strings
-        file_2_nBars        % [nFiles x 1] number of bars per file
-        cluster_transition_matrix
+        pr                  % transition probability matrix of the rhythmic 
+                            % patterns [R x R]
     end
     
     methods
-        function obj = RhythmCluster(dataset_labfile, varargin)
-            %  obj = RhythmCluster(dataset, feat_type, frame_length, data_save_path, pattern_size)
+        function obj = RhythmCluster(train_data, data_save_path)
+            %  obj = RhythmCluster(train_data, data_save_path)
             %  Construct Rhythmcluster object
-            % ----------------------------------------------------------------------
-            %INPUT parameter:
-            % dataset_labfile   : path to lab file (list of training files)
-            % feat_type         : [{'lo230_superflux.mvavg', 'hi250_superflux.mvavg'}]
-            % frame_length      : [0.02]
-            % data_save_path    : ['./data']
-            % pattern_size      : ['bar']
-            % plotting_path     : ['/tmp']
-            % 
-            %OUTPUT parameter:
-            % obj
-            %
-            %Created 09.04.2013 by Florian Krebs
-            %Changelog:
-            % 30.07.2015 Florian Krebs: use inputParser
-            % ----------------------------------------------------------------------
-            % parse arguments
-            parser = inputParser;
-            % set defaults
-            default_pattern_size = 'bar';
-            valid_pattern_size = {'bar','beat'};
-            check_pattern_size = @(x) any(validatestring(x, ...
-                valid_pattern_size));
-            % add inputs
-            addRequired(parser, 'dataset_labfile', @ischar);
-            addParameter(parser, 'pattern_size', default_pattern_size, ...
-                check_pattern_size);
-            addParameter(parser, 'feat_type', {'lo230_superflux.mvavg', ...
-                'hi250_superflux.mvavg'}, @iscell);
-            addParameter(parser, 'frame_length', 0.02, @isnumeric);
-            addParameter(parser, 'data_save_path', './data', @ischar);
-            addParameter(parser, 'plotting_path', '/tmp/', @ischar);
-            parse(parser, dataset_labfile, varargin{:});
             % -------------------------------------------------------------
-            obj.feature = Feature(parser.Results.feat_type, ...
-                parser.Results.frame_length);
-            if ~exist(parser.Results.data_save_path, 'dir')
-                system(['mkdir ', parser.Results.data_save_path]);
-            end
-            obj.data_save_path = parser.Results.data_save_path;
-            % load list of training files
-            if exist(parser.Results.dataset_labfile, 'file')
-                obj.train_lab_fln = parser.Results.dataset_labfile;
-                [~, obj.dataset, ~] = fileparts(parser.Results.dataset_labfile);
-            else
-                error('Labfile doesn''t exist: %s\n', ...
-                    parser.Results.dataset_labfile);
-            end
-            if exist(obj.train_lab_fln, 'file')
-                train_data = Data(obj.train_lab_fln, 1);
-                obj.train_file_list = train_data.file_list;
-            else
-                error('ERROR RhythmCluster.m: %s not found\n', obj.train_lab_fln);
-            end
-            obj.pattern_size = parser.Results.pattern_size;
-        end
-        
-        
-        function make_feats_per_song(obj, whole_note_div)
-            % make_feats_per_song: Computes mean of features for all bar
-            % position within a song
+            %INPUT parameter:
+            % train_data                : Data object
+            % data_save_path            : path where clusterings, plots,
+            %                               etc. are saved
             %
-            % INPUT:    whole_note_div : number of bar positions for a whole
-            %           note
-            % OUTPUT:   obj.data_per_song [nSongs x feat_dim*bar_grid]
-            % ------------------------------------------------------------
-            
-            % extract features per bar position and create obj.bar2file,
-            % obj.data_per_bar, obj.file_2_meter, and obj.bar_2_meter
-            obj.make_feats_per_bar(whole_note_div);
-            % compute mean per song
-            obj.data_per_song = NaN(length(obj.train_file_list), ...
-                size(obj.data_per_bar, 2));
-            for iCol=1:size(obj.data_per_bar, 2) % loop over (feat_dim*bar_grid)
-                obj.data_per_song(:, iCol) = accumarray(obj.bar2file', ...
-                    obj.data_per_bar(:, iCol), [], @mean);
-            end
-            % find songs that contain more than one bar and have
-            % allowed meter
-            exclude_song_ids = ~ismember(1:length(obj.train_file_list), ...
-                unique(obj.bar2file));
-            % save features (mean of all bars of one song)
-            obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat-', ...
-                num2str(obj.feature.feat_dim), 'd-', obj.dataset, '-songs.txt']);
-            dlmwrite(obj.feat_matrix_fln, obj.data_per_song(~exclude_song_ids, :), ...
-                'delimiter', '\t', 'precision', 4);
-            fprintf('Saved data per song to %s\n', obj.feat_matrix_fln);
-            % Save list of excluded files to file
-            exclude_song_ids = find(exclude_song_ids);
-            if ~isempty(exclude_song_ids)
-                obj.exclude_songs_fln = fullfile(obj.data_save_path, [obj.dataset, ...
-                    '-exclude.txt']);
-                fid = fopen(obj.exclude_songs_fln, 'w');
-                for i=1:length(exclude_song_ids)
-                    fprintf(fid, '%s\n', obj.train_file_list{exclude_song_ids(i)});
-                end
-                fclose(fid);
-                fprintf('Saved files to be excluded (%i) to %s\n', ...
-                    length(exclude_song_ids), obj.exclude_songs_fln);
+            % 09.04.2013 by Florian Krebs
+            % -------------------------------------------------------------
+            % Store some required information:
+            obj.feature = train_data.feature;
+            obj.data = train_data;
+            if exist('data_save_path', 'var')
+                obj.data_save_path = data_save_path;
             end
         end
         
         
-        function make_feats_per_bar(obj, whole_note_div)
-            if exist(obj.train_lab_fln, 'file')
-                fprintf('    Found %i files in %s\n', length(obj.train_file_list), ...
-                    obj.train_lab_fln);
-                dataPerBar = [];
-                for iDim =1:obj.feature.feat_dim
-                    % organise features into bar position grid
-                    Output = Data.extract_bars_from_feature(obj.train_file_list, ...
-                        obj.feature.feat_type{iDim}, whole_note_div, ...
-                        obj.feature.frame_length, obj.pattern_size, 1);
-                    % compute mean feature of each bar position cell
-                    dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
-                end
-                % save data to object
-                obj.bar2file = Output.bar2file;
-                obj.data_per_bar = dataPerBar;
-                obj.file_2_meter = Output.file2meter;
-                obj.bar_2_meter = Output.file2meter(obj.bar2file, :);
-                % save features organised by bars positions to file
-                obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
-                    num2str(obj.feature.feat_dim), 'd_', obj.dataset, '.txt']);
-                dlmwrite(obj.feat_matrix_fln, dataPerBar, 'delimiter', '\t', 'precision', 4);
-                fprintf('    Saved data per bar to %s\n', obj.feat_matrix_fln);
-            else
-                error('    %s not found', obj.train_lab_fln)
-            end
-        end
-        
-        function load_feats_per_bar(obj)
-            obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
-                num2str(obj.feature.feat_dim), 'd_', obj.dataset, '.txt']);
-            obj.data_per_bar = dlmread(obj.feat_matrix_fln, '\t');
-        end
-        
-        function load_feats_per_song(obj)
-            obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat-', ...
-                num2str(obj.feature.feat_dim), 'd-', obj.dataset, '-songs.txt']);
-            obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
-        end
-        
-        function [ca_fln, clust_trans_fln] = do_clustering(obj, n_clusters, ...
-                pattern_scope, varargin)
+        function [] = cluster_from_features(obj, features, n_clusters, ...
+                varargin)
+            % [] = cluster_from_features(obj, features, n_clusters, ...
+            %    varargin)
             % Clusters the bars using a kmeans algorithm
             %
-            % ------------------------------------------------------------------------
-            % INPUT parameters:
+            % -------------------------------------------------------------
+            % INPUT parameters:          
+            % features           [nBars, nGMMs, featDim] cell array with 
+            %                       features vectors
             % n_clusters         number of clusters
             % pattern_scope      can be either 'bar' or 'song'. With 'song',
             %                    all bars of one song are averaged into one
@@ -193,11 +59,6 @@ classdef RhythmCluster < handle
             % 'save_pattern_fig' [default=1] save pattern plot
             % 'plotting_path'    [default='/tmp/']
             %
-            % OUTPUT parameters:
-            % ca_fln             file with cluster assignment data
-            % clust_trans_fln
-            %
-            %
             % 06.09.2012 by Florian Krebs
             %
             % changelog:
@@ -208,36 +69,60 @@ classdef RhythmCluster < handle
             parser = inputParser;
             % set defaults
             default_scope = 'song';
-            valid_scope = {'bar','song'};
+            valid_scope = {'bar', 'song'};
             check_scope = @(x) any(validatestring(x, valid_scope));
             default_plotting_path = '/tmp/';
             % add inputs
             addRequired(parser, 'obj', @isobject);
+            addRequired(parser, 'features', @iscell);
             addRequired(parser, 'n_clusters', @isnumeric);
-            addOptional(parser, 'pattern_scope', default_scope, check_scope);
+            addOptional(parser, 'pattern_scope', default_scope, ...
+                check_scope);
             addParameter(parser, 'meter_names', '', @iscell);
             addParameter(parser, 'meters', -1, @isnumeric);
             addParameter(parser, 'save_pattern_fig', 1, @isnumeric);
-            addParameter(parser, 'plotting_path', default_plotting_path, @ischar);
-            parse(parser, obj, n_clusters, varargin{:});
+            addParameter(parser, 'plotting_path', default_plotting_path, ...
+                @ischar);
+            parse(parser, obj, features, n_clusters, ...
+                varargin{:});
             % -------------------------------------------------------------
             obj.n_clusters = n_clusters;
+            pattern_scope = parser.Results.pattern_scope;
+            % summarise features for clustering
+            S = cellfun(@mean, features);
+            bar_pos = size(S, 2);
             if strcmpi(pattern_scope, 'bar')
-                S = obj.data_per_bar;
-                meter_per_item = obj.bar_2_meter;
-            else
-                S = obj.data_per_song;
-                meter_per_item = obj.file_2_meter;
+                meter_per_item = obj.data.meters(obj.data.bar2file, :);
+            elseif strcmpi(pattern_scope, 'song')
+                % summarise features of one song
+                S = obj.average_feats_per_song(S, obj.data.bar2file, ...
+                    length(obj.data.file_list));
+                meter_per_item = obj.data.meters;
             end
+            % normalise features to zero mean and unit std before
+            % clustering
+            for i_dim = 1:obj.data.feature.feat_dim
+                vals = S(:, :, i_dim);
+                vals = vals - nanmean(vals(:));
+                vals = vals / nanstd(vals(:));
+                S(:, :, i_dim) = vals;
+            end
+            % number of items to be clustered
+            n_items = size(S, 1);
+            % cluster dimensions. These are number of bar positions times
+            % the feature dimension
+            n_feat_dims_clustering = size(S, 2) * size(S, 3);
+            S = reshape(S, [n_items, n_feat_dims_clustering]);
             % check if meter found in the data corresponds to meter given
             % in the input arguments [num_meters x 2]
             meter_data = unique(meter_per_item, 'rows');
-            if size(meter_data, 2) ~= 2
-                meter_data = meter_data';
-            end
+            assert(size(meter_data, 2) == 2, 'Meters have wrong dimension.')
             if parser.Results.meters == -1
+                % no meters given as input: use all meters that were found
+                % in the data
                 meters = meter_data;
                 % create meter_names from time signature
+                meter_names = cell(size(meters, 1), 1);
                 for i_meter=1:size(meters, 1)
                     meter_names{i_meter} = [num2str(meters(i_meter, 1)), ...
                         '-', num2str(meters(i_meter, 2))];
@@ -247,11 +132,10 @@ classdef RhythmCluster < handle
                     size(parser.Results.meters, 1));
                 same_content = ismember(meter_data, parser.Results.meters, ...
                     'rows');
-                if ~(same_num_meters && same_content)
-                    error(['ERROR RhythmCluster.do_clustering: Number of ',...
-                        'meters in data does not match number of meters', ...
-                        'specified in the function input argument']);
-                end
+                assert(same_num_meters && same_content, ['ERROR ', ...
+                    'RhythmCluster.do_clustering: Number of ',...
+                    'meters in data does not match number of meters', ...
+                    'specified in the function input argument']);
                 meters = unique(meter_per_item, 'rows');
             end
             if size(meters, 1) == 1 % only one meter
@@ -261,9 +145,9 @@ classdef RhythmCluster < handle
                     sort(meters(:, 1), 'ascend'));
             end
             % Ajay/Andre: distribute patterns equally among meters
-            % n_clusters_per_meter = ceil(n_clusters/size(meters,1))*ones(1,size(meters,1));
-            
-            % Florian: distribute patterns among meters according to the
+            % n_clusters_per_meter = ceil(n_clusters/size(meters,1))*
+            % ones(1,size(meters,1));
+            % Now: distribute patterns among meters according to the
             % amount of data we have per meter
             clusters_per_meter = n_items_per_meter * obj.n_clusters ...
                 / sum(n_items_per_meter);
@@ -271,27 +155,21 @@ classdef RhythmCluster < handle
             while sum(n_clusters_per_meter) > obj.n_clusters % check because of ceil
                 % find least crowded cluster
                 overhead = clusters_per_meter - n_clusters_per_meter + 1;
-                % keep at least one cluster per meter 
+                % keep at least one cluster per meter
                 overhead(n_clusters_per_meter==1) = 10;
                 [~, idx] = min(overhead);
                 n_clusters_per_meter(idx) = n_clusters_per_meter(idx) - 1;
-            end
-            % normalise feature to treat them all equally when clustering
-            bar_pos = size(S, 2) / obj.feature.feat_dim;
-            for i_dim = 1:obj.feature.feat_dim
-                vals = S(:, (i_dim-1)*bar_pos+1:bar_pos*i_dim);
-                vals = vals - nanmean(vals(:));
-                vals = vals / nanstd(vals(:));
-                S(:, (i_dim-1)*bar_pos+1:bar_pos*i_dim) = vals;
             end
             opts = statset('MaxIter', 200);
             % cluster different meter separately
             ctrs = zeros(obj.n_clusters, size(S, 2));
             cidx = zeros(size(S, 1), 1);
             p = 1;
-            % replace nans because the MATLAB kmeans ignores all datapoints
-            % that contain nans
-            S(isnan(S)) = -999;
+            % replace nans by a high number because the MATLAB kmeans
+            % ignores all datapoints that contain nans. A high number
+            % prevents bars of different length obtain the same cluster id
+            high_distance = -99999999;
+            S(isnan(S)) = high_distance;
             obj.rhythm2meter = zeros(obj.n_clusters, 2);
             for iMeter=1:size(meters, 1)
                 idx_i = (meter_per_item(:, 1) == meters(iMeter, 1)) & ...
@@ -314,7 +192,7 @@ classdef RhythmCluster < handle
                 end
             end
             % reintroduce nans
-            ctrs(ctrs==-999) = nan;
+            ctrs(ctrs==high_distance) = nan;
             if parser.Results.save_pattern_fig
                 % plot patterns and save plot to png file
                 obj.plot_patterns(cidx, ctrs, bar_pos, pattern_scope, ...
@@ -323,240 +201,175 @@ classdef RhythmCluster < handle
             % save cluster assignments
             if strcmpi(pattern_scope, 'bar')
                 % use cidx directly from the kmeans clustering
-                obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', ...
-                    obj.dataset, '-', num2str(obj.feature.feat_dim), ...
-                    'd-', num2str(obj.n_clusters), 'R-kmeans.mat']);
-                file2nBars = [];
+                cluster_type_string = 'kmeans-bars';
+                bar2rhythm = cidx;
             else % assign the cluster idx of the song to each bar which
                 % belongs to that song
+                cluster_type_string = 'kmeans-songs';
                 % read index of valid songs
-                if exist(obj.exclude_songs_fln, 'file')
-                    % TODO: Why read this from file? Can it be saved within
-                    % the object?
-                    fid = fopen(obj.exclude_songs_fln, 'r');
-                    exclude_songs = textscan(fid, '%s');
-                    fclose(fid);
-                    exclude_songs = find(ismember(obj.train_file_list, ...
-                        exclude_songs{1}));
-                else
-                    exclude_songs = [];
-                end
-                fileCounter = 0;
-                bar2rhythm = [];
-                % count bars for each file
-                [file2nBars, ~] = hist(obj.bar2file, ...
-                    1:length(obj.train_file_list));
-                for iFile = 1:length(obj.train_file_list)
-                    if ismember(iFile, exclude_songs), continue; end
-                    fileCounter = fileCounter + 1;
+                bar2rhythm = zeros(length(obj.data.bar2file), 1);
+                ok_file_counter = 0;
+                for iFile = 1:length(obj.data.file_list)
+                    ok_file_counter = ok_file_counter + 1;
                     % determine number of bars
-                    if file2nBars(iFile) > 0
-                        patternId = cidx(fileCounter);
-                        bar2rhythm = [bar2rhythm; ...
-                            ones(file2nBars(iFile), 1) * patternId];
+                    if obj.data.n_bars(iFile) > 0
+                        patternId = cidx(ok_file_counter);
+                        bar2rhythm(obj.data.bar2file == iFile) = patternId;
                     end
                 end
-                cidx = bar2rhythm;
-                obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', ...
-                    obj.dataset, '-', num2str(obj.feature.feat_dim), 'd-', ...
-                    num2str(obj.n_clusters),'R-kmeans-songs.mat']);
             end
             % make up a name for each newly created rhythm pattern. Ishould
             % contain both the meter and the id of the pattern
             for i_R = 1:obj.n_clusters
                 meter_id_of_pattern_i_R = ismember(meters, ...
                     obj.rhythm2meter(i_R, :), 'rows');
-                obj.rhythm_names{i_R} = [obj.dataset, '-', ...
+                obj.rhythm_names{i_R} = [obj.data.dataset, '-', ...
                     meter_names{meter_id_of_pattern_i_R}, ...
                     '_', num2str(i_R)];
             end
-            obj.bar_2_cluster = cidx;
-            obj.file_2_nBars = file2nBars;
+            obj.bar2cluster = bar2rhythm;
             % create rhythm transitions
             obj.compute_cluster_transitions();
             % save all variables related to a cluster assignment to file
-            obj.save_cluster_alignment_file();
-            ca_fln = obj.clusters_fln;
+            if ~isempty(obj.data_save_path)
+                obj.save_cluster_alignment_file(cluster_type_string);
+            end
         end
         
         function [] = compute_cluster_transitions(obj)
+            % [] = compute_cluster_transitions(obj)
+            %   Count transitions between clusters and set up a transition
+            %   probability matrix obj.pr.
+            % ------------------------------------------------------------
+            % 11.08.2015 by Florian Krebs
+            % ------------------------------------------------------------
             A = zeros(obj.n_clusters, obj.n_clusters);
-            for iFile=1:length(obj.train_file_list)
+            for iFile=1:max(obj.bar2file)
                 bars = find(obj.bar2file==iFile);
                 for iBar=bars(1:end-1)
-                    A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) = ...
-                        A(obj.bar_2_cluster(iBar), obj.bar_2_cluster(iBar+1)) + 1;
+                    A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) = ...
+                        A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) + 1;
                 end
             end
             % normalise transition matrix
             A = bsxfun(@rdivide, A , sum(A , 2));
-            obj.cluster_transition_matrix = A;
+            obj.pr = A;
         end
         
-        function [ca_fln] = make_cluster_assignment_file(obj, clusterType, rhythm_names)
-            % [bar2rhythm] = make_cluster_assignment_file(trainLab)
-            %   Creates vector bar2rhythm that assigns each
-            %   bar in trainLab to the pattern specified by the dancestyle annotation.
+        
+        function [] = cluster_from_labels(obj, clusterType,  ...
+                rhythm_anns, rhythm_names)
+            % data = cluster_from_labels(obj, data, clusterType,  ...
+            %    rhythm_anns, rhythm_names)
+            %   Cluster the bars from data according to given labels.
             % ----------------------------------------------------------------------
             %INPUT parameter:
-            % trainLab          : filename of labfile (e.g., 'boeck.lab' or 'ballroom.lab').
+            % data          : filename of labfile (e.g., 'boeck.lab' or 'ballroom.lab').
             %                       a labfile is a textfile with paths to files that are analyzed
-            % clusterType         : {'meter', 'dancestyle', 'rhythm', 'none'}
+            % clusterType         : {'meter', 'rhythm', 'none'}
             %                   'meter': bars are clustered according to the meter (functions reads .meter file);
-            %                   'dancestyle', according to the genre (functions reads .dancestyle file))
+            %                   'rhythm', according to the genre (functions reads .rhythm file))
             %                   'none' : put all bars into one single
             %                   cluster
-            % clustAssFln       : if clusterType='auto', specify a textfile, with a
-            %                       pattern id for each file (in the same order as in trainLab)
             % rhythm_names      : cell array of strings
             %
             %OUTPUT parameter:
-            % bar2rhythm        : [nBars x 1] assigns each bar to a pattern
-            % file_2_cluster    : [nFiles x 1] assigns each file to a pattern
-            % n_clusters        : number of patterns
-            % bar2file          : [nBars x 1] assigns each bar a file id
-            % file2nBars        : [nFiles x 1] number of bars per file
-            % rhythm_names      : {R x 1} string
-            % rhythm2meter      : [R x 2] meter for each pattern
+            % data              : Data instance with updated properties
+            %                       (bar2cluster, pr, n_clusters,
+            %                       rhythm2meter, rhythm_names)
             %
+            % 04.08.2015 Florian Krebs: modify Data instance
             % 09.07.2013 by Florian Krebs
             % ----------------------------------------------------------------------
-            if nargin == 1
-                clusterType = 'auto';
-            end
-            if strcmpi(clusterType, 'auto')
-                songClusterIds = load(obj.clusters_fln, '-ascii');
-            end
-            bar2rhythm = [];
-            obj.bar2file = [];
-            % check if there are songs that should be excluded
-            if isempty(obj.exclude_songs_fln)
-                ok_songs = 1:length(obj.train_file_list);
-            else
-                fid = fopen(obj.exclude_songs_fln, 'r');
-                exclude_songs = textscan(fid, '%s');
-                fclose(fid);
-                exclude_songs = exclude_songs{1};
-                ok_songs = find(~ismember(obj.train_file_list, exclude_songs));
-            end
-            meter = zeros(length(ok_songs), 2);
-            meters = []; % unique meters present in the data [T x 2]
-            fileCounter = 0;
-            nBars = zeros(length(ok_songs), 1);
-            obj.file_2_cluster = zeros(length(ok_songs), 1);
-            for iFile = 1:length(ok_songs)
-                [~, fname, ~] = fileparts(obj.train_file_list{ok_songs(iFile)});
-                fprintf('%i) %s\n', iFile, fname);
-                [beats, error] = Data.load_annotations_bt(...
-                    obj.train_file_list{ok_songs(iFile)}, 'beats');
-                if error, error('no beat file found\n'); end
+            bar2rhythm = zeros(sum(obj.data.n_bars), 1);
+            obj.bar2file = zeros(sum(obj.data.n_bars), 1);
+            % unique meters present in the data [T x 2]
+            meters = unique(obj.data.meters, 'rows');
+            bar_counter = 0;
+            for iFile = 1:length(obj.data.file_list)
+                beats = obj.data.beats{iFile};
                 if size(beats, 2) < 2
                     error('Downbeat annotations missing for %s\n', ...
-                        obj.train_file_list{ok_songs(iFile)});
+                        obj.data.file_list{iFile});
                 end
-                % load meter from file
-                meter(fileCounter + 1, :) = Data.load_annotations_bt(...
-                    obj.train_file_list{ok_songs(iFile)}, 'meter');
-                % get pattern id of file
+                meter = obj.data.meters(iFile, :);
+                % So far, we assume that labels are only given on the song
+                % level, which means we assign the same cluster id to all
+                % bars of the file
                 switch lower(clusterType)
                     case 'meter'
-                        if isempty(meters)
-                            meter_present = 0;
-                        else
-                            meter_present = ismember(meters, ...
-                                meter(fileCounter + 1, :), 'rows');
-                        end
-                        if sum(meter_present) == 0
-                            meters = [meters; meter(fileCounter + 1, :)];
-                        end
-                        patternId = find(ismember(meters, ...
-                            meter(fileCounter + 1, :), 'rows'));
-                    case 'dancestyle'
-                        style = Data.load_annotations_bt(...
-                            obj.train_file_list{ok_songs(iFile)}, 'dancestyle');
-                        patternId = find(strcmp(rhythm_names, style));
-                        if isempty(patternId)
-                            fprintf('Please add %s to the rhythm_names\n', style);
-                        end
-                        obj.file_2_cluster(iFile) = patternId;
-                    case 'auto'
-                        patternId = songClusterIds(iFile);
+                        % get the cluster id of the meter
+                        cluster_id = find(ismember(meters, ...
+                            meter, 'rows'));
                     case 'rhythm'
-                        style = Data.load_annotations_bt(...
-                            strrep(obj.train_file_list{ok_songs(iFile)}, ...
-                            'audio', 'annotations/rhythm'), 'rhythm');
-                        patternId = find(strcmp(rhythm_names, style));
+                        cluster_id = find(strcmp(rhythm_names, ...
+                            rhythm_anns{iFile}));
+                        if isempty(cluster_id)
+                            fprintf('Please add %s to the rhythm_names\n', ...
+                                style);
+                        end
                     case 'none'
-                        patternId = 1;
+                        cluster_id = 1;
                 end
-                if strcmp(obj.pattern_size, 'bar')
-                    obj.rhythm2meter(patternId, :) = ...
-                        meter(fileCounter + 1, :);
-                elseif strcmp(obj.pattern_size, 'beat')
-                    obj.rhythm2meter(patternId, :) = [1, 4];
-                else
-                    error('Patternsize unknown!')
+                if strcmp(obj.data.pattern_size, 'bar')
+                    obj.rhythm2meter(cluster_id, :) = meter;
+                elseif strcmp(obj.data.pattern_size, 'beat')
+                    obj.rhythm2meter(cluster_id, :) = [1, 4];
                 end
-                fileCounter = fileCounter + 1;
-                % determine number of bars
-                if strcmp(obj.pattern_size, 'beat')
-                    nBars(iFile) = size(beats, 1) - 1;
-                else
-                    [nBars(iFile), ~] = Data.get_full_bars(beats);
-                end
-                bar2rhythm = [bar2rhythm; ones(nBars(iFile), 1) * patternId];
-                obj.bar2file = [obj.bar2file; ones(nBars(iFile), 1) * ok_songs(iFile)];
+                bar_idx = bar_counter+1:bar_counter+obj.data.n_bars(iFile);
+                bar2rhythm(bar_idx) = cluster_id;
+                obj.bar2file(bar_idx) = iFile;
+                bar_counter = bar_counter + obj.data.n_bars(iFile);
             end
             obj.n_clusters = max(bar2rhythm);
-            % BUG HERE?: The meters have to be ordered in the increasing
-            % order, fails otherwise! Check!
-            obj.bar_2_cluster = bar2rhythm;
-            obj.clusters_fln = fullfile(obj.data_save_path, ['ca-', obj.dataset, ...
-                '-', num2str(obj.feature.feat_dim), 'd-', num2str(obj.n_clusters), ...
-                'R-', clusterType, '.mat']);
-            ca_fln = obj.clusters_fln;
+            obj.bar2cluster = bar2rhythm;
             if ~exist('rhythm_names', 'var')
                 for i = unique(bar2rhythm(:))'
                     rhythm_names{i} = [clusterType, num2str(i)];
                 end
             end
             obj.rhythm_names = rhythm_names;
-            obj.file_2_nBars = nBars;
             obj.compute_cluster_transitions();
-            obj.save_cluster_alignment_file();
+            if ~isempty(obj.data_save_path)
+                obj.save_cluster_alignment_file(clusterType);
+            end
         end
     end
     
     methods (Access=protected)
-        function [] = save_cluster_alignment_file(obj)
+        function [] = save_cluster_alignment_file(obj, cluster_type_string)
             rhythm2meter = obj.rhythm2meter;
             bar2file = obj.bar2file;
-            bar2rhythm = obj.bar_2_cluster;
+            bar2rhythm = obj.bar2cluster;
             rhythm_names = obj.rhythm_names;
-            file2nBars = obj.file_2_nBars;
-            pr = obj.cluster_transition_matrix;
-            save(obj.clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
-                'file2nBars', 'rhythm_names', 'rhythm2meter', 'pr');
+            pr = obj.pr;
+            clusters_fln = fullfile(obj.data_save_path, ['ca-', ...
+                obj.dataset, '-', num2str(obj.feature.feat_dim), 'd-', ...
+                num2str(obj.n_clusters), 'R-', cluster_type_string, ...
+                '.mat']);
+            save(clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
+                'rhythm_names', 'rhythm2meter', 'pr');
             fprintf('    Saved bar2rhythm, bar2file, file2nBars, rhythm_names, ');
-            fprintf('rhythm2meter, pr to %s\n', obj.clusters_fln);
+            fprintf('rhythm2meter, pr to %s\n', clusters_fln);
         end
         
         function [] = plot_patterns(obj, cidx, ctrs, bar_pos, pattern_scope, ...
                 plotting_path)
             plot_cols = ceil(sqrt(obj.n_clusters));
             h = figure( 'Visible','off');
-            set(h, 'Position', [100 100 obj.n_clusters*100 obj.n_clusters*100]);
+            set(h, 'Position', ...
+                [100 100 obj.n_clusters*100 obj.n_clusters*100]);
             items_per_cluster = hist(cidx, obj.n_clusters);
             col = hsv(obj.feature.feat_dim);
             for c = 1:obj.n_clusters
                 subplot(ceil(obj.n_clusters/plot_cols), plot_cols, c)
                 hold on
                 for fdim = 1:obj.feature.feat_dim
-                    data = ctrs(c, (fdim-1)*bar_pos+1:fdim*bar_pos);
-                    data = data - min(data);
-                    data = data / max(data);
-                    data = data + fdim;
-                    stairs([data, data(end)], 'Color', col(fdim, :));
+                    pattern = ctrs(c, (fdim-1)*bar_pos+1:fdim*bar_pos);
+                    pattern = pattern - min(pattern);
+                    pattern = pattern / max(pattern);
+                    pattern = pattern + fdim;
+                    stairs([pattern, pattern(end)], 'Color', col(fdim, :));
                 end
                 if obj.feature.feat_dim == 1
                     y_label = obj.feature.feat_type{1};
@@ -568,15 +381,39 @@ classdef RhythmCluster < handle
                 xlabel('bar position')
                 title(sprintf('cluster %i (%i %ss)', c, ...
                     items_per_cluster(c), pattern_scope));
-                xlim([1 length(data)])
+                xlim([1 length(pattern)])
             end
             outfile = fullfile(plotting_path, ['patterns-', ...
-                obj.dataset, '-kmeans-', pattern_scope, '-', ...
+                obj.data.dataset, '-kmeans-', pattern_scope, '-', ...
                 num2str(obj.n_clusters), '.png']);
             fprintf('    Writing patterns to %s\n', outfile);
             % save to png
             print(h, outfile, '-dpng');
         end
     end
+    
+    methods (Static)
+        
+        function data_per_song = average_feats_per_song(data_per_bar, ...
+                bar2file, n_files)
+            % data_per_song = average_feats_per_song(data_per_bar, ...
+            %     bar2file, n_files)
+            % Computes mean of features for all bar positions within a song
+            %
+            %INPUT parameter:
+            %   data_per_bar : [nBars, nPos, nDim]
+            %OUTPUT parameter: 
+            %   data_per_song [nSongs x (feat_dim*bar_grid)]
+            % ------------------------------------------------------------
+            % compute mean per song
+            data_per_song = NaN(n_files, ...
+                size(data_per_bar, 2), size(data_per_bar, 3));
+            for iPos=1:size(data_per_bar, 2) % loop over barPos
+                for iDim=1:size(data_per_bar, 3) % loop over FeatDim
+                    data_per_song(:, iPos, iDim) = accumarray(bar2file(:), ...
+                        data_per_bar(:, iPos, iDim), [], @mean);
+                end
+            end
+        end
+    end
 end
-

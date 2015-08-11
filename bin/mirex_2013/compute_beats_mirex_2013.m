@@ -12,16 +12,15 @@ function [ ] = compute_beats_mirex_2013( input_file_name, output_file_name )
 %
 % 30.08.2013 by Florian Krebs
 % ----------------------------------------------------------------------
-% add path to base class
-addpath('../..')
+% get path of function
+[func_path, ~, ~] = fileparts(mfilename('fullpath'));
 fprintf('Processing %s ',input_file_name);
 % ---------- SET PARAMETERS --------------------------------------------
-Params.model_fln = 'mirex_2013_hmm.mat';
+Params.model_fln = fullfile(func_path, 'mirex_2013_hmm.mat');
 Params.use_mex_viterbi = 1;
 Params.testLab = input_file_name;
 % ---------- COMPUTE BEATS --------------------------------------------
 beat_tracker = BeatTracker(Params);
-beat_tracker.init_model();
 beat_tracker.init_test_data();
 results = beat_tracker.do_inference(1);
 beats = results{1}(:,1);

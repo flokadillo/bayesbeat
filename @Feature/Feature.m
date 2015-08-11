@@ -3,13 +3,11 @@ classdef Feature
     
     properties
         feat_type       % cell array with one cell per feature dimension,
-        % containing the extension of the feature file
-        % e.g., feat_type{1} = lo230-superflux.mvavg.normz
+                        % containing the extension of the feature file
+                        % e.g., feat_type{1} = lo230-superflux.mvavg.normZ
         feat_dim        % feature dimension
         frame_length    % frame rate in frames per second
-        input_fln
-        feature
-        feat_freq_range     % [feat_dims x 2] with low and high frequency limits in [Hz]
+        feat_freq_range % [feat_dims x 2] with low and high frequency limits in [Hz]
         
     end
     
@@ -36,13 +34,12 @@ classdef Feature
             if exist('save_it', 'var')
                 param.save_it = save_it;
             else
-                param.save_it = 1; % save feature to folder ./beat_activations
+                param.save_it = 0; % save feature to folder ./beat_activations
             end
             if ~exist('load_it', 'var')
                 load_it = 1; % save feature to folder ./beat_activations
             end
             % parse input_data
-            obj.input_fln = input_fln;
             [fpath, fname, ~] = fileparts(input_fln);
             % compute feature from wav ore load it
             detfunc = cell(obj.feat_dim, 1);
@@ -53,8 +50,6 @@ classdef Feature
                 if exist(fln,'file') && load_it % load features
                     [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
                 else % compute features
-                    fprintf('    Extracting %s from %s\n', ...
-                        obj.feat_type{iDim}, fname);
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
                     % post processing

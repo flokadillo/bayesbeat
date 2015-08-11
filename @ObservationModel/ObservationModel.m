@@ -52,7 +52,8 @@ classdef ObservationModel
         
         function obj = train_model(obj, train_data)
             % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
-            obj.learned_params = obj.fit_distribution(train_data.feats_file_pattern_barPos_dim);
+            obj.learned_params = obj.fit_distribution(...
+                train_data.features_organised);
             if obj.use_silence_state
                 temp{1} = train_data.feats_silence;
                 obj.learned_params(obj.R+1, 1) = obj.fit_distribution(temp);
@@ -62,11 +63,13 @@ classdef ObservationModel
             obj.learned_params_all = obj.learned_params;
         end
         
-        function obj = retrain_model(obj, data_file_pattern_barpos_dim, pattern_id)
+        function obj = retrain_model(obj, data_file_pattern_barpos_dim, ...
+                pattern_id)
             % restore learned_params to params trained on all files
             obj.learned_params = obj.learned_params_all;
             % update parameters of pattern_id
-            obj.learned_params(pattern_id, :) = obj.fit_distribution(data_file_pattern_barpos_dim(:, pattern_id, :, :));
+            obj.learned_params(pattern_id, :) = obj.fit_distribution(...
+                data_file_pattern_barpos_dim(:, pattern_id, :, :));
         end
         
         function obsLik = compute_obs_lik(obj, observations)
