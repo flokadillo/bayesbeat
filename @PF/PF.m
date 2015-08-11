@@ -373,7 +373,7 @@ classdef PF < handle
                 obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
                 weight = weight(:) + log(obs(:));
                 % Normalise importance weights
-                [weight, ~] = normalizeLogspace(weight');
+                [weight, ~] = obj.normalizeLogspace(weight');
                 % Resampling
                 % ------------------------------------------------------------
                 if obj.resampling_interval == 0
@@ -655,6 +655,9 @@ classdef PF < handle
         
         [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun);
         
+        [y, L] = normalizeLogspace(x);
+        
+        r = logsumexp(X, dim);
     end
     
     

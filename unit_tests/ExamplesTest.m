@@ -1,14 +1,16 @@
 classdef ExamplesTest < matlab.unittest.TestCase
     % ExamplesTest tests the examples in the examples folder
     properties
-        result_folder = fullfile(pwd, 'temp');
+        result_folder = fullfile(pwd, 'temp')
         audio_files = {fullfile(pwd, '..', ...
             'examples/data/audio/guitar_duple.flac'), fullfile(pwd, '..', ...
-            'examples/data/audio/guitar_triple.flac')};
+            'examples/data/audio/guitar_triple.flac')}
+        example_path = fullfile(pwd, '..', 'examples')
     end
     
     methods (Test)
         function testEx1(testCase)
+            addpath(testCase.example_path)
             % Beat tracking with a pre-trained HMM
             Results = ex1_beat_tracking_with_pretrained_hmm(...
                 testCase.audio_files{1}, testCase.result_folder);
@@ -20,6 +22,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         end
         
         function testEx2(testCase)
+            addpath(testCase.example_path)
             % Beat tracking with a pre-trained PF
             % Initialize the random number generator using a seed of 1 
             % to make the results in this example repeatable
@@ -35,6 +38,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         end
         
         function testEx3(testCase)
+            addpath(testCase.example_path)
             % Train a HMM and test it
             Results = ex3_train_and_test_hmm(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);

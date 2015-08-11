@@ -16,7 +16,7 @@ weights = weights(:);
 % group weights according to groups
 w_per_group = accumarray(groups, weights, [], @(x) {x});
 % sum weights of each group in the log domain
-tot_w = cellfun(@(x) logsumexp(x, 1), w_per_group);
+tot_w = cellfun(@(x) PF.logsumexp(x, 1), w_per_group);
 % check for groups with zero weights (log(w)=-inf) and remove those
 if sum(isnan(tot_w)) > 0
     bad_groups = find(isnan(tot_w));

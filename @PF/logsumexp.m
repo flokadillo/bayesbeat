@@ -1,4 +1,4 @@
-function r = log_sum_exp(X,dim)
+function r = logsumexp(X,dim)
 %LOG_SUM_EXP Numerically stable computation of log(sum(exp(X), dim))
 % [r] = log_sum_exp(X, dim)
 %
@@ -7,7 +7,7 @@ function r = log_sum_exp(X,dim)
 % X : Array
 %
 % dim : Sum Dimension <default = 1>, means summing over the columns
-%
+% This file is taken from pmtk3.googlecode.com
 
 maxval = max(X,[],dim);
 sizes = size(X);
