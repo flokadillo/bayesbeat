@@ -7,7 +7,6 @@ The bayes-beat class is best explored by looking at the examples folder. So far,
 1. Compute beats using a pretrained HMM model
 2. Compute beats using a pretrained PF model
 3. Learn the HMM observation model parameters from training data
-4. Learn the PF observation model parameters from training data
 
 If you want to quickly apply the beat tracker to some audio input, have a look at the `./bin` folder where you will find several beat trackers that use the *bayes_beat* base class.
 
@@ -33,3 +32,10 @@ To use the much faster viterbi MEX-file, you have to build it first:
 1. Within the MATLAB gui, go to the folder `./@HMM`.  
 2. Then, execute `mex viterbi.cpp`.  
 
+
+Contact:
+-------------
+For comments and bug reports please contact:  
+Florian Krebs  
+web: http://www.cp.jku.at/people/krebs/  
+mail: florian.krebs@jku.at  
