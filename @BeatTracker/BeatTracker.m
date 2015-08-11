@@ -7,7 +7,6 @@ classdef BeatTracker < handle
         train_data
         test_data
         sim_dir                 % directory where results are saved
-        temp_path
         init_model_fln          % fln of initial model to start with
         Params                  % parameters from config file
     end
@@ -21,9 +20,6 @@ classdef BeatTracker < handle
                 obj.inferenceMethod = 'HMM_viterbi';
             else
                 obj.inferenceMethod = Params.inferenceMethod;
-            end
-            if isfield(Params, 'temp_path')
-                obj.temp_path = Params.temp_path;
             end
             % Set default values if not specified otherwise
             if ~isfield(obj.Params, 'learn_tempo_ranges')
@@ -62,6 +58,9 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'alpha')
                 obj.Params.alpha = 100;
             end
+            if ~isfield(obj.Params, 'pattern_size')
+                obj.Params.pattern_size = 'bar';
+            end
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
@@ -78,7 +77,12 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'store_training_data')
                 obj.Params.store_training_data = 0;
             end
-            if ~isfield(obj.Params, 'stored_train_data_fln')
+            if ~isfield(obj.Params, 'load_training_data')
+                obj.Params.load_training_data = 0;
+            end
+            if ~isfield(obj.Params, 'stored_train_data_fln') && ...
+                    (obj.Params.load_training_data || ...
+                    obj.Params.store_training_data)
                 % generate name
                 featStr = '';
                 for iDim = 1:length(obj.Params.feat_type)
@@ -91,8 +95,7 @@ classdef BeatTracker < handle
                     obj.Params.cluster_type, featStr, '.mat']);
             end
             % load or create probabilistic model
-            obj.init_model();
-            
+            obj.init_model();            
         end
         
         
@@ -142,7 +145,8 @@ classdef BeatTracker < handle
             fprintf('* Set up training data ...\n');
             % check if features are already saved
             if isfield(obj.Params, 'stored_train_data_fln') && ...
-                    exist(obj.Params.stored_train_data_fln, 'file')
+                    exist(obj.Params.stored_train_data_fln, 'file') && ...
+                    obj.Params.load_training_data
                 fprintf('    Loading features from %s\n', ...
                     obj.Params.stored_train_data_fln);
                 load(obj.Params.stored_train_data_fln, 'data');
@@ -183,8 +187,8 @@ classdef BeatTracker < handle
                         obj.train_data.cluster_from_labels(...
                             obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')
-                        obj.train_data.cluster_from_features(obj, ...
-                            n_clusters, feat_from_bar_and_gmm);
+                        obj.train_data.cluster_from_features(...
+                            obj.Params.n_clusters, feat_from_bar_and_gmm);
                     end
                     obj.train_data.sort_bars_into_clusters(...
                         feat_from_bar_and_gmm);

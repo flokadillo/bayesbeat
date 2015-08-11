@@ -12,7 +12,7 @@ Params.testLab = audio_test;
 % the results folder to save the results
 sim_id = 1;
 % create beat tracker object
-BT = BeatTracker(Params, sim_id);
+BT = BeatTracker(Params);
 % set up test data
 BT.init_test_data();
 % do beat tracking

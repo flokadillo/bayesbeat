@@ -1,8 +1,10 @@
 classdef Data < handle
-    % Data Class (represents training and test data)
+% This class represents the data to be used for the bayes_beat system.
+
     properties
         file_list            % list of files in the dataset
         lab_fln              % lab file with list of files of dataset
+        dataset              % name of the dataset
         bar2file             % specifies for each bar the file id [nBars x 1]
         meters               % meter of each file [nFiles x 2]
         beats                % beats of each file {nFiles x 1}[n_beats 2]
@@ -14,7 +16,6 @@ classdef Data < handle
                              % cell(n_files, n_clusters, bar_grid_max, featureDim)
         feats_silence        % feature vector of silence
         pattern_size         % size of one rhythmical pattern {'beat', 'bar'}
-        dataset              % name of the dataset
         feature              % Feature object
         clustering           % a RhythmCluster object
     end
@@ -28,7 +29,9 @@ classdef Data < handle
             % INPUT Parameter:
             %   lab_fln             : filename of textfile that holds all
             %                           the filenames of the dataset or
-            %                           cell array that holds the filenames
+            %                           cell array that holds the
+            %                           filenames. File has to have
+            %                           extension .lab
             %   feat_type           : cell array with one cell per feature
             %                           dimension [e.g., feat_type =
             %                           {'lo230_superflux.mvavg', ...
@@ -39,12 +42,16 @@ classdef Data < handle
             % 10.08.2015 by Florian Krebs
             % ----------------------------------------------------------------------
             if exist(lab_fln, 'file') % textfile with filenames
-                [~, obj.dataset, ~] = fileparts(lab_fln);
-                fid = fopen(lab_fln, 'r');
-                obj.file_list = textscan(fid, '%s', 'delimiter', '\n');
-                obj.file_list = obj.file_list{1};
-                fclose(fid);
-                obj.lab_fln = lab_fln;
+                [~, obj.dataset, ext] = fileparts(lab_fln);
+                if strcmp(ext, '.lab')
+                    fid = fopen(lab_fln, 'r');
+                    obj.file_list = textscan(fid, '%s', 'delimiter', '\n');
+                    obj.file_list = obj.file_list{1};
+                    fclose(fid);
+                    obj.lab_fln = lab_fln;
+                else % audio file itself given
+                    obj.file_list{1} = lab_fln;
+                end
             elseif iscell(lab_fln) % cell array of filenames
                 obj.file_list = lab_fln;
             else

@@ -33,9 +33,11 @@ If *true*, then save complete posterior probability to a file. This is useful fo
 * `reorganize_bars_into_cluster` = 0  
 If *true*, then reorganise features into patterns as given by the cluster_assignment_file. Otherwise, the organised features are loaded from file.  
 * `store_training_data` = 0  
-If *true*, the features of the training data are saved to disk in order to save time when experimenting with different model parameters.
+If *true*, the features of the training data are saved to disk in order to save time when experimenting with different model parameters.  
 * `stored_train_data_fln`  
 This is the filename where the training data instance is saved to (and loaded from).  
+* `load_training_data` = 0  
+If *true*, the features of the training data are loaded from disk in order to save time when experimenting with different model parameters.  
 
 
 
@@ -65,7 +67,10 @@ Save median tempo (.bpm.txt)
 Save rhythm (.rhythm.txt) 
 * `save_meter` = 0  
 Save time_signature (.meter.txt)  
-
+* `cluster_type` = 'meter'  
+describes the way the data is clustered into various rhythmic patterns. Currently implemented: 'meter', 'rhythm', 'kmeans'
+* `n_clusters`  
+number of clusters for the kmeans clustering algorithm.
 
 ### Model parameters
 

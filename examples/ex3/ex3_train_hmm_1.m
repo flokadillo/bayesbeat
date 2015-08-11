@@ -8,6 +8,7 @@ audio_test = '~/diss/src/matlab/beat_tracking/bayes_beat/examples/audio/train1.f
 Params = ex3_config_bt(path_to_bayes_beat);
 Params.store_training_data = 0;
 Params.cluster_type = 'kmeans';
+Params.n_clusters = 2;
 % specify a simulation id
 % sim_id = 1;
 % 
@@ -31,4 +32,4 @@ BT.train_model();
 results = BT.do_inference(1);
 % save results
 [~, fname, ~] = fileparts(Params.testLab);
-BT.save_results(results, fullfile(Params.results_path, num2str(sim_id)), fname);
+BT.save_results(results, fullfile(Params.results_path), fname);

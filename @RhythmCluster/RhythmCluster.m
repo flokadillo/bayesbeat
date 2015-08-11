@@ -1,4 +1,6 @@
 classdef RhythmCluster < handle
+% This class contains functions to cluster bars of a training set according
+% to features (kmeans) or labels (meter, rhythm).
     
     properties
         feature             % feature object
@@ -30,17 +32,22 @@ classdef RhythmCluster < handle
             % Store some required information:
             obj.feature = train_data.feature;
             obj.data = train_data;
-            obj.data_save_path = data_save_path;
+            if exist('data_save_path', 'var')
+                obj.data_save_path = data_save_path;
+            end
         end
         
         
         function [] = cluster_from_features(obj, features, n_clusters, ...
                 varargin)
+            % [] = cluster_from_features(obj, features, n_clusters, ...
+            %    varargin)
             % Clusters the bars using a kmeans algorithm
             %
-            % ------------------------------------------------------------------------
-            % INPUT parameters:
-            % data               
+            % -------------------------------------------------------------
+            % INPUT parameters:          
+            % features           [nBars, nGMMs, featDim] cell array with 
+            %                       features vectors
             % n_clusters         number of clusters
             % pattern_scope      can be either 'bar' or 'song'. With 'song',
             %                    all bars of one song are averaged into one
@@ -51,11 +58,6 @@ classdef RhythmCluster < handle
             %                    for each meter
             % 'save_pattern_fig' [default=1] save pattern plot
             % 'plotting_path'    [default='/tmp/']
-            %
-            % OUTPUT parameters:
-            % ca_fln             file with cluster assignment data
-            % clust_trans_fln
-            %
             %
             % 06.09.2012 by Florian Krebs
             %
@@ -221,7 +223,7 @@ classdef RhythmCluster < handle
             for i_R = 1:obj.n_clusters
                 meter_id_of_pattern_i_R = ismember(meters, ...
                     obj.rhythm2meter(i_R, :), 'rows');
-                obj.rhythm_names{i_R} = [obj.dataset, '-', ...
+                obj.rhythm_names{i_R} = [obj.data.dataset, '-', ...
                     meter_names{meter_id_of_pattern_i_R}, ...
                     '_', num2str(i_R)];
             end
@@ -229,10 +231,18 @@ classdef RhythmCluster < handle
             % create rhythm transitions
             obj.compute_cluster_transitions();
             % save all variables related to a cluster assignment to file
-            obj.save_cluster_alignment_file(cluster_type_string);
+            if ~isempty(obj.data_save_path)
+                obj.save_cluster_alignment_file(cluster_type_string);
+            end
         end
         
         function [] = compute_cluster_transitions(obj)
+            % [] = compute_cluster_transitions(obj)
+            %   Count transitions between clusters and set up a transition
+            %   probability matrix obj.pr.
+            % ------------------------------------------------------------
+            % 11.08.2015 by Florian Krebs
+            % ------------------------------------------------------------
             A = zeros(obj.n_clusters, obj.n_clusters);
             for iFile=1:max(obj.bar2file)
                 bars = find(obj.bar2file==iFile);
@@ -322,7 +332,9 @@ classdef RhythmCluster < handle
             end
             obj.rhythm_names = rhythm_names;
             obj.compute_cluster_transitions();
-            obj.save_cluster_alignment_file(clusterType);
+            if ~isempty(obj.data_save_path)
+                obj.save_cluster_alignment_file(clusterType);
+            end
         end
     end
     
@@ -347,7 +359,8 @@ classdef RhythmCluster < handle
                 plotting_path)
             plot_cols = ceil(sqrt(obj.n_clusters));
             h = figure( 'Visible','off');
-            set(h, 'Position', [100 100 obj.n_clusters*100 obj.n_clusters*100]);
+            set(h, 'Position', ...
+                [100 100 obj.n_clusters*100 obj.n_clusters*100]);
             items_per_cluster = hist(cidx, obj.n_clusters);
             col = hsv(obj.feature.feat_dim);
             for c = 1:obj.n_clusters
@@ -373,7 +386,7 @@ classdef RhythmCluster < handle
                 xlim([1 length(pattern)])
             end
             outfile = fullfile(plotting_path, ['patterns-', ...
-                obj.dataset, '-kmeans-', pattern_scope, '-', ...
+                obj.data.dataset, '-kmeans-', pattern_scope, '-', ...
                 num2str(obj.n_clusters), '.png']);
             fprintf('    Writing patterns to %s\n', outfile);
             % save to png
@@ -385,11 +398,14 @@ classdef RhythmCluster < handle
         
         function data_per_song = average_feats_per_song(data_per_bar, ...
                 bar2file, n_files)
-            % make_feats_per_song: Computes mean of features for all bar
-            % position within a song
+            % data_per_song = average_feats_per_song(data_per_bar, ...
+            %     bar2file, n_files)
+            % Computes mean of features for all bar positions within a song
             %
-            % INPUT:    data_per_bar : [nBars, nPos, nDim]
-            % OUTPUT:   obj.data_per_song [nSongs x feat_dim*bar_grid]
+            %INPUT parameter:
+            %   data_per_bar : [nBars, nPos, nDim]
+            %OUTPUT parameter: 
+            %   data_per_song [nSongs x (feat_dim*bar_grid)]
             % ------------------------------------------------------------
             % compute mean per song
             data_per_song = NaN(n_files, ...
