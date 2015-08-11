@@ -1,11 +1,8 @@
 classdef BinTest < matlab.unittest.TestCase
     % ExamplesTest tests the examples in the examples folder
     properties
-        test_audio = fullfile(pwd, 'data', 'train1.flac');
         result_folder = fullfile(pwd, 'temp');
-        hmm_model = fullfile(pwd, 'models', 'hmm_boeck.mat');
-        pf_model = fullfile(pwd, 'models', 'pf_boeck.mat');
-        train_files = {fullfile(pwd, '..', ...
+        audio_files = {fullfile(pwd, '..', ...
             'examples/data/audio/guitar_duple.flac'), fullfile(pwd, '..', ...
             'examples/data/audio/guitar_triple.flac')};
     end
@@ -16,10 +13,10 @@ classdef BinTest < matlab.unittest.TestCase
             % Beat tracking with a pre-trained HMM
             results_fln = fullfile(testCase.result_folder, ...
                 'test.beats.txt');
-            compute_beats_mirex_2013(testCase.test_audio, results_fln);
+            compute_beats_mirex_2013(testCase.audio_files{1}, results_fln);
             results = load(results_fln);
             % add all beats and compare to expected solution
-            exp_sum_beats = 40.7;
+            exp_sum_beats = 777.36;
             act_sum_beats = sum(results);
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);
