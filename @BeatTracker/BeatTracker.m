@@ -199,7 +199,8 @@ classdef BeatTracker < handle
                         obj.Params.pr = obj.train_data.pr;
                     end
                 else
-                    if strcmp(obj.Params.cluster_type, 'meter')
+                    if ismember(obj.Params.cluster_type, {'meter', ...
+                            'rhythm'})
                         obj.train_data.cluster_from_labels(...
                             obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')

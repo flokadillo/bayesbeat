@@ -165,6 +165,10 @@ classdef ObservationModel
         end
         
         function obj = convert_to_new_model(obj, rhythm2meter)
+            % Older versions of the code have a different model structure.
+            % This function converts the old models to the new format in
+            % order to still use old models with the latest releases of the
+            % code
             obj.rhythm2meter = rhythm2meter;
             bar_durations = obj.rhythm2meter(:, 1) ./ ...
                 obj.rhythm2meter(:, 2);

@@ -125,10 +125,8 @@ classdef HMM
             % in future, but is important for compatibility with older models
             % check dimensions of member variables. This function might be removed
             % in future, but is important for compatibility with older models
-            % (in old models Meff and
-            % rhythm2meter_state are row vectors [1 x K] but should be
-            % column vectors)
-            % check for old MIREX model versions
+            % (in old models Meff and rhythm2meter_state are row vectors 
+            % [1 x K] but should be column vectors)
             if isempty(obj.Meff) && (size(obj.rhythm2meter, 1) == 1) && ...
                     isempty(obj.rhythm2meter_state)
                 obj.rhythm2meter = [obj.rhythm2meter + 2; ...
