@@ -19,38 +19,63 @@ function [ DetFunc, fr ] = Compute_Bt_LogFiltSpecFlux( fln, param )
 %
 % 06.09.2012 by Florian Krebs
 % ------------------------------------------------------------------------
-
-% PARAMETERS:
-% ===========
-
-param.offline = 1;
-
 if ~exist(fln,'file')
     fprintf('%s not found\n',fln);
     DetFunc = []; fr = [];
     return
 end
+% Set default parameters:
+% ===========
+if ~isfield(param, 'offline')
+    param.offline = 1;
+end
+if ~isfield(param, 'min_f')
+    param.min_f = 0;
+end
+if ~isfield(param, 'max_f')
+    param.max_f = 22050;
+end
+if ~isfield(param, 'frame_length')
+    param.frame_length = 0.02;
+end
+if ~isfield(param, 'fftsize')
+    param.fftsize = 2048;
+end
+if ~isfield(param, 'hopsize')
+    param.hopsize = 441;
+end
+if ~isfield(param, 'lambda')
+    param.lambda = 100000;
+end
+if ~isfield(param, 'norm_each_file')
+    param.norm_each_file = 0;
+end
+if ~isfield(param, 'feat_type')
+   param.feat_type = 'superflux';
+end
+if ~isfield(param, 'doMvavg')
+   param.doMvavg = 0;
+end
+if ~isfield(param, 'save_it')
+   param.save_it = 0;
+end
 
 if param.min_f == 0 && param.max_f > 40000 % use Sebastian's superflux
-    fr = 50;
-    [~, ~, ext] = fileparts(fln);
     [~, home] = system('echo $HOME');
     fln = strrep(fln, '~', home(1:end-1)); % remove \n at the end of home
-    if strcmp(ext, '.flac') % convert flac to wav
-        fln = strrep(fln, ext, '.wav');
-        if ~exist(fln, 'file')
-            fprintf('%s not exists, creating...\n', fln);
-            system(['flac -df ', fln]);
-        end
-    end
-    setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); % set env path (PYTHONPATH) for this session
-    fprintf('%s\n', ['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 "', fln, '"']);
-    [status, DetFunc] = system(['~/diss/src/python/madmom/bin/SuperFlux.py -s --sep " " --fps ', num2str(fr), ' --max_bins 1 "', fln, '"']);
-    DetFunc = str2num(DetFunc);
+    % set env path (PYTHONPATH) for this session
+    fr = round(1/param.frame_length);
+    setenv('PYTHONPATH', '/home/florian/diss/src/python/madmom'); 
+    cmd = ['~/diss/src/python/madmom/bin/SuperFlux.py --save ', ...
+        '--sep " " --fps ', num2str(fr), ' --max_bins 1 ', ...
+        'single "', fln, '"'];
+    [status, DetFunc] = system(cmd);
+    % remove leading header from string
+    delim_pos = strfind(DetFunc, ' ');
+    DetFunc = str2num(DetFunc(delim_pos(2)+1:end));
     if status ~= 0 || isempty(DetFunc)
         error('Could not extract features from %s\n', fln);
     end
-    
 else
     % Load audio file
     % ----------------------------------------------------------------------
@@ -80,8 +105,6 @@ else
     end
     % STFT parameter
     % ----------------------------------------------------------------------
-    param.fftsize = 2048;
-    param.hopsize = 441; % 10 ms -> fr = 100
     winsize = param.fftsize - 1;
     type = 0; % 1=complex, use smaller windows at beginning and end
     online = 0; % 1=time frame corresponds to right part of window
@@ -104,7 +127,6 @@ else
         magnitude = magnitude(:, min_ind:max_ind);
     end
     % logarithmic amplitude
-    param.lambda = 10221;
     magnitude = log10(param.lambda * magnitude + 1);
     % compute flux
     difforder = 1;
@@ -123,6 +145,7 @@ if param.doMvavg
     end
 end
 if param.norm_each_file == 2
+    % zero mean and unit variance
     DetFunc = DetFunc - mean(DetFunc);
     DetFunc = DetFunc / var(DetFunc);
 elseif param.norm_each_file == 1

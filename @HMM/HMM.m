@@ -100,7 +100,6 @@ classdef HMM
                 obj.pfs = Params.pfs;
                 obj.rhythm_names{obj.R+1} = 'silence';
             end
-            
             if isfield(Params, 'correct_beats')
                 obj.correct_beats = Params.correct_beats;
             else

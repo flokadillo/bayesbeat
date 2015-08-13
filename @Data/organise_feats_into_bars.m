@@ -10,6 +10,7 @@ function [feat_from_bar_and_gmm] = organise_feats_into_bars(obj, whole_note_div)
 % obj.bar2file :     [nBars x 1]
 % 03.08.2015 by Florian Krebs
 % ----------------------------------------------------------------------
+dooutput = 1;
 % Parse parameters
 if nargin == 1,
     whole_note_div = 64;
@@ -31,8 +32,8 @@ bar2file = zeros(sum(obj.n_bars), 1);
 idLastBar = 0;
 %main loop over all files
 for iFile=1:length(obj.file_list)
-    [~, fname, ~] = fileparts(obj.file_list{iFile});
     fprintf(repmat('\b', 1, nchar));
+    [~, fname, ~] = fileparts(obj.file_list{iFile});
     nchar = fprintf('      %i/%i) %s', iFile, length(obj.file_list), fname);
     if isempty(obj.beats{iFile})
         if dooutput, fprintf('Error loading annotations, skipping %s\n', ...

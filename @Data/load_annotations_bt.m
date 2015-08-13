@@ -56,18 +56,20 @@ elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
     temp = textscan(fid, '%f64%s', 'delimiter', '\t');
     fclose(fid);
     data = temp{1};
-    if size(temp, 2) == 2
-        % get bar id and beat number
-        temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
-            'UniformOutput', 0);
-        if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
-            beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{2}, ...
-                temp2));
-        else % no bar_id given, set bar_id to nan
-            beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{1}, ...
-                temp2));
+    if ~isempty(data)
+        if size(temp, 2) == 2
+            % get bar id and beat number
+            temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
+                'UniformOutput', 0);
+            if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
+                beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{2}, ...
+                    temp2));
+            else % no bar_id given, set bar_id to nan
+                beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{1}, ...
+                    temp2));
+            end
+            data = [data, beat_number];
         end
-        data = [data, beat_number];
     end
 elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
     % Load Tempofile

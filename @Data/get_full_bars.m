@@ -32,13 +32,21 @@ end
 nBeats = length(btype);
 % find most frequent occuring maximum beat type
 frequency = histc(btype, 1:max(btype));
+meter = -1;
 for i_meter = max(btype):-1:2
-    % the beat id of the main meter should appear at most in half of the 
-    % bars
-    if (frequency(i_meter) / frequency(1)) > 0.5
+    % the beat id of the main meter should appear at most in a third of the 
+    % bars, which are measured by the number of downbeats
+    is_above_min_frequency = (frequency(i_meter) / frequency(1)) > 0.3;
+    % the main meter should be most frequent meter in the piece
+    is_most_frequent = all(frequency(i_meter) >= frequency(2:i_meter-1) - ...
+        frequency(i_meter));
+    if is_above_min_frequency && is_most_frequent
         meter = i_meter;
         break;
     end
+end
+if meter == -1
+    fprintf('WARNING: no predominant time signature found')
 end
 % 1) check for pauses
 period = diff(beats(:, 1));

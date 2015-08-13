@@ -199,6 +199,8 @@ classdef BeatTracker < handle
                         obj.Params.pr = obj.train_data.pr;
                     end
                 else
+                    fprintf('* Clustering data by %s ...', ...
+                        obj.Params.cluster_type);
                     if ismember(obj.Params.cluster_type, {'meter', ...
                             'rhythm'})
                         obj.train_data.cluster_from_labels(...
@@ -207,6 +209,8 @@ classdef BeatTracker < handle
                         obj.train_data.cluster_from_features(...
                             obj.Params.n_clusters, feat_from_bar_and_gmm);
                     end
+                    fprintf('done\n  %i clusters detected.\n', ...
+                        obj.train_data.clustering.n_clusters);
                     obj.train_data.sort_bars_into_clusters(...
                         feat_from_bar_and_gmm);
                 end
@@ -216,6 +220,7 @@ classdef BeatTracker < handle
                     save(obj.Params.stored_train_data_fln, 'data');
                 end
             end
+            obj.Params.R = obj.train_data.clustering.n_clusters;
         end
         
         function init_test_data(obj)
@@ -250,9 +255,11 @@ classdef BeatTracker < handle
                     tempo_max_per_cluster);
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
-                    obj.model = obj.model.make_observation_model(obj.train_data);
+                    obj.model = obj.model.make_observation_model(...
+                        obj.train_data);
                 else
-                    obj.model = obj.model.make_observation_model(obj.train_data);
+                    obj.model = obj.model.make_observation_model(...
+                        obj.train_data);
                 end
                 fprintf('* Set up initial distribution\n');
                 obj.model = obj.model.make_initial_distribution(...
