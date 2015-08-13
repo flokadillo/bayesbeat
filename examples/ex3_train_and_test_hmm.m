@@ -12,10 +12,6 @@ function Results = ex3_train_and_test_hmm(in_file, train_files, out_folder)
 %
 % 30.07.2015 by Florian Krebs
 % ----------------------------------------------------------------------
-
-% Load the parameters
-% Number of rhythmic pattern states
-Params.R = 2;
 % Train dataset
 % Path to lab file
 Params.trainLab = train_files;
