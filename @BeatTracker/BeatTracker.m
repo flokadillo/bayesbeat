@@ -299,6 +299,12 @@ classdef BeatTracker < handle
             end
         end
         
+        function constraints = load_constraints(obj, test_file_id)
+           if strcmp(obj.Params.constraint_type, 'downbeats')
+               constraints = Data.load
+           end
+        end
+        
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
             % test_files_to_exclude can be either a scalar
             % (index of the file to be excluded for leave-one-out
@@ -365,6 +371,11 @@ classdef BeatTracker < handle
                 obj.test_data.file_list{test_file_id}, ...
                 obj.Params.save_features_to_file, ...
                 obj.Params.load_features_from_file);
+            if isfield(obj.Params, 'constraint_type')
+                constraint = obj.load_constraints(test_file_id);
+                obj.model.make_belief_function(obj.Params.constraint_type, ...
+                    constraint);
+            end
             % compute observation likelihoods
             results = obj.model.do_inference(observations, fname, ...
                 obj.Params.inferenceMethod, do_output);

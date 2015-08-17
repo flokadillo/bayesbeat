@@ -9,6 +9,7 @@ classdef Data < handle
         meters               % meter of each file [nFiles x 2]
         beats                % beats of each file {nFiles x 1}[n_beats 2]
         n_bars               % number of (complete) bars of each file [nFiles x 1]
+        n_beats_per_bar      % number of beats per bar of predominant time signature
         bar_start_id         % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats       % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln          % file with cluster id of each bar
