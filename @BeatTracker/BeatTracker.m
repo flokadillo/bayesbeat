@@ -300,9 +300,14 @@ classdef BeatTracker < handle
         end
         
         function constraints = load_constraints(obj, test_file_id)
-           if strcmp(obj.Params.constraint_type, 'downbeats')
-               constraints = Data.load
-           end
+            fln = strrep(obj.test_data.file_list{test_file_id}, 'audio', ...
+                ['annotations/', obj.Params.constraint_type]);
+            [~, ~, ext] = fileparts(fln);
+            fln = strrep(fln, ext, ['.', obj.Params.constraint_type]);
+            if strcmp(obj.Params.constraint_type, 'downbeats')
+               data = load(fln);
+               constraints = data(:, 1);
+            end
         end
         
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
@@ -372,9 +377,11 @@ classdef BeatTracker < handle
                 obj.Params.save_features_to_file, ...
                 obj.Params.load_features_from_file);
             if isfield(obj.Params, 'constraint_type')
-                constraint = obj.load_constraints(test_file_id);
-                obj.model.make_belief_function(obj.Params.constraint_type, ...
-                    constraint);
+                Constraint.type = obj.Params.constraint_type;
+                Constraint.data = obj.load_constraints(test_file_id);
+                belief_func = obj.model.make_belief_function(Constraint);
+                results = obj.model.do_inference(observations, fname, ...
+                    obj.Params.inferenceMethod, belief_func);
             end
             % compute observation likelihoods
             results = obj.model.do_inference(observations, fname, ...

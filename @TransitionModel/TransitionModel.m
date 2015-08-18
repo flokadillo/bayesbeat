@@ -25,7 +25,7 @@ classdef TransitionModel
         frames_per_beat % cell arrays with tempi relative to the framerate
         % frames_per_beat{1} is a row vector with tempo
         % values in [audio frames per beat] for pattern 1
-        num_position_states_per_beat % number of position states per beat
+        max_position_per_beat % number of position states per beat
         num_position_states_per_pattern % cell array of length R
         p2s                 % prior probability to go into silence state
         pfs                 % prior probability to exit silence state
@@ -61,7 +61,7 @@ classdef TransitionModel
             obj.pr = pr;
             obj.alpha = alpha;
             obj.frame_length = frame_length;
-            obj.num_position_states_per_beat = position_states_per_beat;
+            obj.max_position_per_beat = position_states_per_beat;
             obj.num_beats_per_pattern = round(M_per_pattern ./ ...
                 position_states_per_beat);
             obj.tm_type = tm_type;
@@ -386,7 +386,7 @@ classdef TransitionModel
                     idx = si:(si+n_pos_states(tempo_state_i)-1);
                     obj.mapping_state_rhythm(idx) = ri;
                     obj.mapping_state_tempo(idx) = ...
-                        obj.num_position_states_per_beat(ri) ./ ...
+                        obj.max_position_per_beat(ri) ./ ...
                         obj.frames_per_beat{ri}(tempo_state_i);
                     obj.mapping_tempo_state_id(idx) = tempo_state_i;
                     obj.mapping_state_position(idx) = ...

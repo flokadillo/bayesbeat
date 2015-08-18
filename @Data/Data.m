@@ -179,15 +179,18 @@ classdef Data < handle
             % This method calls obj.load_annotations_bt and loads beats and
             % downbeats for each file to a cell array {nFiles x 1}[n_beats 2]
             if isempty(obj.beats) % only do this if not already done
+                obj.n_beats_per_bar = zeros(length(obj.file_list), 1);
                 for iFile = 1:length(obj.file_list)
                     [obj.beats{iFile}, ~ ] = Data.load_annotations_bt(...
                         obj.file_list{iFile}, 'beats');
                     if strcmp(obj.pattern_size, 'bar')
                         [obj.n_bars(iFile), obj.full_bar_beats{iFile}, ...
-                            obj.bar_start_id{iFile}] = ...
+                            obj.bar_start_id{iFile}, ...
+                            obj.n_beats_per_bar(iFile)] = ...
                             obj.get_full_bars(obj.beats{iFile});
                     else
                         obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
+                        obj.n_beats_per_bar(iFile) = 1;
                     end
                 end
             end

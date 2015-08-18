@@ -124,7 +124,7 @@ classdef HMM
             % in future, but is important for compatibility with older models
             % check dimensions of member variables. This function might be removed
             % in future, but is important for compatibility with older models
-            % (in old models Meff and rhythm2meter_state are row vectors 
+            % (in old models Meff and rhythm2meter_state are row vectors
             % [1 x K] but should be column vectors)
             if isempty(obj.Meff) && (size(obj.rhythm2meter, 1) == 1) && ...
                     isempty(obj.rhythm2meter_state)
@@ -281,9 +281,9 @@ classdef HMM
                     try
                         hidden_state_sequence = ...
                             obj.viterbi_decode_mex(obs_lik, fname);
-                    catch 
+                    catch
                         fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
-                        hidden_state_sequence = obj.viterbi_decode(obs_lik, fname); 
+                        hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
                     end
                 else
                     hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
@@ -1086,102 +1086,7 @@ classdef HMM
             end
         end
         
-        function belief_func = make_belief_functions(obj, train_data, file_ids)
-            if nargin < 3
-                % compute belief functions for the whole dataset
-                file_ids = 1:length(train_data.file_list);
-            end
-            tol_beats = 0.0875; % tolerance window in percentage of one beat period
-            method_type = 2;
-            tol_bpm = 20; % tolerance in +/- bpm for tempo variable
-            % compute tol_win in [frames]
-            % belief_func:
-            % col1: frames where annotation is available,
-            % col2: sparse vector that is one for possible states
-            belief_func = cell(length(file_ids), 2);
-            n_states = obj.M * obj.N * obj.R;
-            counter = 1;
-            for i_file = file_ids(:)'
-                % find meter of current piece (so far, only one (the first) per piece is used!)
-                if train_data.meter(i_file) == 0 % no meter annotation available
-                    possible_rhythm_states = 1:obj.R; % all meters are possible
-                else
-                    possible_rhythm_states = find((obj.rhythm2meter(:, 1) ...
-                        == train_data.meter(i_file, 1)) &...
-                        (obj.rhythm2meter(:, 2) == ...
-                        train_data.meter(i_file, 2)));
-                end
-                % compute inter beat intervals in seconds
-                ibi = diff(train_data.beats{i_file}(:, 1));
-                ibi = [ibi; ibi(end)];
-                % number of beats
-                n_beats_i = size(train_data.beats{i_file}, 1);
-                % estimate roughly the size of the tolerance windows to
-                % pre-allocate memory (assuming 4/4 meter)
-                tol_win_m = floor(tol_beats * obj.M / 4);
-                %                 tol_win_n = floor(obj.M .* obj.frame_length * tol_bpm ./ (4 .* 60));
-                % pre-allocate memory for rows, cols and values
-                i_rows = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
-                    obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-                j_cols = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
-                    obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-                s_vals = ones((tol_win_m*2+1) * n_beats_i * obj.N * ...
-                    obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-                p=1;
-                for r_state=possible_rhythm_states
-                    % check if downbeat is annotated
-                    if size(train_data.beats{i_file}, 2) == 1 % no downbeat annotation available
-                        possible_btypes = repmat(1:obj.rhythm2meter(i_r, 1), ...
-                            n_beats_i, 1);
-                    else
-                        possible_btypes = train_data.beats{i_file}(:, 2); % position of beat in a bar: 1, 2, 3, 4
-                    end
-                    % find all rhythm states that belong to iMeter
-                    % convert each beat_type into a bar position {1..Meff}
-                    M_i = obj.Meff(r_state);
-                    tol_win = floor(tol_beats * obj.M / train_data.meter(i_file, 2));
-                    % compute bar position m for each beat. beats_m is
-                    % [n_beats x 1] if downbeat is annotated or [n_beats x num(iMeter)]
-                    % otherwise
-                    beats_m = ((possible_btypes-1) .* M_i ./ obj.rhythm2meter(i_r, 1)) + 1;
-                    for iM_beats=beats_m % loop over beat types
-                        for iBeat=1:n_beats_i % loop over beats of file i
-                            if method_type == 1
-                                % -----------------------------------------------------
-                                % Variant 1: tolerance win constant in beats over tempi
-                                % -----------------------------------------------------
-                                m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
-                                m = repmat(m_support, 1, obj.N * length(r_state));
-                                n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
-                                r = repmat(r_state(:), obj.N * length(m_support), 1);
-                                states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-                                idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
-                                i_rows(idx) = iBeat;
-                                j_cols(idx) = states;
-                            elseif method_type == 2
-                                % -----------------------------------------------------
-                                % Variant 2: Tolerance win constant in time over tempi
-                                % -----------------------------------------------------
-                                for n_i = obj.minN(r_state):obj.maxN(r_state)
-                                    tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
-                                    m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
-                                    for r_i = 1:length(r_state)
-                                        states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
-                                        j_cols(p:p+length(states)-1) = states;
-                                        i_rows(p:p+length(states)-1) = iBeat;
-                                        p = p + length(states);
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                belief_func{counter, 1} = round(train_data.beats{i_file}(:, 1) / obj.frame_length);
-                belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
-                belief_func{counter, 2} = logical(sparse(i_rows(i_rows>0), j_cols(i_rows>0), s_vals(i_rows>0), n_beats_i, n_states));
-                counter = counter + 1;
-            end
-        end
+        
         
         
         function obs_lik = rnn_format_obs_prob(obj, y)
@@ -1306,6 +1211,83 @@ classdef HMM
                 hmm_corrupt = false;
             end
         end
+    end
+    
+    methods (Access=public)
+        function belief_func = make_belief_function(obj, Constraint)
+            tol_beats = 0.0875; % tolerance window in percentage of one beat period
+            tol_downbeats_sec = 0.02;
+            method_type = 2;
+            tol_bpm = 20; % tolerance in +/- bpm for tempo variable
+            % compute tol_win in [frames]
+            % belief_func:
+            % col1: frames where annotation is available,
+            % col2: sparse vector that is one for possible states
+            counter = 1;
+            for i_db = 1:length(Constraint.data)
+                i_frame = round(Constraint.data(i_db) / obj.frame_length);
+                belief_func{counter, 1} = i_frame;
+                
+            end
+            %                 % compute inter beat intervals in seconds
+            %                 ibi = diff(train_data.beats{i_file}(:, 1));
+            %                 ibi = [ibi; ibi(end)];
+            %                 % estimate roughly the size of the tolerance windows to
+            %                 % pre-allocate memory (assuming 4/4 meter)
+            %                 tol_win_m = floor(tol_beats * obj.M / 4);
+            %                 %                 tol_win_n = floor(obj.M .* obj.frame_length * tol_bpm ./ (4 .* 60));
+            %                 % pre-allocate memory for rows, cols and values
+            %                 i_rows = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
+            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
+            %                 j_cols = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
+            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
+            %                 s_vals = ones((tol_win_m*2+1) * n_beats_i * obj.N * ...
+            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
+            %                 p=1;
+            %                     % find all rhythm states that belong to iMeter
+            %                     % convert each beat_type into a bar position {1..Meff}
+            %                     M_i = obj.Meff(r_state);
+            %                     tol_win = floor(tol_beats * obj.M / train_data.meter(i_file, 2));
+            %                     % compute bar position m for each beat. beats_m is
+            %                     % [n_beats x 1] if downbeat is annotated or [n_beats x num(iMeter)]
+            %                     % otherwise
+            %                     beats_m = ((possible_btypes-1) .* M_i ./ obj.rhythm2meter(i_r, 1)) + 1;
+            %                         for iBeat=1:n_beats_i % loop over beats of file i
+            %                             if method_type == 1
+            %                                 % -----------------------------------------------------
+            %                                 % Variant 1: tolerance win constant in beats over tempi
+            %                                 % -----------------------------------------------------
+            %                                 m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
+            %                                 m = repmat(m_support, 1, obj.N * length(r_state));
+            %                                 n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
+            %                                 r = repmat(r_state(:), obj.N * length(m_support), 1);
+            %                                 states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
+            %                                 idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
+            %                                 i_rows(idx) = iBeat;
+            %                                 j_cols(idx) = states;
+            %                             elseif method_type == 2
+            %                                 % -----------------------------------------------------
+            %                                 % Variant 2: Tolerance win constant in time over tempi
+            %                                 % -----------------------------------------------------
+            %                                 for n_i = obj.minN(r_state):obj.maxN(r_state)
+            %                                     tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
+            %                                     m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
+            %                                     for r_i = 1:length(r_state)
+            %                                         states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
+            %                                         j_cols(p:p+length(states)-1) = states;
+            %                                         i_rows(p:p+length(states)-1) = iBeat;
+            %                                         p = p + length(states);
+            %                                     end
+            %                                 end
+            %                             end
+            %                         end
+            %                 belief_func{counter, 1} = round(train_data.beats{i_file}(:, 1) / obj.frame_length);
+            %                 belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
+            %                 belief_func{counter, 2} = logical(sparse(i_rows(i_rows>0), j_cols(i_rows>0), s_vals(i_rows>0), n_beats_i, n_states));
+            %                 counter = counter + 1;
+        end
+        
+        
     end
     
     methods (Static)

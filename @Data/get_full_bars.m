@@ -1,5 +1,5 @@
-function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
-    verbose)
+function [nBars, beatIdx, barStartIdx, predominant_meter] = ...
+    get_full_bars(beats, tolInt, verbose)
 %  [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
 %  returns complete bars within a sequence of beats. If there are multiple
 %  time signature within the beat sequence, only the main meter is
@@ -13,10 +13,15 @@ function [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
 %                               [default 1.8]
 %
 %OUTPUT parameter:
-% nBars                     : number of complete bars
+% nBars                     : number of complete bars [1]
 % beatIdx                   : [nBeats x 1] of boolean: determines if beat
-%                               belongs to a full bar (=1) or not (=0)
+%                               belongs to a full bar (=1) or not (=0). The
+%                               first beat after a full bar is considered
+%                               as belonging to the full bar too
+%                               (sum(beatIdx) = nBars * predominant_meter)
 % barStartIdx               : index of first beat of each bar
+% predominant_meter         : number of beats per bar of the pre-dominant
+%                               time signature found in the piece
 %
 % 11.07.2013 by Florian Krebs
 % ----------------------------------------------------------------------
@@ -32,7 +37,7 @@ end
 nBeats = length(btype);
 % find most frequent occuring maximum beat type
 frequency = histc(btype, 1:max(btype));
-meter = -1;
+predominant_meter = -1;
 for i_meter = max(btype):-1:2
     % the beat id of the main meter should appear at most in a third of the 
     % bars, which are measured by the number of downbeats
@@ -41,11 +46,11 @@ for i_meter = max(btype):-1:2
     is_most_frequent = all(frequency(i_meter) >= frequency(2:i_meter-1) - ...
         frequency(i_meter));
     if is_above_min_frequency && is_most_frequent
-        meter = i_meter;
+        predominant_meter = i_meter;
         break;
     end
 end
-if meter == -1
+if predominant_meter == -1
     fprintf('WARNING: no predominant time signature found')
 end
 % 1) check for pauses
@@ -57,14 +62,13 @@ if verbose,
 end
 % 2) check for missing or additional beats
 array = diff(btype);
-pattern = [ones(1, meter-1), -(meter-1), 1];
+pattern = [ones(1, predominant_meter-1), -(predominant_meter-1), 1];
 barStartIdx = strfind(array', pattern);
 nBars = length(barStartIdx);
 beatIdx = zeros(nBeats, 1);
 beatIdx(barStartIdx) = 1;
-beatIdx = conv(beatIdx, ones(meter+1, 1));
-beatIdx = beatIdx(1:nBeats);
-beatIdx(beatIdx~=0) = 1;
+beatIdx = conv(beatIdx, ones(predominant_meter + 1, 1));
+beatIdx = logical(beatIdx(1:nBeats));
 if verbose,
     fprintf('%i beats excluded\n', sum(beatIdx==0));
 end

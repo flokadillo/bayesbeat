@@ -51,12 +51,12 @@ for iFile=24:length(obj.file_list)
                 fname);
         end
     else
-        meter = obj.meters(iFile, :);
+        n_beats_per_bar = obj.n_beats_per_bar(iFile);
+        bar_length = obj.meter(iFile, 1) / obj.meter(iFile, 2);
         beats = obj.beats{iFile};
         % Effective number of bar positions (depending on meter)
         if strcmp(obj.pattern_size, 'bar')
-            bar_grid_eff = ceil(whole_note_div * meter(:, 1) ./ ...
-                obj.meters(iFile, 2));
+            bar_grid_eff = ceil(whole_note_div * bar_length);
         else
             % beat-length patterns: suppose quarter beats
             bar_grid_eff = whole_note_div / 4;
@@ -83,25 +83,30 @@ for iFile=24:length(obj.file_list)
             nBars = size(beats, 1) - 1;
             barStartIdx = 1:nBars;
         end
-        beatsBarPos = (0:meter(1)) * whole_note_div / obj.meters(iFile, 2) ...
-            + 1;
+        beatsBarPos = (0:n_beats_per_bar) / n_beats_per_bar * bar_grid_eff + 1;
         barData = cell(nBars, bar_grid_eff, feat_dim);
         bar_pos_per_frame = nan(length(E), 'single');
         pattern_per_frame = nan(length(E), 'single');
         for iBar=1:nBars
             % compute start and end frame of bar using fr
-            first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + 1; % first frame of bar
-            first_frame_of_next_bar = floor(beats(barStartIdx(iBar)+meter(1), 1) * fr) + 1; % first frame of next bar          
+            first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + ...
+                1; % first frame of bar
+            first_frame_of_next_bar = floor(beats(barStartIdx(iBar)+meter(1), ...
+                1) * fr) + 1; % first frame of next bar          
             % extract feature for this bar
             featBar = E(first_frame_of_bar:first_frame_of_next_bar, :);
             % set up time frames of bar, subtract half frame (1/(2*fr)) to yield center of frame
             t = (first_frame_of_bar:first_frame_of_next_bar) / fr - 1/(2*fr);
             % interpolate to find bar position of each audio frame
-            barPosLin = round(interp1(beats(barStartIdx(iBar):barStartIdx(iBar)+meter(1), 1), beatsBarPos, t,'linear','extrap'));
+            barPosLin = round(interp1(beats(barStartIdx(iBar):...
+                barStartIdx(iBar)+n_beats_per_bar, 1), beatsBarPos, t, ...
+                'linear','extrap'));
             barPosLin(barPosLin < 1) = 1;
             % bar position 64th grid per frame
-            bar_pos_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = barPosLin(1:end-1);
-            pattern_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ones(first_frame_of_next_bar-first_frame_of_bar, 1) * iBar;
+            bar_pos_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ...
+                barPosLin(1:end-1);
+            pattern_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ...
+                ones(first_frame_of_next_bar-first_frame_of_bar, 1) * iBar;
             % group all feature values that belong to the same barPos
             labels = [repmat(barPosLin(:), feat_dim, 1) ...             %# Replicate the row indices
                 kron(1:feat_dim, ones(1, numel(barPosLin))).'];  %'# Create column indices
