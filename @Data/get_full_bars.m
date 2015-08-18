@@ -39,13 +39,10 @@ nBeats = length(btype);
 frequency = histc(btype, 1:max(btype));
 predominant_meter = -1;
 for i_meter = max(btype):-1:2
-    % the beat id of the main meter should appear at most in a third of the 
-    % bars, which are measured by the number of downbeats
-    is_above_min_frequency = (frequency(i_meter) / frequency(1)) > 0.3;
     % the main meter should be most frequent meter in the piece
     is_most_frequent = all(frequency(i_meter) >= frequency(2:i_meter-1) - ...
         frequency(i_meter));
-    if is_above_min_frequency && is_most_frequent
+    if is_most_frequent
         predominant_meter = i_meter;
         break;
     end

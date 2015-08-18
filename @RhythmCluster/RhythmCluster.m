@@ -12,6 +12,7 @@ classdef RhythmCluster < handle
         bar2cluster         % [nBars x 1] vector
         file2meter          % [nFiles x 2]
         rhythm2meter        % [nRhythms x 2]
+        rhythm2nbeats       % number of beats per bar [nRhythms x 1]
         rhythm_names        % {R x 1} strings
         pr                  % transition probability matrix of the rhythmic 
                             % patterns [R x R]
@@ -93,11 +94,14 @@ classdef RhythmCluster < handle
             bar_pos = size(S, 2);
             if strcmpi(pattern_scope, 'bar')
                 meter_per_item = obj.data.meters(obj.data.bar2file, :);
+                n_beats_per_item = obj.data.beats_per_bar(...
+                    obj.data.bar2file, :);
             elseif strcmpi(pattern_scope, 'song')
                 % summarise features of one song
                 S = obj.average_feats_per_song(S, obj.data.bar2file, ...
                     length(obj.data.file_list));
                 meter_per_item = obj.data.meters;
+                n_beats_per_item = obj.data.beats_per_bar;
             end
             % normalise features to zero mean and unit std before
             % clustering
@@ -136,7 +140,8 @@ classdef RhythmCluster < handle
                     'RhythmCluster.do_clustering: Number of ',...
                     'meters in data does not match number of meters', ...
                     'specified in the function input argument']);
-                meters = unique(meter_per_item, 'rows');
+                [meters, idx, ~] = unique(meter_per_item, 'rows');
+                beats_per_bar = n_beats_per_item(idx);
             end
             if size(meters, 1) == 1 % only one meter
                 n_items_per_meter = size(meter_per_item, 1);
@@ -171,6 +176,7 @@ classdef RhythmCluster < handle
             high_distance = -99999999;
             S(isnan(S)) = high_distance;
             obj.rhythm2meter = zeros(obj.n_clusters, 2);
+            obj.rhythm2nbeats = zeros(obj.n_clusters, 1);
             for iMeter=1:size(meters, 1)
                 idx_i = (meter_per_item(:, 1) == meters(iMeter, 1)) & ...
                     (meter_per_item(:, 2) == meters(iMeter, 2));
@@ -183,11 +189,14 @@ classdef RhythmCluster < handle
                     obj.rhythm2meter(p:p+n_clusters_per_meter(iMeter)-1, :) ...
                         = repmat(meters(iMeter, :), ...
                         n_clusters_per_meter(iMeter), 1);
+                    obj.rhythm2nbeats(p:p+n_clusters_per_meter(iMeter)-1) = ...
+                        beats_per_bar(iMeter);
                     p=p+n_clusters_per_meter(iMeter);
                 else % only one item per meter -> no kmeans necessary
                     ctrs(p, :) = mean(S(idx_i, :));
                     cidx(idx_i) = p;
                     obj.rhythm2meter(p, :) = meters(iMeter, :);
+                    obj.rhythm2nbeats(p) = beats_per_bar(iMeter);
                     p=p+1;
                 end
             end
@@ -293,6 +302,7 @@ classdef RhythmCluster < handle
                         obj.data.file_list{iFile});
                 end
                 meter = obj.data.meters(iFile, :);
+                beats_per_bar = obj.data.beats_per_bar(iFile);
                 % So far, we assume that labels are only given on the song
                 % level, which means we assign the same cluster id to all
                 % bars of the file
@@ -313,8 +323,10 @@ classdef RhythmCluster < handle
                 end
                 if strcmp(obj.data.pattern_size, 'bar')
                     obj.rhythm2meter(cluster_id, :) = meter;
+                    obj.rhythm2nbeats(cluster_id) = beats_per_bar;
                 elseif strcmp(obj.data.pattern_size, 'beat')
                     obj.rhythm2meter(cluster_id, :) = [1, 4];
+                    obj.rhythm2nbeats(cluster_id) = 1;
                 end
                 bar_idx = bar_counter+1:bar_counter+obj.data.n_bars(iFile);
                 bar2rhythm(bar_idx) = cluster_id;
@@ -328,6 +340,7 @@ classdef RhythmCluster < handle
                     rhythm_names{i} = [clusterType, num2str(i)];
                 end
             end
+            obj.rhythm2nbeats = obj.rhythm2nbeats(:);
             obj.rhythm_names = rhythm_names;
             obj.compute_cluster_transitions();
             if ~isempty(obj.data_save_path)

@@ -45,7 +45,7 @@ if ~isfield(param, 'hopsize')
     param.hopsize = 441;
 end
 if ~isfield(param, 'lambda')
-    param.lambda = 100000;
+    param.lambda = 10221;
 end
 if ~isfield(param, 'norm_each_file')
     param.norm_each_file = 0;

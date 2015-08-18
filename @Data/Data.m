@@ -6,8 +6,9 @@ classdef Data < handle
         lab_fln              % lab file with list of files of dataset
         dataset              % name of the dataset
         bar2file             % specifies for each bar the file id [nBars x 1]
-        meters               % meter of each file [nFiles x 2]
+        meters               % time signature of each file [nFiles x 2]
         beats                % beats of each file {nFiles x 1}[n_beats 2]
+        beats_per_bar        % number of beats per bar [nFiles x 1]
         n_bars               % number of (complete) bars of each file [nFiles x 1]
         n_beats_per_bar      % number of beats per bar of predominant time signature
         bar_start_id         % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
@@ -179,14 +180,14 @@ classdef Data < handle
             % This method calls obj.load_annotations_bt and loads beats and
             % downbeats for each file to a cell array {nFiles x 1}[n_beats 2]
             if isempty(obj.beats) % only do this if not already done
-                obj.n_beats_per_bar = zeros(length(obj.file_list), 1);
+                obj.beats_per_bar = zeros(length(obj.file_list), 1);
                 for iFile = 1:length(obj.file_list)
                     [obj.beats{iFile}, ~ ] = Data.load_annotations_bt(...
                         obj.file_list{iFile}, 'beats');
                     if strcmp(obj.pattern_size, 'bar')
                         [obj.n_bars(iFile), obj.full_bar_beats{iFile}, ...
                             obj.bar_start_id{iFile}, ...
-                            obj.n_beats_per_bar(iFile)] = ...
+                            obj.beats_per_bar(iFile)] = ...
                             obj.get_full_bars(obj.beats{iFile});
                     else
                         obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
@@ -277,8 +278,8 @@ classdef Data < handle
     
     methods (Static)
         
-        [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, ...
-            verbose);
+        [nBars, beatIdx, barStartIdx, predominant_meter] = ...
+            get_full_bars(beats, tolInt, verbose);
         %  [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose)
         %  returns complete bars within a sequence of beats. If there are multiple
         %  time signature within the beat sequence, only the main meter is
@@ -296,6 +297,8 @@ classdef Data < handle
         % beatIdx                   : [nBeats x 1] of boolean: determines if beat
         %                               belongs to a full bar (=1) or not (=0)
         % barStartIdx               : index of first beat of each bar
+        % predominant_meter         : number of beats per bar of the pre-dominant
+        %                               time signature found in the piece
         %
         % 11.07.2013 by Florian Krebs
         % ----------------------------------------------------------------------

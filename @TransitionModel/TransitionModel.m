@@ -12,7 +12,6 @@ classdef TransitionModel
         pn              % probability of a switch in tempo
         pr              % probability of a switch in rhythmic pattern
         frame_length
-        rhythm2meter    % assigns each rhythmic pattern to a meter [R x 1]
         minN            % min tempo (n_min) for each rhythmic pattern [R x 1]
         maxN            % max tempo (n_max) for each rhythmic pattern [R x 1]
         min_bpm

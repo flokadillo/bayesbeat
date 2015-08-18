@@ -7,6 +7,7 @@ classdef HMM
         R                   % number of rhythmic pattern states
         rhythm2meter        % assigns each rhythmic pattern to a meter [R x 2]
         rhythm2meter_state  % assigns each rhythmic pattern to a meter state
+        rhythm2nbeats       % number of beats per bar [nRhythms x 1]
         % (1, 2, ...) - var not needed anymore but keep due to
         % compatibility
         meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
@@ -40,19 +41,20 @@ classdef HMM
     end
     
     methods
-        function obj = HMM(Params, rhythm2meter, rhythm_names)
+        function obj = HMM(Params, Clustering)
             if isfield(Params, 'transition_model_type')
                 obj.tm_type = Params.transition_model_type;
             else
                 obj.tm_type = '2015';
             end
             if strcmp(obj.tm_type, '2015')
-                obj.M = max(rhythm2meter(:, 1));
+                obj.M = max(Clustering.rhythm2nbeats);
             else
                 obj.M = Params.M;
             end
             obj.R = Params.R;
-            bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
+            bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
+                Clustering.rhythm2meter(:, 2);
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
             if isfield(Params, 'observationModelType')
@@ -60,7 +62,8 @@ classdef HMM
             else
                 obj.dist_type = 'MOG';
             end
-            obj.rhythm2meter = rhythm2meter;
+            obj.rhythm2meter = Clustering.rhythm2meter;
+            obj.rhythm2nbeats = Clustering.rhythm2nbeats;
             % effective number of bar positions per rhythm
             obj.Meff = round((bar_durations) ...
                 * (obj.M ./ (max(bar_durations))));
@@ -93,7 +96,7 @@ classdef HMM
                 obj.update_interval = Params.online.update_interval;
                 obj.obs_lik_floor = Params.online.obs_lik_floor;
             end
-            obj.rhythm_names = rhythm_names;
+            obj.rhythm_names = Clustering.rhythm_names;
             obj.use_silence_state = Params.use_silence_state;
             if obj.use_silence_state
                 obj.p2s = Params.p2s;
@@ -110,7 +113,6 @@ classdef HMM
             else
                 obj.use_mex_viterbi = 1;
             end
-            
             if isfield(Params, 'N') && strcmp(obj.tm_type, '2015')
                 obj.N = Params.N;
             else
@@ -158,14 +160,24 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
-            %
+            if isempty(obj.rhythm2nbeats)
+                % use the denominator of the time signature
+                obj.rhythm2nbeats = obj.rhythm2meter(:, 1);
+                % replace denominators for compound meters
+                % 6/8 has two beats
+                obj.rhythm2nbeats(obj.rhythm2nbeats==6) = 2;
+                % 9/8 has three beats
+                obj.rhythm2nbeats(obj.rhythm2nbeats==9) = 3;
+                % 12/8 has four beats
+                obj.rhythm2nbeats(obj.rhythm2nbeats==12) = 4;
+            end
             obj.tm_type = obj.trans_model.tm_type;
         end
         
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
                 alpha, pn, pr)
-            position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
+            position_states_per_beat = obj.Meff ./ obj.rhythm2nbeats;
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
                 min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
@@ -318,8 +330,10 @@ classdef HMM
             meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             beats = obj.find_beat_times(m_path, r_path, y);
             if strcmp(obj.pattern_size, 'bar') && ~isempty(n_path)
-                tempo = meter(1, idx)' .* 60 .* n_path(idx)' ./ ...
-                    (obj.Meff(r_path(idx)') * obj.frame_length);
+                pos_per_beat = obj.Meff(r_path(idx)) ./ ...
+                    obj.rhythm2nbeats(r_path(idx));
+                tempo = 60 .* n_path(idx)' ./ ...
+                    (pos_per_beat * obj.frame_length);
             else
                 tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
             end
@@ -1007,10 +1021,9 @@ classdef HMM
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
                 beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2meter(i_r, 1) + 1));
+                    obj.rhythm2nbeats(i_r) + 1));
                 beatpositions{i_r} = beatpositions{i_r}(1:end-1);
             end
-            
             beats = [];
             if obj.correct_beats
                 % resolution of observation model in
