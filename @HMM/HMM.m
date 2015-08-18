@@ -164,7 +164,11 @@ classdef HMM
                 % use the denominator of the time signature
                 obj.rhythm2nbeats = obj.rhythm2meter(:, 1);
                 % replace denominators for compound meters
+                % 6/8 has two beats
                 obj.rhythm2nbeats(obj.rhythm2nbeats==6) = 2;
+                % 9/8 has three beats
+                obj.rhythm2nbeats(obj.rhythm2nbeats==9) = 3;
+                % 12/8 has four beats
                 obj.rhythm2nbeats(obj.rhythm2nbeats==12) = 4;
             end
             obj.tm_type = obj.trans_model.tm_type;
