@@ -143,13 +143,6 @@ classdef HMM
                 obj.Meff = obj.Meff(:);
                 
             end
-            if isempty(obj.rhythm2nbeats)
-                % use the denominator of the time signature
-                obj.rhythm2nbeats = obj.rhythm2meter(:, 1);
-                % replace denominators for compound meters
-                obj.rhythm2nbeats(obj.rhythm2nbeats==6) = 2;
-                obj.rhythm2nbeats(obj.rhythm2nbeats==12) = 4;
-            end
             obj.rhythm2meter_state = obj.rhythm2meter_state(:);
             % In old models, pattern change probability was not saved as
             % matrix [RxR]
@@ -167,7 +160,13 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
-            %
+            if isempty(obj.rhythm2nbeats)
+                % use the denominator of the time signature
+                obj.rhythm2nbeats = obj.rhythm2meter(:, 1);
+                % replace denominators for compound meters
+                obj.rhythm2nbeats(obj.rhythm2nbeats==6) = 2;
+                obj.rhythm2nbeats(obj.rhythm2nbeats==12) = 4;
+            end
             obj.tm_type = obj.trans_model.tm_type;
         end
         
