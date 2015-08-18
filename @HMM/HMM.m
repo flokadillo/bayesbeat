@@ -264,7 +264,8 @@ classdef HMM
             
         end
         
-        function results = do_inference(obj, y, fname, inference_method, do_output)
+        function results = do_inference(obj, y, fname, inference_method, ...
+                belief_func)
             if obj.hmm_is_corrupt
                 error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
             end
@@ -289,16 +290,23 @@ classdef HMM
             elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
                 fprintf('* Decoding (viterbi) .');
-                if obj.use_mex_viterbi
-                    try
-                        hidden_state_sequence = ...
-                            obj.viterbi_decode_mex(obs_lik, fname);
-                    catch
-                        fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
-                        hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
-                    end
+                if exist('belief_func', 'var')
+                    % use viterbi with belief functions
+                    hidden_state_sequence = obj.viterbi_iteration(obs_lik, ...
+                        belief_func);
                 else
-                    hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+                    if obj.use_mex_viterbi
+                        try
+                            hidden_state_sequence = ...
+                                obj.viterbi_decode_mex(obs_lik, fname);
+                        catch
+                            fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
+                            hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+                        end
+                    else
+                        hidden_state_sequence = obj.viterbi_decode(obs_lik, ...
+                            fname);
+                    end
                 end
             elseif strcmp(inference_method, 'HMM_viterbi_lag')
                 hidden_state_sequence = obj.viterbi_fixed_lag_decode(obs_lik, 2);
@@ -831,14 +839,15 @@ classdef HMM
         
         function bestpath = viterbi_iteration(obj, obs_lik, belief_func)
             start_frame = max([belief_func{1}(1), 1]); % make sure that belief_func is >= 1
-            end_frame = min([belief_func{1}(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames
-            nFrames = end_frame - start_frame + 1;
+            belief_frames = [belief_func{:, 1}];
+            end_frame = min([belief_frames(end), size(obs_lik, 3)]); % make sure that belief_func is < nFrames
+            %             nFrames = end_frame - start_frame + 1;
+            nFrames = size(obs_lik, 3);
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
             maxState = max([row; col]);
             minState = min([row; col]);
             nStates = maxState + 1 - minState;
-            
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
@@ -851,28 +860,35 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind(size(obs_lik), obj.obs_model.state2obs_idx(minState:maxState, 1), ...
-                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind = sub2ind([obj.R, obj.barGrid, nFrames ], ...
+                obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                obj.obs_model.state2obs_idx(minState:maxState, 2), ...
+                ones(nStates, 1));
             ind_stepsize = obj.barGrid * obj.R;
-            % start index at the first belief function
-            ind = ind + ind_stepsize * (start_frame-1);
+            %             % start index at the first belief function
+            %             ind = ind + ind_stepsize * (start_frame-1);
+            O = zeros(nStates, 1);
+            validInds = ~isnan(ind);
             fprintf('    Decoding (viterbi training) .');
+            belief_counter = 1;
             for iFrame = 1:nFrames
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
-                if ismember(iFrame+start_frame-1, belief_func{1})
-                    delta_max = delta_max .* belief_func{2}(belief_func{1} == iFrame+start_frame-1, minState:maxState);
+                %                 if iFrame + start_frame - 1 == belief_frames(belief_counter)
+                if iFrame == belief_frames(belief_counter)
+                    delta_max = delta_max .* ...
+                        belief_func{belief_counter, 2}(minState:maxState)';
                     delta_max = delta_max / sum(delta_max);
                     if sum(isnan(delta_max)) > 0
                         fprintf(' Viterbi path could not be determined (error at frame %i)\n', iFrame);
                         bestpath = [];
                         return
                     end
+                    if belief_counter < size(belief_func, 1)
+                        belief_counter = belief_counter + 1;
+                    end
                 end
-                
                 % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
-                validInds = ~isnan(ind);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
                 % increase index to new time frame
@@ -887,11 +903,13 @@ classdef HMM
             end
             % Backtracing
             bestpath = zeros(nFrames, 1);
-            [ ~, bestpath(nFrames)] = max(delta);
+            [m, bestpath(nFrames)] = max(delta);
+            % in case there are more than one maximum
+            maxIndex = find(delta == m);
+            bestpath(nFrames) = round(median(maxIndex));
             for iFrame=nFrames-1:-1:1
                 bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
             end
-            
             % add state offset
             bestpath = bestpath + minState - 1;
             fprintf(' done\n');
@@ -1021,8 +1039,7 @@ classdef HMM
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
                 beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2nbeats(i_r) + 1));
-                beatpositions{i_r} = beatpositions{i_r}(1:end-1);
+                    obj.rhythm2nbeats(i_r)));
             end
             beats = [];
             if obj.correct_beats
@@ -1228,79 +1245,26 @@ classdef HMM
     
     methods (Access=public)
         function belief_func = make_belief_function(obj, Constraint)
-            tol_beats = 0.0875; % tolerance window in percentage of one beat period
-            tol_downbeats_sec = 0.02;
-            method_type = 2;
-            tol_bpm = 20; % tolerance in +/- bpm for tempo variable
+            tol_downbeats = 0.02; % given in beat proportions
             % compute tol_win in [frames]
             % belief_func:
             % col1: frames where annotation is available,
             % col2: sparse vector that is one for possible states
-            counter = 1;
+            belief_func = cell(length(Constraint.data), 2);
             for i_db = 1:length(Constraint.data)
-                i_frame = round(Constraint.data(i_db) / obj.frame_length);
-                belief_func{counter, 1} = i_frame;
-                
+                i_frame = max([1, round(Constraint.data(i_db) / ...
+                    obj.frame_length)]);
+                belief_func{i_db, 1} = i_frame;
+                % how many bar positions are one beat?
+                bar_pos_per_beat = obj.Meff(1) ./ obj.rhythm2nbeats(1);
+                limit = tol_downbeats * bar_pos_per_beat;
+                % find states which are considered in the window
+                idx = obj.trans_model.mapping_state_position < ...
+                    (1 + limit);
+                belief_func{i_db, 2} = false(obj.trans_model.num_states, 1);
+                belief_func{i_db, 2}(idx) = true;
             end
-            %                 % compute inter beat intervals in seconds
-            %                 ibi = diff(train_data.beats{i_file}(:, 1));
-            %                 ibi = [ibi; ibi(end)];
-            %                 % estimate roughly the size of the tolerance windows to
-            %                 % pre-allocate memory (assuming 4/4 meter)
-            %                 tol_win_m = floor(tol_beats * obj.M / 4);
-            %                 %                 tol_win_n = floor(obj.M .* obj.frame_length * tol_bpm ./ (4 .* 60));
-            %                 % pre-allocate memory for rows, cols and values
-            %                 i_rows = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
-            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-            %                 j_cols = zeros((tol_win_m*2+1) * n_beats_i * obj.N * ...
-            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-            %                 s_vals = ones((tol_win_m*2+1) * n_beats_i * obj.N * ...
-            %                     obj.R * sum(obj.rhythm2meter(:, 1)), 1);
-            %                 p=1;
-            %                     % find all rhythm states that belong to iMeter
-            %                     % convert each beat_type into a bar position {1..Meff}
-            %                     M_i = obj.Meff(r_state);
-            %                     tol_win = floor(tol_beats * obj.M / train_data.meter(i_file, 2));
-            %                     % compute bar position m for each beat. beats_m is
-            %                     % [n_beats x 1] if downbeat is annotated or [n_beats x num(iMeter)]
-            %                     % otherwise
-            %                     beats_m = ((possible_btypes-1) .* M_i ./ obj.rhythm2meter(i_r, 1)) + 1;
-            %                         for iBeat=1:n_beats_i % loop over beats of file i
-            %                             if method_type == 1
-            %                                 % -----------------------------------------------------
-            %                                 % Variant 1: tolerance win constant in beats over tempi
-            %                                 % -----------------------------------------------------
-            %                                 m_support = mod((iM_beats(iBeat)-tol_win:iM_beats(iBeat)+tol_win) - 1, M_i) + 1;
-            %                                 m = repmat(m_support, 1, obj.N * length(r_state));
-            %                                 n = repmat(1:obj.N, length(r_state) * length(m_support), 1);
-            %                                 r = repmat(r_state(:), obj.N * length(m_support), 1);
-            %                                 states = sub2ind([obj.M, obj.N, obj.R], m(:), n(:), r(:));
-            %                                 idx = (iBeat-1)*(tol_win*2+1)*obj.N*length(r_state)+1:(iBeat)*(tol_win*2+1)*obj.N*length(r_state);
-            %                                 i_rows(idx) = iBeat;
-            %                                 j_cols(idx) = states;
-            %                             elseif method_type == 2
-            %                                 % -----------------------------------------------------
-            %                                 % Variant 2: Tolerance win constant in time over tempi
-            %                                 % -----------------------------------------------------
-            %                                 for n_i = obj.minN(r_state):obj.maxN(r_state)
-            %                                     tol_win = n_i * tol_beats * ibi(iBeat) / obj.frame_length;
-            %                                     m_support = mod((iM_beats(iBeat)-ceil(tol_win):iM_beats(iBeat)+ceil(tol_win)) - 1, M_i) + 1;
-            %                                     for r_i = 1:length(r_state)
-            %                                         states = sub2ind([obj.M, obj.N, obj.R], m_support(:), ones(size(m_support(:)))*n_i, ones(size(m_support(:)))*r_state(r_i));
-            %                                         j_cols(p:p+length(states)-1) = states;
-            %                                         i_rows(p:p+length(states)-1) = iBeat;
-            %                                         p = p + length(states);
-            %                                     end
-            %                                 end
-            %                             end
-            %                         end
-            %                 belief_func{counter, 1} = round(train_data.beats{i_file}(:, 1) / obj.frame_length);
-            %                 belief_func{counter, 1}(1) = max([belief_func{counter, 1}(1), 1]);
-            %                 belief_func{counter, 2} = logical(sparse(i_rows(i_rows>0), j_cols(i_rows>0), s_vals(i_rows>0), n_beats_i, n_states));
-            %                 counter = counter + 1;
         end
-        
-        
     end
     
     methods (Static)

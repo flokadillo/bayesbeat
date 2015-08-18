@@ -380,10 +380,12 @@ classdef BeatTracker < handle
                 belief_func = obj.model.make_belief_function(Constraint);
                 results = obj.model.do_inference(observations, fname, ...
                     obj.Params.inferenceMethod, belief_func);
+            else
+                results = obj.model.do_inference(observations, fname, ...
+                    obj.Params.inferenceMethod);
             end
             % compute observation likelihoods
-            results = obj.model.do_inference(observations, fname, ...
-                obj.Params.inferenceMethod, do_output);
+            
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...

@@ -31,7 +31,7 @@ feat_from_bar_and_gmm = [];
 bar2file = zeros(sum(obj.n_bars), 1);
 idLastBar = 0;
 %main loop over all files
-for iFile=24:length(obj.file_list)
+for iFile=1:length(obj.file_list)
     fprintf(repmat('\b', 1, nchar));
     [~, fname, ~] = fileparts(obj.file_list{iFile});
     nchar = fprintf('      %i/%i) %s', iFile, length(obj.file_list), fname);

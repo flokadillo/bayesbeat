@@ -25,7 +25,8 @@ classdef TransitionModel
         % frames_per_beat{1} is a row vector with tempo
         % values in [audio frames per beat] for pattern 1
         max_position_per_beat % number of position states per beat
-        num_position_states_per_pattern % cell array of length R
+        num_position_states_per_pattern % cell array of length R, number of
+        %                               bar position states per tempo
         p2s                 % prior probability to go into silence state
         pfs                 % prior probability to exit silence state
         mapping_state_tempo     % [n_states, 1] contains for each state the
