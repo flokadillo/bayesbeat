@@ -306,6 +306,10 @@ classdef BeatTracker < handle
                data = load(fln);
                constraints = data(:, 1);
             end
+            if strcmp(obj.Params.constraint_type, 'beats')
+               data = load(fln);
+               constraints = data(:, 1);
+            end
         end
         
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
