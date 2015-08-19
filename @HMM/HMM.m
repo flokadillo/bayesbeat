@@ -1037,8 +1037,8 @@ classdef HMM
             % set up cell array with beat position for each meter
             beatpositions = cell(obj.R, 1);
             for i_r=1:obj.R
-                beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                    obj.rhythm2nbeats(i_r)));
+                pos_per_beat = obj.Meff(i_r) / obj.rhythm2nbeats(i_r);
+                beatpositions{i_r} = 1:pos_per_beat:obj.Meff(i_r);
             end
             beats = [];
             if obj.correct_beats
