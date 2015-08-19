@@ -14,8 +14,8 @@ classdef Data < handle
         bar_start_id         % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats       % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln          % file with cluster id of each bar
-        features_organised   % feature values organized by file, pattern, barpos and dim
-                             % cell(n_files, n_clusters, bar_grid_max, featureDim)
+        features_per_bar     % feature values organized by bar, pattern, barpos and dim
+                             % [nBars, nGMMs, featDim] cell array with features vectors
         feats_silence        % feature vector of silence
         pattern_size         % size of one rhythmical pattern {'beat', 'bar'}
         feature              % Feature object
@@ -74,7 +74,7 @@ classdef Data < handle
             obj.pattern_size = pattern_size;
         end
         
-        function [] = cluster_from_features(obj, n_clusters, input_args)
+        function [] = cluster_from_features(obj, n_clusters)
             %  [] = cluster_from_features(obj, n_clusters, input_args)
             %  Performs clustering of the bars by a kmeans in the feature
             %  space.
@@ -88,16 +88,11 @@ classdef Data < handle
             %
             % 10.08.2015 by Florian Krebs
             % ------------------------------------------------------------
-            obj.clustering = RhythmCluster(obj);
-            % get features per bar
-            if iscell(input_args)
-                feat_from_bar_and_gmm = input_args;
-            else
-                feat_from_bar_and_gmm = ...
-                    obj.organise_feats_into_bars(input_args);
+            if isempty(obj.features_per_bar)
+                obj.organise_feats_into_bars();
             end
-            obj.clustering.cluster_from_features(feat_from_bar_and_gmm, ...
-                n_clusters);
+            obj.clustering = RhythmCluster(obj);
+            obj.clustering.cluster_from_features(n_clusters);
         end
         
         function [] = cluster_from_labels(obj, cluster_type)
@@ -243,8 +238,7 @@ classdef Data < handle
             end
         end
         
-        feat_from_bar_and_gmm = organise_feats_into_bars(obj, ...
-            whole_note_div);
+        [] = organise_feats_into_bars(obj, whole_note_div);
         % obj = organise_feats_into_bars(obj, whole_note_div)
         % Load features and organise them into bars and bar positions using
         % <whole_note_div> cells per whole note in a bar.
@@ -253,13 +247,13 @@ classdef Data < handle
         % whole_note_div     : number of gridpoints of one whole note [64]
         %
         %OUTPUT parameter:
-        % feat_from_bar_and_gmm : [nBars, nGMMs, featDim] cell array with features
+        % obj.features_per_bar :    [nBars, nGMMs, featDim] cell array with features
         %                           vectors
-        % obj.bar2file :     [nBars x 1]
+        % obj.bar2file :            [nBars x 1]
         % 03.08.2015 by Florian Krebs
         % ----------------------------------------------------------------------
         
-        [] = sort_bars_into_clusters(obj, dataPerBar);
+        [features_by_clusters] = sort_bars_into_clusters(obj, dataPerBar);
         % [] = sort_bars_into_clusters(obj, data_per_bar)
         %   Sort the features according to clusters
         % ----------------------------------------------------------------------
@@ -269,8 +263,8 @@ classdef Data < handle
         %                   feature_dimensions)
         %
         %OUTPUT parameter:
-        % obj.features_organised  : cell(n_files, n_clusters,
-        %                   num_bar_positions, feature_dimensions)
+        % features_by_clusters  : cell(n_files, n_clusters,
+        %                           num_bar_positions, feature_dimensions)
         %
         % 10.08.2015 by Florian Krebs
         % ----------------------------------------------------------------------

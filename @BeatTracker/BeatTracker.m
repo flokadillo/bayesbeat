@@ -107,8 +107,8 @@ classdef BeatTracker < handle
                     featStr = [featStr, '_', featType];
                 end
                 obj.Params.stored_train_data_fln = fullfile(...
-                    obj.Params.data_path, ['data_', ...
-                    obj.Params.cluster_type, featStr, '.mat']);
+                    obj.Params.data_path, [obj.Params.train_set, '_', ...
+                    obj.Params.pattern_size, featStr, '.mat']);
             end
             % load or create probabilistic model
             obj.init_model();            
@@ -135,20 +135,29 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                % initialise training data to see how many pattern states
-                % we need and which time signatures have to be modelled
-                obj.init_train_data();
-                switch obj.Params.inferenceMethod(1:2)
-                    case 'HM'
-                        obj.model = HMM(obj.Params, ...
-                            obj.train_data.clustering);
-                    case 'PF'
-                        obj.model = PF(obj.Params, ...
-                            obj.train_data.clustering);
-                    otherwise
-                        error('BeatTracker.init_model: inference method %s not known', ...
-                            obj.Params.inferenceMethod);
+                if strcmp(obj.Params.observationModelType, 'RNN')
+                    obj.train_data.clustering.rhythm2nbeats = 1;
+                    obj.train_data.clustering.rhythm2meter = [1, 4];
+                    obj.train_data.clustering.rhythm_names = {'rnn'};
+                    obj.train_data.clustering.pr = 1;
+                    obj.train_data.feature = obj.feature;
+                    obj.Params.R = 1;
+                else
+                    % initialise training data to see how many pattern states
+                    % we need and which time signatures have to be modelled
+                    obj.init_train_data();
                 end
+                    switch obj.Params.inferenceMethod(1:2)
+                        case 'HM'
+                            obj.model = HMM(obj.Params, ...
+                                obj.train_data.clustering);
+                        case 'PF'
+                            obj.model = PF(obj.Params, ...
+                                obj.train_data.clustering);
+                        otherwise
+                            error('BeatTracker.init_model: inference method %s not known', ...
+                                obj.Params.inferenceMethod);
+                    end
             end
         end
         
@@ -169,8 +178,7 @@ classdef BeatTracker < handle
                 obj.train_data = Data(obj.Params.trainLab, ...
                     obj.Params.feat_type, obj.Params.frame_length, ...
                     obj.Params.pattern_size);
-                feat_from_bar_and_gmm = ...
-                    obj.train_data.organise_feats_into_bars(...
+                obj.train_data.organise_feats_into_bars(...
                     obj.Params.whole_note_div);
                 % process silence data
                 if obj.Params.use_silence_state
@@ -205,12 +213,10 @@ classdef BeatTracker < handle
                             obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')
                         obj.train_data.cluster_from_features(...
-                            obj.Params.n_clusters, feat_from_bar_and_gmm);
+                            obj.Params.n_clusters);
                     end
                     fprintf('done\n  %i clusters detected.\n', ...
                         obj.train_data.clustering.n_clusters);
-                    obj.train_data.sort_bars_into_clusters(...
-                        feat_from_bar_and_gmm);
                 end
                 % save extracted training data
                 if obj.Params.store_training_data
