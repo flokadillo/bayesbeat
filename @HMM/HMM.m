@@ -38,6 +38,7 @@ classdef HMM
         pfs                 % transition from silence
         p2s                 % transition to silence
         use_mex_viterbi     % 1: use it, 0: don't use it (~5 times slower)
+        beat_positions      % cell array; contains the bar positions of the beats for each rhythm
     end
     
     methods
@@ -1035,11 +1036,7 @@ classdef HMM
             % ----------------------------------------------------------------------
             numframes = length(position_state);
             % set up cell array with beat position for each meter
-            beatpositions = cell(obj.R, 1);
-            for i_r=1:obj.R
-                pos_per_beat = obj.Meff(i_r) / obj.rhythm2nbeats(i_r);
-                beatpositions{i_r} = 1:pos_per_beat:obj.Meff(i_r);
-            end
+            beatpositions = obj.beat_positions;
             beats = [];
             if obj.correct_beats
                 % resolution of observation model in
@@ -1242,7 +1239,7 @@ classdef HMM
         end
     end
     
-    methods (Access=public)
+    methods
         function belief_func = make_belief_function(obj, Constraint)
             if strcmp(Constraint.type, 'downbeats')
                 tol_downbeats = 0.02; % given in beat proportions
@@ -1266,12 +1263,8 @@ classdef HMM
                 end
             end
             if strcmp(Constraint.type, 'beats')
-                tol_beats = 0.02; % given in beat proportions
-                beatpositions = cell(obj.R, 1);
-                for i_r=1:obj.R
-                        beatpositions{i_r} = round(linspace(1, obj.Meff(i_r), ...
-                            obj.rhythm2nbeats(i_r)));
-                end
+                tol_beats = 0.1; % given in beat proportions
+                beatpositions = obj.beat_positions;
                 % find states which are considered in the window
                 idx = false(obj.trans_model.num_states, 1); 
                 for i_r = 1:length(obj.R)
@@ -1291,8 +1284,7 @@ classdef HMM
                     i_frame = max([1, round(Constraint.data(i_db) / ...
                         obj.frame_length)]);
                     belief_func{i_db, 1} = i_frame;
-                    belief_func{i_db, 2} = false(obj.trans_model.num_states, 1);
-                    belief_func{i_db, 2}(idx) = true;
+                    belief_func{i_db, 2} = idx;
                 end
             end
             if strcmp(Constraint.type, 'meter')
@@ -1300,6 +1292,15 @@ classdef HMM
                 
             end
         end
+        
+        function beat_positions = get.beat_positions(obj)
+            for i_r = 1:obj.R
+                pos_per_beat = obj.Meff(i_r) / obj.rhythm2nbeats(i_r);
+                obj.beat_positions{i_r} = 1:pos_per_beat:obj.Meff(i_r);
+            end
+            beat_positions = obj.beat_positions;
+        end
+        
     end
     
     methods (Static)
