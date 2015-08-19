@@ -90,7 +90,7 @@ for iFile=1:length(obj.file_list)
             first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + ...
                 1; % first frame of bar
             first_frame_of_next_bar = floor(beats(barStartIdx(iBar) + ...
-                beats_per_bar, 1) * fr) + 1; % first frame of next bar          
+                beats_per_bar, 1) * fr) + 1; % first frame of next bar
             % extract feature for this bar
             featBar = E(first_frame_of_bar:first_frame_of_next_bar, :);
             % set up time frames of bar, subtract half frame (1/(2*fr)) to yield center of frame
@@ -107,7 +107,7 @@ for iFile=1:length(obj.file_list)
             currBarData = accumarray(labels, featBar(:), ...
                 [bar_grid_eff+2, 2], @(x) {x});
             % add to bar cell array; last element belongs to next bar -> remove it
-            barData(iBar, :, :) = currBarData(1:bar_grid_eff, :); 
+            barData(iBar, :, :) = currBarData(1:bar_grid_eff, :);
         end
         % interpolate missing values
         if sum(sum(cellfun(@isempty, barData))) > 0
@@ -138,13 +138,6 @@ for iFile=1:length(obj.file_list)
             idLastBar = idLastBar + nNewBars;
         end
     end
-    clear S;
-    S = whos;
-    [mem, idx] = sort([S.bytes], 'descend');
-    fprintf(['\nTotal Memory: %.2f MB (1) %.2f MB by %s, (2) %.2f MB by %s', ...
-        ' (3) %.2f MB by %s\n'], sum([S.bytes])/10^6, ...
-        mem(1)/10^6, S(idx(1)).name, mem(2)/10^6, S(idx(2)).name, ...
-        mem(3)/10^6, S(idx(3)).name);
 end
 % remove output
 fprintf(repmat('\b', 1, nchar));
