@@ -135,20 +135,29 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                % initialise training data to see how many pattern states
-                % we need and which time signatures have to be modelled
-                obj.init_train_data();
-                switch obj.Params.inferenceMethod(1:2)
-                    case 'HM'
-                        obj.model = HMM(obj.Params, ...
-                            obj.train_data.clustering);
-                    case 'PF'
-                        obj.model = PF(obj.Params, ...
-                            obj.train_data.clustering);
-                    otherwise
-                        error('BeatTracker.init_model: inference method %s not known', ...
-                            obj.Params.inferenceMethod);
+                if strcmp(obj.Params.observationModelType, 'RNN')
+                    obj.train_data.clustering.rhythm2nbeats = 1;
+                    obj.train_data.clustering.rhythm2meter = [1, 4];
+                    obj.train_data.clustering.rhythm_names = {'rnn'};
+                    obj.train_data.clustering.pr = 1;
+                    obj.train_data.feature = obj.feature;
+                    obj.Params.R = 1;
+                else
+                    % initialise training data to see how many pattern states
+                    % we need and which time signatures have to be modelled
+                    obj.init_train_data();
                 end
+                    switch obj.Params.inferenceMethod(1:2)
+                        case 'HM'
+                            obj.model = HMM(obj.Params, ...
+                                obj.train_data.clustering);
+                        case 'PF'
+                            obj.model = PF(obj.Params, ...
+                                obj.train_data.clustering);
+                        otherwise
+                            error('BeatTracker.init_model: inference method %s not known', ...
+                                obj.Params.inferenceMethod);
+                    end
             end
         end
         

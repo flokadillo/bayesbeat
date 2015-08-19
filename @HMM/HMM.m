@@ -199,9 +199,10 @@ classdef HMM
                 obj.trans_model.mapping_state_position, ...
                 obj.trans_model.mapping_state_rhythm);
             % Train model
-            obj.obs_model = obj.obs_model.train_model(train_data);
-            obj.train_dataset = train_data.dataset;
-            
+            if ~strcmp(obj.dist_type, 'RNN')
+                obj.obs_model = obj.obs_model.train_model(train_data);
+                obj.train_dataset = train_data.dataset;
+            end
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
@@ -261,7 +262,6 @@ classdef HMM
             obj.obs_model = obj.obs_model.retrain_model(data_file_pattern_barpos_dim, pattern_id);
             %             obj.obs_model.learned_params{pattern_id, :} = ...
             %                 obj.obs_model.fit_distribution(data_file_pattern_barpos_dim(:, pattern_id, :, :));
-            
         end
         
         function results = do_inference(obj, y, fname, inference_method, do_output)
@@ -269,19 +269,7 @@ classdef HMM
                 error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
             end
             % compute observation likelihoods
-            if strcmp(obj.dist_type, 'RNN')
-                % normalize
-                % TODO: norm to max=0.95 instead of 1
-                for iR = 1:size(y, 2)
-                    y(: ,iR) = y(: ,iR) / max(y(: ,iR));
-                end
-                obs_lik = obj.rnn_format_obs_prob(y);
-                if obj.R  ~= size(y, 2)
-                    error('Dim of RNN probs should be equal to R!\n');
-                end
-            else
-                obs_lik = obj.obs_model.compute_obs_lik(y);
-            end
+            obs_lik = obj.obs_model.compute_obs_lik(y);
             if strcmp(inference_method, 'HMM_forward')
                 % HMM forward path
                 [~, ~, hidden_state_sequence, ~] = obj.forward_path(obs_lik, ...
