@@ -39,16 +39,13 @@ classdef RhythmCluster < handle
         end
         
         
-        function [] = cluster_from_features(obj, features, n_clusters, ...
-                varargin)
+        function [] = cluster_from_features(obj, n_clusters, varargin)
             % [] = cluster_from_features(obj, features, n_clusters, ...
             %    varargin)
             % Clusters the bars using a kmeans algorithm
             %
             % -------------------------------------------------------------
             % INPUT parameters:          
-            % features           [nBars, nGMMs, featDim] cell array with 
-            %                       features vectors
             % n_clusters         number of clusters
             % pattern_scope      can be either 'bar' or 'song'. With 'song',
             %                    all bars of one song are averaged into one
@@ -69,13 +66,12 @@ classdef RhythmCluster < handle
             % parse arguments
             parser = inputParser;
             % set defaults
-            default_scope = 'song';
+            default_scope = 'bar';
             valid_scope = {'bar', 'song'};
             check_scope = @(x) any(validatestring(x, valid_scope));
             default_plotting_path = '/tmp/';
             % add inputs
             addRequired(parser, 'obj', @isobject);
-            addRequired(parser, 'features', @iscell);
             addRequired(parser, 'n_clusters', @isnumeric);
             addOptional(parser, 'pattern_scope', default_scope, ...
                 check_scope);
@@ -84,13 +80,13 @@ classdef RhythmCluster < handle
             addParameter(parser, 'save_pattern_fig', 1, @isnumeric);
             addParameter(parser, 'plotting_path', default_plotting_path, ...
                 @ischar);
-            parse(parser, obj, features, n_clusters, ...
+            parse(parser, obj, n_clusters, ...
                 varargin{:});
             % -------------------------------------------------------------
             obj.n_clusters = n_clusters;
             pattern_scope = parser.Results.pattern_scope;
             % summarise features for clustering
-            S = cellfun(@mean, features);
+            S = cellfun(@mean, obj.data.features_per_bar);
             bar_pos = size(S, 2);
             if strcmpi(pattern_scope, 'bar')
                 meter_per_item = obj.data.meters(obj.data.bar2file, :);
@@ -117,32 +113,30 @@ classdef RhythmCluster < handle
             % the feature dimension
             n_feat_dims_clustering = size(S, 2) * size(S, 3);
             S = reshape(S, [n_items, n_feat_dims_clustering]);
-            % check if meter found in the data corresponds to meter given
-            % in the input arguments [num_meters x 2]
-            meter_data = unique(meter_per_item, 'rows');
-            assert(size(meter_data, 2) == 2, 'Meters have wrong dimension.')
+            [meters, idx, ~] = unique(meter_per_item, 'rows');
+            beats_per_bar = n_beats_per_item(idx);
             if parser.Results.meters == -1
                 % no meters given as input: use all meters that were found
                 % in the data
-                meters = meter_data;
-                % create meter_names from time signature
+                % check if meter found in the data corresponds to meter given
+                % in the input arguments [num_meters x 2]
+                assert(size(meters, 2) == 2, 'Meters have wrong dimension.')
+                 % create meter_names from time signature
                 meter_names = cell(size(meters, 1), 1);
                 for i_meter=1:size(meters, 1)
                     meter_names{i_meter} = [num2str(meters(i_meter, 1)), ...
                         '-', num2str(meters(i_meter, 2))];
                 end
             else
-                same_num_meters = (size(meter_data, 1) == ...
+                same_num_meters = (size(meters, 1) == ...
                     size(parser.Results.meters, 1));
-                same_content = ismember(meter_data, parser.Results.meters, ...
+                same_content = ismember(meters, parser.Results.meters, ...
                     'rows');
                 assert(same_num_meters && same_content, ['ERROR ', ...
                     'RhythmCluster.do_clustering: Number of ',...
                     'meters in data does not match number of meters', ...
                     'specified in the function input argument']);
-                [meters, idx, ~] = unique(meter_per_item, 'rows');
-                beats_per_bar = n_beats_per_item(idx);
-            end
+            end          
             if size(meters, 1) == 1 % only one meter
                 n_items_per_meter = size(meter_per_item, 1);
             else % count items per meter
@@ -253,8 +247,8 @@ classdef RhythmCluster < handle
             % 11.08.2015 by Florian Krebs
             % ------------------------------------------------------------
             A = zeros(obj.n_clusters, obj.n_clusters);
-            for iFile=1:max(obj.bar2file)
-                bars = find(obj.bar2file==iFile);
+            for iFile=1:max(obj.data.bar2file)
+                bars = find(obj.data.bar2file==iFile);
                 for iBar=bars(1:end-1)
                     A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) = ...
                         A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) + 1;

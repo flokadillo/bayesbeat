@@ -1,13 +1,13 @@
-function [feat_from_bar_and_gmm] = organise_feats_into_bars(obj, whole_note_div)
+function [] = organise_feats_into_bars(obj, whole_note_div)
 % obj = organise_feats_into_bars(obj, whole_note_div)
 % ----------------------------------------------------------------------
 %INPUT parameter:
-% whole_note_div     : number of gridpoints of one whole note [64]
+% whole_note_div:               number of gridpoints of one whole note [64]
 %
 %OUTPUT parameter:
-% feat_from_bar_and_gmm : [nBars, nGMMs, featDim] cell array with features
-%                           vectors
-% obj.bar2file :     [nBars x 1]
+% obj.feat_from_bar_and_gmm :   [nBars, nGMMs, featDim] cell array with features
+%                               vectors
+% obj.bar2file :                [nBars x 1]
 % 03.08.2015 by Florian Krebs
 % ----------------------------------------------------------------------
 dooutput = 1;
@@ -85,8 +85,6 @@ for iFile=1:length(obj.file_list)
         end
         beatsBarPos = (0:beats_per_bar) / beats_per_bar * bar_grid_eff + 1;
         barData = cell(nBars, bar_grid_eff, feat_dim);
-        bar_pos_per_frame = nan(length(E), 'single');
-        pattern_per_frame = nan(length(E), 'single');
         for iBar=1:nBars
             % compute start and end frame of bar using fr
             first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + ...
@@ -103,11 +101,6 @@ for iFile=1:length(obj.file_list)
                 barStartIdx(iBar)+beats_per_bar, 1), beatsBarPos, t, ...
                 'linear','extrap'));
             barPosLin(barPosLin < 1) = 1;
-            % bar position 64th grid per frame
-            bar_pos_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ...
-                barPosLin(1:end-1);
-            pattern_per_frame(first_frame_of_bar:first_frame_of_next_bar-1) = ...
-                ones(first_frame_of_next_bar-first_frame_of_bar, 1) * iBar;
             % group all feature values that belong to the same barPos
             labels = [repmat(barPosLin(:), feat_dim, 1) ...             %# Replicate the row indices
                 kron(1:feat_dim, ones(1, numel(barPosLin))).'];  %'# Create column indices
@@ -142,13 +135,21 @@ for iFile=1:length(obj.file_list)
             end
             feat_from_bar_and_gmm = [feat_from_bar_and_gmm; barData];
             bar2file((idLastBar + 1):(idLastBar + nNewBars)) = iFile;
-%             pattern_per_frame{iFile} = pattern_per_frame{iFile} + idLastBar;
             idLastBar = idLastBar + nNewBars;
         end
     end
+    clear S;
+    S = whos;
+    [mem, idx] = sort([S.bytes], 'descend');
+    fprintf(['\nTotal Memory: %.2f MB (1) %.2f MB by %s, (2) %.2f MB by %s', ...
+        ' (3) %.2f MB by %s\n'], sum([S.bytes])/10^6, ...
+        mem(1)/10^6, S(idx(1)).name, mem(2)/10^6, S(idx(2)).name, ...
+        mem(3)/10^6, S(idx(3)).name);
 end
 % remove output
 fprintf(repmat('\b', 1, nchar));
 % store results
 obj.bar2file = bar2file(:);
+% save features
+obj.features_per_bar = feat_from_bar_and_gmm;
 end % FUNCTION end
