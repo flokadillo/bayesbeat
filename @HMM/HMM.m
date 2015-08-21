@@ -66,8 +66,7 @@ classdef HMM
             obj.rhythm2meter = Clustering.rhythm2meter;
             obj.rhythm2nbeats = Clustering.rhythm2nbeats;
             % effective number of bar positions per rhythm
-            obj.Meff = round((bar_durations) ...
-                * (obj.M ./ (max(bar_durations))));
+            obj.Meff = bar_durations * obj.M ./ (max(bar_durations));
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -621,10 +620,8 @@ classdef HMM
             delta = delta(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
-                %     fprintf('    Size of Psi = %.1f MB\n', nStates * nFrames * 4 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
             else
-                %     fprintf('    Size of Psi = %.1f MB\n', nStates * nFrames * 2 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
             perc = round(0.1*nFrames);
@@ -840,10 +837,8 @@ classdef HMM
             delta = obj.initial_prob(minState:maxState);
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             if length(delta) > 65535
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 4 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
             else
-                %     fprintf('    Size of Psi = %.1f MB\n', maxState * nFrames * 2 / 10^6);
                 psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
             end
             perc = round(0.1*nFrames);
@@ -862,7 +857,6 @@ classdef HMM
             for iFrame = 1:nFrames
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
-                %                 if iFrame + start_frame - 1 == belief_frames(belief_counter)
                 if iFrame == belief_frames(belief_counter)
                     delta_max = delta_max .* ...
                         belief_func{belief_counter, 2}(minState:maxState)';
@@ -1229,55 +1223,76 @@ classdef HMM
     
     methods
         function belief_func = make_belief_function(obj, Constraint)
-            if strcmp(Constraint.type, 'downbeats')
-                tol_downbeats = 0.02; % given in beat proportions
-                % compute tol_win in [frames]
-                % belief_func:
-                % col1: frames where annotation is available,
-                % col2: sparse vector that is one for possible states
-                belief_func = cell(length(Constraint.data), 2);
-                for i_db = 1:length(Constraint.data)
-                    i_frame = max([1, round(Constraint.data(i_db) / ...
-                        obj.frame_length)]);
-                    belief_func{i_db, 1} = i_frame;
-                    % how many bar positions are one beat?
-                    bar_pos_per_beat = obj.Meff(1) ./ obj.rhythm2nbeats(1);
-                    win_pos = tol_downbeats * bar_pos_per_beat;
+            for c=1:length(Constraint.type)
+                if strcmp(Constraint.type{c}, 'downbeats')
+                    tol_downbeats = 0.05; % given in beat proportions
+                    % compute tol_win in [frames]
+                    % belief_func:
+                    % col1: frames where annotation is available,
+                    % col2: sparse vector that is one for possible states
+                    belief_func = cell(length(Constraint.data{c}), 2);
+                    beatpositions = obj.beat_positions;
+                    bar_pos_per_beat = obj.Meff ./ obj.rhythm2nbeats;
+                    win_pos = tol_downbeats .* bar_pos_per_beat;
+                    for i_db = 1:length(Constraint.data{c})
+                        i_frame = max([1, round(Constraint.data{c}(i_db) / ...
+                            obj.frame_length)]);
+                        belief_func{i_db, 1} = i_frame;
+                        idx = false(obj.trans_model.num_states, 1); 
+                        % how many bar positions are one beat?
+                        for i_r = 1:obj.R
+                            idx_r = obj.trans_model.mapping_state_rhythm == ...
+                                i_r;
+                            win_left = obj.trans_model.mapping_state_position > ...
+                                    (beatpositions{i_r}(end) +...
+                                    bar_pos_per_beat(i_r) - win_pos(i_r));
+                            win_right = obj.trans_model.mapping_state_position < ...
+                                    (beatpositions{i_r}(1) + win_pos(i_r));
+                            idx = idx | (idx_r & (win_left | win_right));
+                        end
+                        belief_func{i_db, 2} = idx;
+                    end
+                elseif strcmp(Constraint.type{c}, 'beats')
+                    tol_beats = 0.03; % given in beat proportions
+                    beatpositions = obj.beat_positions;
                     % find states which are considered in the window
-                    idx = obj.trans_model.mapping_state_position < ...
-                        (1 + win_pos);
-                    belief_func{i_db, 2} = false(obj.trans_model.num_states, 1);
-                    belief_func{i_db, 2}(idx) = true;
-                end
-            end
-            if strcmp(Constraint.type, 'beats')
-                tol_beats = 0.1; % given in beat proportions
-                beatpositions = obj.beat_positions;
-                % find states which are considered in the window
-                idx = false(obj.trans_model.num_states, 1); 
-                for i_r = 1:length(obj.R)
-                    bar_pos_per_beat = obj.Meff(i_r) ./ ...
-                        obj.rhythm2nbeats(i_r);
-                    win_pos = tol_beats * bar_pos_per_beat;
-                    for i_b = 1:length(beatpositions{i_r})
-                        win_left = obj.trans_model.mapping_state_position > ...
-                                (beatpositions{i_r}(i_b) - win_pos);
-                        win_right = obj.trans_model.mapping_state_position < ...
-                                (beatpositions{i_r}(i_b) + win_pos);    
-                        idx = idx | (win_left & win_right);
+                    idx = false(obj.trans_model.num_states, 1); 
+                    for i_r = 1:length(obj.R)
+                        bar_pos_per_beat = obj.Meff(i_r) ./ ...
+                            obj.rhythm2nbeats(i_r);
+                        win_pos = tol_beats * bar_pos_per_beat;
+                        for i_b = 1:length(beatpositions{i_r})
+                            win_left = obj.trans_model.mapping_state_position > ...
+                                    (beatpositions{i_r}(i_b) - win_pos);
+                            win_right = obj.trans_model.mapping_state_position < ...
+                                    (beatpositions{i_r}(i_b) + win_pos);    
+                            idx = idx | (win_left & win_right);
+                        end
+                    end
+                    belief_func = cell(length(Constraint.data{c}), 2);
+                    for i_db = 1:length(Constraint.data{c})
+                        i_frame = max([1, round(Constraint.data{c}(i_db) / ...
+                            obj.frame_length)]);
+                        belief_func{i_db, 1} = i_frame;
+                        belief_func{i_db, 2} = idx;
+                    end
+                elseif strcmp(Constraint.type{c}, 'meter')
+                    valid_rhythms = find(ismember(obj.rhythm2meter, ...
+                        Constraint.data{c}, 'rows'));
+                    idx = false(obj.trans_model.num_states, 1);
+                    for i_r=valid_rhythms(:)'
+                        idx(obj.trans_model.mapping_state_rhythm == i_r) = ...
+                            true;
+                    end
+                    % loop through existing belief functions
+                    % TODO: what if there are none?
+                    for b=1:size(belief_func, 1)
+                        belief_func{b, 2} = belief_func{b, 2} & idx;
+                        if sum(belief_func{b, 2}) == 0;
+                            error('Belief function error\n');
+                        end
                     end
                 end
-                belief_func = cell(length(Constraint.data), 2);
-                for i_db = 1:length(Constraint.data)
-                    i_frame = max([1, round(Constraint.data(i_db) / ...
-                        obj.frame_length)]);
-                    belief_func{i_db, 1} = i_frame;
-                    belief_func{i_db, 2} = idx;
-                end
-            end
-            if strcmp(Constraint.type, 'meter')
-                
-                
             end
         end
         

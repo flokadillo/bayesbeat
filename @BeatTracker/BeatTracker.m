@@ -47,6 +47,9 @@ classdef BeatTracker < handle
                 obj.Params.feat_type = {'lo230_superflux.mvavg', ...
                     'hi250_superflux.mvavg'};
             end
+            if ~isfield(obj.Params, 'observationModelType')
+                obj.Params.observationModelType = 'MOG';
+            end
             if ~isfield(obj.Params, 'save_beats')
                 obj.Params.save_beats = 1;
             end
@@ -304,17 +307,22 @@ classdef BeatTracker < handle
         end
         
         function constraints = load_constraints(obj, test_file_id)
-            fln = strrep(obj.test_data.file_list{test_file_id}, 'audio', ...
-                ['annotations/', obj.Params.constraint_type]);
-            [~, ~, ext] = fileparts(fln);
-            fln = strrep(fln, ext, ['.', obj.Params.constraint_type]);
-            if strcmp(obj.Params.constraint_type, 'downbeats')
-               data = load(fln);
-               constraints = data(:, 1);
-            end
-            if strcmp(obj.Params.constraint_type, 'beats')
-               data = load(fln);
-               constraints = data(:, 1);
+            for c = 1:length(obj.Params.constraint_type)
+                fln = strrep(obj.test_data.file_list{test_file_id}, 'audio', ...
+                    ['annotations/', obj.Params.constraint_type{c}]);
+                [~, ~, ext] = fileparts(fln);
+                fln = strrep(fln, ext, ['.', obj.Params.constraint_type{c}]);
+                if strcmp(obj.Params.constraint_type{c}, 'downbeats')
+                   data = load(fln);
+                   constraints{c} = data(:, 1);
+                end
+                if strcmp(obj.Params.constraint_type{c}, 'beats')
+                   data = load(fln);
+                   constraints{c} = data(:, 1);
+                end
+                if strcmp(obj.Params.constraint_type{c}, 'meter')
+                   constraints{c} = Data.load_annotations_bt(fln);
+                end
             end
         end
         
