@@ -191,6 +191,7 @@ classdef PF < handle
             else
                 error('p_r has wrong dimensions!\n');
             end
+            obj.prprior = prprior;
             % convert from BPM into barpositions / audio frame
             % obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
             obj.minN = 0.8*position_states_per_beat .* obj.frame_length .* minTempo ./ 60; % 20% allowance on lower side
