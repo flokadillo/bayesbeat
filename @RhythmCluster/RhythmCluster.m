@@ -386,9 +386,23 @@ classdef RhythmCluster < handle
             prior = prior ./ sum(prior);
             % normalise transition matrix
             A = bsxfun(@rdivide, A , sum(A , 2));
+            % Now need to regularize A and prior if needed
+            if ~all(prior)
+                prior = prior + 0.01;
+                prior = prior ./ sum(prior);
+                fprintf('    Pattern prior vector has zero counts, back off model used...\n');
+            end
+            if any(isnan(sum(A,2)))
+                indxA = find(isnan(sum(A,2)));
+                A(indxA,:) = 0;
+                for pp = 1:length(indxA)
+                    A(indxA(pp),indxA(pp)) = 1;
+                end
+                fprintf('    Pattern transition matrix rank deficient, and regularized...\n');
+            end
+            % obj.cluster_transition_matrix = eye(size(A));
             obj.cluster_transition_matrix = A;
             obj.cluster_prior = prior;
-            % obj.cluster_transition_matrix = eye(size(A));
         end
         
         function [ca_fln] = make_cluster_assignment_file(obj, clusterType, rhythm_names)

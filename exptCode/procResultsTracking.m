@@ -4,13 +4,14 @@ clc
 % dataset = 'BallroomDataset';
 % dataset = 'CMCMDa_small';
 % dataset = 'HMDs';
-dataset = 'HMDf';
+% dataset = 'HMDf';
+dataset = 'HMDl';
 % dataset = 'CMCMDa_v2';
 % dataset = 'CretanLeapingDances';
 addpath('../../CommonPoolCodeGeneral/Davies_beat_error_histogram/');
 bpath = ['/media/Code/UPFWork/PhD/BayesResultsFull/' dataset '/Tracking/'];
 annpath = ['/media/Code/UPFWork/PhD/Data/' dataset '/annotations/beats/'];
-exptName = 'PF_AMPF_MixObs_NoHop_6000';
+exptName = 'PF_AMPF_MixObs_NoHop_6000_div128';
 exppath = [bpath exptName filesep];
 % talaID = [10:13];
 talaID = [20:23];
