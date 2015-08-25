@@ -27,21 +27,17 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'pattern_size')
                 obj.Params.pattern_size = 'bar';
             end
-            if ~isfield(obj.Params, 'min_tempo')
-                obj.Params.min_tempo = 60;
+            if ~isfield(obj.Params, 'min_tempo_bpm')
+                obj.Params.min_tempo_bpm = 60;
             end
-            if ~isfield(obj.Params, 'max_tempo')
-                obj.Params.max_tempo = 220;
+            if ~isfield(obj.Params, 'max_tempo_bpm')
+                obj.Params.max_tempo_bpm = 220;
             end
             if ~isfield(obj.Params, 'frame_length')
                 obj.Params.frame_length = 0.02;
             end
             if ~isfield(obj.Params, 'whole_note_div')
                 obj.Params.whole_note_div = 64;
-            end
-            if ~isempty(strfind(obj.Params.inferenceMethod, 'HMM')) && ...
-                    ~isfield(obj.Params, 'pn')
-                obj.Params.pn = 0.01;  
             end
             if ~isfield(obj.Params, 'feat_type')
                 obj.Params.feat_type = {'lo230_superflux.mvavg', ...
@@ -71,8 +67,20 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'transition_model_type')
                 obj.Params.transition_model_type = '2015';
             end
-            if ~isfield(obj.Params, 'alpha')
-                obj.Params.alpha = 100;
+            if strfind(obj.Params.inferenceMethod, 'HMM') > 0
+                if strcmp(obj.Params.transition_model_type, '2015')
+                    if ~isfield(obj.Params, 'alpha')
+                        obj.Params.tempo_transition_param = 100;
+                    else
+                        obj.Params.tempo_transition_param = obj.Params.alpha;
+                    end
+                elseif strcmp(obj.Params.transition_model_type, 'whiteley')
+                    if ~isfield(obj.Params, 'pn')
+                        obj.Params.tempo_transition_param = 0.01; 
+                    else
+                        obj.Params.tempo_transition_param = obj.Params.pn;
+                    end
+                end
             end
             if ~isfield(obj.Params, 'pattern_size')
                 obj.Params.pattern_size = 'bar';
@@ -138,6 +146,28 @@ classdef BeatTracker < handle
                 % initialise training data to see how many pattern states
                 % we need and which time signatures have to be modelled
                 obj.init_train_data();
+                if obj.Params.learn_tempo_ranges
+                    % get tempo ranges from data for each file
+                    [tempo_min_per_cluster, tempo_max_per_cluster] = ...
+                        obj.train_data.get_tempo_per_cluster(...
+                        obj.Params.tempo_outlier_percentile);
+                    % find min/max for each pattern
+                    tempo_min_per_cluster = min(tempo_min_per_cluster)';
+                    tempo_max_per_cluster = max(tempo_max_per_cluster)';
+                    % restrict ranges
+                    tempo_min_per_cluster(tempo_min_per_cluster < ...
+                        obj.Params.min_tempo_bpm) = obj.Params.min_tempo_bpm;
+                    tempo_max_per_cluster(tempo_max_per_cluster > ...
+                        obj.Params.max_tempo_bpm) = obj.Params.max_tempo_bpm;
+                    % store modified tempo ranges
+                    obj.Params.min_tempo_bpm = tempo_min_per_cluster;
+                    obj.Params.max_tempo_bpm = tempo_max_per_cluster;
+                else
+                    obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, 1, ...
+                        obj.Params.R);
+                    obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, 1, ...
+                        obj.Params.R);
+                end
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
                         obj.model = HMM(obj.Params, ...
@@ -226,28 +256,9 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
-                if obj.Params.learn_tempo_ranges
-                    % get tempo ranges from data for each file
-                    [tempo_min_per_cluster, tempo_max_per_cluster] = ...
-                        obj.train_data.get_tempo_per_cluster(...
-                        obj.Params.tempo_outlier_percentile);
-                    % find min/max for each pattern
-                    tempo_min_per_cluster = min(tempo_min_per_cluster)';
-                    tempo_max_per_cluster = max(tempo_max_per_cluster)';
-                    % restrict ranges
-                    tempo_min_per_cluster(tempo_min_per_cluster < ...
-                        obj.Params.min_tempo) = obj.Params.min_tempo;
-                    tempo_max_per_cluster(tempo_max_per_cluster > ...
-                        obj.Params.max_tempo) = obj.Params.max_tempo;
-                else
-                    tempo_min_per_cluster = repmat(obj.Params.min_tempo, 1, ...
-                        obj.Params.R);
-                    tempo_max_per_cluster = repmat(obj.Params.max_tempo, 1, ...
-                        obj.Params.R);
-                end
                 fprintf('* Set up transition model\n');
-                obj = obj.train_transition_model(tempo_min_per_cluster, ...
-                    tempo_max_per_cluster);
+                obj = obj.train_transition_model(obj.Params.min_tempo_bpm, ...
+                    obj.Params.max_tempo_bpm);
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(...
@@ -284,7 +295,7 @@ classdef BeatTracker < handle
                 case 'HM'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
-                        obj.Params.alpha, obj.Params.pn, ...
+                        obj.Params.tempo_transition_param, ...
                         obj.train_data.clustering.pr);
                 case 'PF'
                     obj.model = obj.model.make_transition_model(...

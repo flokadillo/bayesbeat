@@ -1,18 +1,8 @@
 classdef HMM
     % Hidden Markov Model Class
     properties
-        M                   % number of (max) positions
-        Meff                % number of positions per rhythm [R, 1]
-        N                   % number of tempo states
-        R                   % number of rhythmic pattern states
+        state_space
         rhythm2meter        % assigns each rhythmic pattern to a meter [R x 2]
-        rhythm2meter_state  % assigns each rhythmic pattern to a meter state
-        rhythm2nbeats       % number of beats per bar [nRhythms x 1]
-        % (1, 2, ...) - var not needed anymore but keep due to
-        % compatibility
-        meter_state2meter   % specifies meter for each meter state (9/8, 8/8, 4/4)
-        % [2 x nMeters]  - var not needed anymore but keep due to
-        % compatibility
         barGrid             % number of different observation model params
         % of the longest bar (e.g., 64)
         frame_length        % audio frame length in [sec]
@@ -48,13 +38,14 @@ classdef HMM
                 obj.tm_type = '2015';
             end
             if strcmp(obj.tm_type, '2015')
-                obj.M = max(Clustering.rhythm2nbeats);
+                M = max(Clustering.rhythm2nbeats);
             else
-                obj.M = Params.M;
+                M = Params.M;
             end
-            obj.R = Params.R;
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
+            % effective number of bar positions per rhythm
+            max_position = (bar_durations) * (M ./ (max(bar_durations)));
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
             if isfield(Params, 'observationModelType')
@@ -62,11 +53,7 @@ classdef HMM
             else
                 obj.dist_type = 'MOG';
             end
-            obj.rhythm2meter = Clustering.rhythm2meter;
-            obj.rhythm2nbeats = Clustering.rhythm2nbeats;
-            % effective number of bar positions per rhythm
-            obj.Meff = round((bar_durations) ...
-                * (obj.M ./ (max(bar_durations))));
+            obj.rhythm2meter = Clustering.rhythm2meter;            
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -95,6 +82,9 @@ classdef HMM
                 obj.max_shift = Params.online.max_shift;
                 obj.update_interval = Params.online.update_interval;
                 obj.obs_lik_floor = Params.online.obs_lik_floor;
+                store_proximity = 1;
+            else
+                store_proximity = 0;
             end
             obj.rhythm_names = Clustering.rhythm_names;
             obj.use_silence_state = Params.use_silence_state;
@@ -114,9 +104,18 @@ classdef HMM
                 obj.use_mex_viterbi = 1;
             end
             if isfield(Params, 'N') && strcmp(obj.tm_type, '2015')
-                obj.N = Params.N;
+                n_tempo_states = Params.N;
             else
-                obj.N = nan;
+                n_tempo_states = nan;
+            end
+            % Create state_space
+            if strcmp(obj.tm_type, '2015')
+                obj.state_space = BeatTrackingStateSpace2015(Params.R, ...
+                    n_tempo_states, max_position, Params.min_tempo_bpm, ...
+                    Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
+                    Params.frame_length, obj.use_silence_state, store_proximity);
+            elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
+                obj.state_space = BeatTrackingStateSpace2006;
             end
         end
         
@@ -176,8 +175,13 @@ classdef HMM
         
         
         function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
-                alpha, pn, pr)
-            position_states_per_beat = obj.Meff ./ obj.rhythm2nbeats;
+                tempo_transition_param, pr)
+            if strcmp(obj.tm_type, '2015')
+                obj.trans_model = BeatTrackingTransitionModel2015(...
+                    obj.state_space, pr, tempo_transition_param);
+            elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
+                % call BeatTrackingTransitionModel2006
+            end
             obj.trans_model = TransitionModel(obj.Meff, ...
                 obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
                 min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
@@ -969,7 +973,7 @@ classdef HMM
                         % possible successor states
                         possible_successors = find(A(best_states(iFrame-1), :)) + minState - 1;
                         if do_best_state_selection
-                            possible_successors = obj.find_successors2(possible_successors);
+                            possible_successors = obj.find_successors(possible_successors);
                         end
                         possible_successors = possible_successors - minState + 1;
                         [~, idx] = max(alpha(possible_successors));
@@ -1205,86 +1209,8 @@ classdef HMM
             end
         end
         
-        
+                
         function possible_successors = find_successors(obj, successors)
-            m_id = obj.trans_model.mapping_position_state_id(successors)';
-            n_id = obj.trans_model.mapping_tempo_state_id(successors)';
-            r_id = obj.trans_model.mapping_state_rhythm(successors)';
-            % try shifts to both obj.max_shift to the left
-            % and right for the position and one tempo up
-            % and down
-            m_extended = zeros(1, obj.max_shift * 2 + 3);
-            n_extended = zeros(1, obj.max_shift * 2 + 3);
-            r_extended = zeros(1, obj.max_shift * 2 + 3);
-            num_pos = obj.trans_model.num_position_states_per_pattern;
-            % -------------------------------------------------
-            % old method
-            for i_s = find(r_id<=obj.R) % loop over all possible
-                %                                 successors excluding the silence state
-                % allow position shift for each possible
-                % successor
-                % define local neighborhood
-                n_pos = num_pos{r_id(i_s)}(n_id(i_s));
-                % positions before current one
-                pos_win = (m_id(i_s) - obj.max_shift):(m_id(i_s) - 1);
-                idx = (pos_win < 1);
-                pos_win(idx) = (n_pos - sum(idx) + 1):n_pos;
-                m_extended(1:obj.max_shift) = pos_win;
-                %  positions after current one
-                pos_win = (m_id(i_s) + 1):(m_id(i_s) + obj.max_shift);
-                idx = (pos_win > n_pos);
-                pos_win(idx) = 1:sum(idx);
-                m_extended((obj.max_shift + 1):(2 *...
-                    obj.max_shift)) = pos_win;
-                % original successor state
-                m_extended((2 * obj.max_shift + 1)) = m_id(i_s);
-                m_curr = obj.trans_model.mapping_state_position(...
-                    successors);
-                n_extended(1:(2 * obj.max_shift + 1)) = n_id(i_s);
-                % tempo up: find closest position state
-                if n_id(i_s) < length(num_pos{r_id(i_s)})
-                    n = n_id(i_s) + 1;
-                    positions_with_tempo_n = ...
-                        obj.trans_model.mapping_state_position(...
-                        (obj.trans_model.mapping_tempo_state_id == n) & ...
-                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
-                    [~, m_extended(2 * obj.max_shift + 2)] = ...
-                        min(abs(positions_with_tempo_n - m_curr));
-                    n_extended(2 * obj.max_shift + 2) = n;
-                end
-                % tempo down: find closest position state
-                if n_id(i_s) > 1
-                    n = n_id(i_s) - 1;
-                    positions_with_tempo_n = ...
-                        obj.trans_model.mapping_state_position(...
-                        (obj.trans_model.mapping_tempo_state_id == n) & ...
-                        (obj.trans_model.mapping_state_rhythm == r_id(i_s)));
-                    [~, m_extended(2 * obj.max_shift + 3)] = ...
-                        min(abs(positions_with_tempo_n - m_curr));
-                    n_extended(2 * obj.max_shift + 3) = n;
-                end
-                % no pattern shift allowed
-                r_extended(1:(2 * obj.max_shift + 3)) = r_id(i_s);
-                % remove zero states
-                idx = (m_extended > 0);
-                m_extended = m_extended(idx);
-                n_extended = n_extended(idx);
-                r_extended = r_extended(idx);
-            end
-            possible_successors = zeros(length(m_extended), 1);
-            for i_s = 1:length(m_extended)
-                possible_successors(i_s) = ...
-                    obj.trans_model.mapping_substates_state(...
-                    m_extended(i_s), n_extended(i_s), ...
-                    r_extended(i_s));
-            end
-            if sum(r_id > obj.R) > 0
-                error('Silence state not yet supported!');
-                possible_successors = [possible_successors, sub2ind([obj.M, obj.N, obj.R+1], 1, 1, obj.R+1)];
-            end
-        end
-        
-        function possible_successors = find_successors2(obj, successors)
             r_id = obj.trans_model.mapping_state_rhythm(successors)';
             % do not use transitions that go into the silence state
             n_valid_successors = sum(r_id <= obj.R);
