@@ -491,7 +491,6 @@ classdef TransitionModel
             % since these transitions are already included in the tempo transitions
             % Then everything multiplicated with the number of beats with
             % are modelled in the patterns
-            % TODO: Note changes between patterns are not implemented yet!
             num_tempo_transitions = (num_tempo_states .* num_tempo_states)' * ...
                 obj.num_beats_per_pattern(:);
             if obj.use_silence_state
