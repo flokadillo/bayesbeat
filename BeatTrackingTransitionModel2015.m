@@ -7,11 +7,13 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
     end
     
     methods
-        function obj = BeatTrackingTransitionModel2015(state_space, pr, ...
-                transition_lambda)
+        function obj = BeatTrackingTransitionModel2015(state_space, ...
+                transition_params)
             % call superclass constructor
-            obj@BeatTrackingTransitionModel(state_space, pr);
-            obj.transition_lambda = transition_lambda;
+            obj@BeatTrackingTransitionModel(state_space, ...
+                transition_params);
+            obj.transition_lambda = ...
+                transition_params.transition_lambda;
             obj.compute_transitions;
         end
         
@@ -28,6 +30,8 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             n_patterns = obj.state_space.n_patterns;
             n_tempo_states = obj.state_space.n_tempo_states;
             n_position_states = obj.state_space.n_position_states;
+            n_beats_from_pattern = obj.state_space.n_beats_from_pattern;
+            n_states = obj.state_space.n_states;
             % tempo changes can only occur at the beginning of a beat
             % compute transition matrix for the tempo changes
             tempo_trans = cell(n_patterns, n_patterns);
@@ -43,7 +47,7 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                             ratio = n_position_states{rj}(tempo_state_j) /...
                                 n_position_states{ri}(tempo_state_i);
                             % compute the probability for the tempo change
-                            prob = exp(-obj.alpha * abs(ratio - 1));
+                            prob = exp(-obj.transition_lambda * abs(ratio - 1));
                             % keep only transition probabilities > 
                             % tempo_transition_threshold
                             if prob > tempo_transition_threshold
@@ -66,57 +70,56 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             % since these transitions are already included in the tempo transitions
             % Then everything multiplicated with the number of beats with
             % are modelled in the patterns
-            % TODO: Note changes between patterns are not implemented yet!
-            num_tempo_transitions = (n_tempo_states .* n_tempo_states)' * ...
-                obj.num_beats_per_pattern(:);
+            n_tempo_transitions = (n_tempo_states .* n_tempo_states)' * ...
+                n_beats_from_pattern(:);
             if obj.state_space.use_silence_state
-                num_transitions = obj.state_space.n_states + num_tempo_transitions - ...
-                    (n_tempo_states' * obj.num_beats_per_pattern(:)) + ...
+                obj.n_transitions = n_states + n_tempo_transitions - ...
+                    (n_tempo_states' * n_beats_from_pattern(:)) + ...
                     2 * sum(n_tempo_states) + 1;
             else
-                num_transitions = obj.state_space.n_states + num_tempo_transitions - ...
-                    (n_tempo_states' * obj.num_beats_per_pattern(:));
+                obj.n_transitions = n_states + n_tempo_transitions - ...
+                    (n_tempo_states' * n_beats_from_pattern(:));
             end
             % initialise vectors to store the transitions in sparse format
             % rows (states at previous time)
-            row_i = zeros(num_transitions, 1);
+            row_i = zeros(obj.n_transitions, 1);
             % cols (states at current time)
-            col_j = zeros(num_transitions, 1);
+            col_j = zeros(obj.n_transitions, 1);
             % transition probabilites
-            val = zeros(num_transitions, 1);
+            val = zeros(obj.n_transitions, 1);
             num_states_per_pattern = cellfun(@(x) sum(x), n_position_states) .* ...
-                obj.num_beats_per_pattern;
+                n_beats_from_pattern;
             % get linear index of all beat states
-            state_at_beat = cell(n_patterns, max(obj.num_beats_per_pattern));
+            state_at_beat = cell(n_patterns, max(n_beats_from_pattern));
             si = 0;
             for ri = 1:n_patterns
                 % first beat
                 state_at_beat{ri, 1} = si + cumsum([1, ...
                     n_position_states{ri}(1:end-1) * ...
-                    obj.num_beats_per_pattern(ri)]);
+                    n_beats_from_pattern(ri)]);
                 % subsequent beats
-                for bi = 2:obj.num_beats_per_pattern(ri)
+                for bi = 2:n_beats_from_pattern(ri)
                     state_at_beat{ri, bi} = ...
                         state_at_beat{ri, bi-1} + n_position_states{ri};
                 end
                 si = si + num_states_per_pattern(ri);
             end
             % get linear index of preceeding state of all beat positions
-            state_before_beat = cell(n_patterns, max(obj.num_beats_per_pattern));
+            state_before_beat = cell(n_patterns, max(n_beats_from_pattern));
             for ri = 1:n_patterns
-                for bi = 2:obj.num_beats_per_pattern(ri)
+                for bi = 2:n_beats_from_pattern(ri)
                     state_before_beat{ri, bi} = ...
                         state_at_beat{ri, bi} - 1;
                 end
                 state_before_beat{ri, 1} =  ...
-                    state_at_beat{ri, obj.num_beats_per_pattern(ri)} + ...
+                    state_at_beat{ri, n_beats_from_pattern(ri)} + ...
                     n_position_states{ri} - 1;
             end
             % transition counter
             p = 1;
             for ri = 1:n_patterns
                 for ni = 1:n_tempo_states(ri)
-                    for bi = 1:obj.num_beats_per_pattern(ri)
+                    for bi = 1:n_beats_from_pattern(ri)
                         for nj = 1:n_tempo_states(ri)
                             if bi == 1 % bar crossing > pattern change?
                                 for rj = find(obj.pr(ri, :))
@@ -127,7 +130,8 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                                         % position at beat
                                         col_j(p) = state_at_beat{rj, bi}(nj);
                                         % store probability
-                                        val(p) = tempo_trans{ri, rj}(ni, nj) * obj.pr(ri, rj);
+                                        val(p) = tempo_trans{ri, rj}(ni, nj) * ...
+                                            obj.pr(ri, rj);
                                         p = p + 1;
                                     end
                                 end
@@ -165,7 +169,6 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                     p = p + n_tempo_states(ri);
                 end
             end % over R
-            
             % add transitions from silence state
             if obj.state_space.use_silence_state
                 % one self transition and one transition to each R
@@ -185,13 +188,11 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                     val(idx) = prob_from_silence;
                     p = p + n_tempo_states(i_r);
                 end
-                
             end
             idx = (row_i > 0);
             obj.A = sparse(row_i(idx), col_j(idx), val(idx), ...
-                obj.state_space.n_states, obj.state_space.n_states);
-            [a, ~] = find(obj.A);
-            obj.num_transitions = length(a); 
+                n_states, n_states);
+            obj.n_transitions = length(find(obj.A)); 
     end
         
     end

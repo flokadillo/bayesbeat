@@ -174,21 +174,13 @@ classdef HMM
         end
         
         
-        function obj = make_transition_model(obj, min_tempo_bpm, max_tempo_bpm, ...
-                tempo_transition_param, pr)
+        function obj = make_transition_model(obj, transition_probability_params)
             if strcmp(obj.tm_type, '2015')
                 obj.trans_model = BeatTrackingTransitionModel2015(...
-                    obj.state_space, pr, tempo_transition_param);
+                    obj.state_space, transition_probability_params);
             elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
                 % call BeatTrackingTransitionModel2006
             end
-            obj.trans_model = TransitionModel(obj.Meff, ...
-                obj.N, obj.R, pn, pr, alpha, position_states_per_beat, ...
-                min_tempo_bpm, max_tempo_bpm, obj.frame_length, ...
-                obj.use_silence_state, obj.p2s, obj.pfs, ...
-                obj.tm_type);
-            % set N of the model to N of the transition model
-            obj.N = obj.trans_model.N;
             % Check transition model
             if transition_model_is_corrupt(obj.trans_model, 0)
                 error('Corrupt transition model');

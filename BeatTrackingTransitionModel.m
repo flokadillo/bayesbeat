@@ -15,9 +15,14 @@ classdef BeatTrackingTransitionModel < handle
     end
     
     methods
-        function obj = BeatTrackingTransitionModel(state_space, pr)
+        function obj = BeatTrackingTransitionModel(state_space, ...
+            transition_params)
             obj.state_space = state_space;
-            obj.pr = pr;
+            obj.pr = transition_params.pr;
+            if obj.state_space.use_silence_state
+                obj.pfs = transition_params.pfs;
+                obj.p2s = transition_params.p2s;
+            end
         end
     end   
 end

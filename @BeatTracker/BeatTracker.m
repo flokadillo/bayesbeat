@@ -70,15 +70,16 @@ classdef BeatTracker < handle
             if strfind(obj.Params.inferenceMethod, 'HMM') > 0
                 if strcmp(obj.Params.transition_model_type, '2015')
                     if ~isfield(obj.Params, 'alpha')
-                        obj.Params.tempo_transition_param = 100;
+                        obj.Params.transition_params.transition_lambda = ...
+                            100;
                     else
-                        obj.Params.tempo_transition_param = obj.Params.alpha;
+                        obj.Params.transition_param = obj.Params.alpha;
                     end
                 elseif strcmp(obj.Params.transition_model_type, 'whiteley')
                     if ~isfield(obj.Params, 'pn')
-                        obj.Params.tempo_transition_param = 0.01; 
+                        obj.Params.transition_params.pn = 0.01; 
                     else
-                        obj.Params.tempo_transition_param = obj.Params.pn;
+                        obj.Params.transition_params.pn = obj.Params.pn;
                     end
                 end
             end
@@ -221,10 +222,6 @@ classdef BeatTracker < handle
                         exist(obj.Params.clusterIdFln, 'file')
                     obj.train_data = obj.train_data.read_pattern_bars(...
                         obj.Params.clusterIdFln, obj.Params.pattern_size);
-                    if ~isempty(obj.train_data.pr)
-                        % if pr is given in cluster file save it here
-                        obj.Params.pr = obj.train_data.pr;
-                    end
                 else
                     fprintf('* Clustering data by %s ...', ...
                         obj.Params.cluster_type);
@@ -246,6 +243,11 @@ classdef BeatTracker < handle
                 end
             end
             obj.Params.R = obj.train_data.clustering.n_clusters;
+            if isempty(obj.train_data.clustering.pr)
+                obj.Params.transition_params.pr = obj.Params.pr;
+            else
+                obj.Params.transition_params.pr = obj.train_data.clustering.pr;
+            end
         end
         
         function init_test_data(obj)
@@ -295,13 +297,12 @@ classdef BeatTracker < handle
                 case 'HM'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
-                        obj.Params.tempo_transition_param, ...
-                        obj.train_data.clustering.pr);
+                        obj.Params.transition_params);
                 case 'PF'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
                         obj.Params.alpha, obj.Params.sigmaN, ...
-                        obj.train_data.clustering.pr);
+                        obj.Params.transition_params);
             end
         end
         

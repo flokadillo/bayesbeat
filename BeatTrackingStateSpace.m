@@ -8,7 +8,12 @@ classdef BeatTrackingStateSpace < handle
         max_n_tempo_states
         n_tempo_states
         n_beats_from_pattern
-        n_position_states
+        n_position_states       % cell array with n_patterns cells.
+        %                           Each cell contains a vector of length
+        %                           n_tempo_states. n_positions are counted per
+        %                           beat, i.e., if you need the
+        %                           positions per bar, multiply with 
+        %                           n_beats_from_pattern
         max_position
         position_from_state
         tempo_from_state

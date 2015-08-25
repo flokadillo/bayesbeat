@@ -34,7 +34,8 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
             %OUTPUT parameter:
             %   obj.n_position_states   cell array with n_patterns cells.
             %                           Each cell contains a vector of length
-            %                           max_n_tempo_states
+            %                           [n_tempo_states(r), 1] of positions per 
+            %                           beat 
             % ------------------------------------------------------------------
             % number of frames per beat (slowest tempo)
             % (python: max_tempo_states)
@@ -64,7 +65,7 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                         2.^(linspace(log2(min_frames_per_beat(ri)), ...
                         log2(max_frames_per_beat(ri)), gridpoints));
                     % slowly increase gridpoints, until we have
-                    % num_tempo_states tempo states
+                    % n_tempo_states tempo states
                     while (length(unique(round(obj.n_position_states{ri}))) < N_ri)
                         gridpoints = gridpoints + 1;
                         obj.n_position_states{ri} = ...
@@ -85,29 +86,31 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
         function [] = compute_state_mappings(obj)
             % compute mapping between state index and (bar position,
             % tempo and rhythmic pattern sub-states)
-            obj.position_from_state = ones(obj.state_space.n_states, 1) * (-1);
-            obj.tempo_from_state = ones(obj.state_space.n_states, 1) * (-1);
-            obj.pattern_from_state = ones(obj.state_space.n_states, 1, 'int32') ...
+            obj.position_from_state = ones(obj.n_states, 1) * (-1);
+            obj.tempo_from_state = ones(obj.n_states, 1) * (-1);
+            obj.pattern_from_state = ones(obj.n_states, 1, 'int32') ...
                 * (-1);
             if obj.store_proximity
-                obj.proximity_matrix = ones(obj.state_space.n_states, 6, ...
+                obj.proximity_matrix = ones(obj.n_states, 6, ...
                     'int32') * (-1);
             end
             si = 1;
-            num_tempo_states = cellfun(@(x) length(x), ...
-                obj.state_space.n_position_states);
+            n_tempo_states = cellfun(@(x) length(x), ...
+                obj.n_position_states);
+            beat_length = obj.max_position ./ obj.n_beats_from_pattern;
             for ri = 1:obj.n_patterns
-                n_pos_states = obj.state_space.n_position_states{ri} * ...
+                n_pos_states_per_pattern = obj.n_position_states{ri} * ...
                     obj.n_beats_from_pattern(ri);
-                for tempo_state_i = 1:num_tempo_states(ri)
-                    idx = si:(si+n_pos_states(tempo_state_i)-1);
+                for tempo_state_i = 1:n_tempo_states(ri)
+                    idx = si:(si+n_pos_states_per_pattern(tempo_state_i)-1);
                     obj.pattern_from_state(idx) = ri;
                     obj.tempo_from_state(idx) = ...
-                        obj.num_position_states_per_beat(ri) ./ ...
-                        obj.state_space.n_position_states{ri}(tempo_state_i);
+                        beat_length(ri) ./ ...
+                        obj.n_position_states{ri}(tempo_state_i);
                     obj.position_from_state(idx) = ...
-                        (0:(n_pos_states(tempo_state_i) - 1)) .* ...
-                        obj.M_per_pattern(ri) ./ n_pos_states(tempo_state_i) + 1;
+                        (0:(n_pos_states_per_pattern(tempo_state_i) - 1)) .* ...
+                        obj.max_position(ri) ./ ...
+                        n_pos_states_per_pattern(tempo_state_i) + 1;
                     if obj.store_proximity
                         % set up proximity matrix
                         % states to the left
@@ -116,40 +119,40 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                         obj.proximity_matrix(idx, 4) = [idx(2:end), idx(1)];
                         % states to down
                         if tempo_state_i > 1
-                            state_id = (0:n_pos_states(tempo_state_i)-1) * ...
-                                n_pos_states(tempo_state_i - 1) /  ...
-                                n_pos_states(tempo_state_i) + 1;
-                            s_start = idx(1) - n_pos_states(tempo_state_i - 1);
+                            state_id = (0:n_pos_states_per_pattern(tempo_state_i)-1) * ...
+                                n_pos_states_per_pattern(tempo_state_i - 1) /  ...
+                                n_pos_states_per_pattern(tempo_state_i) + 1;
+                            s_start = idx(1) - n_pos_states_per_pattern(tempo_state_i - 1);
                             % left down
                             temp = floor(state_id);
                             % modulo operation
-                            temp(temp == 0) = n_pos_states(tempo_state_i - 1);
+                            temp(temp == 0) = n_pos_states_per_pattern(tempo_state_i - 1);
                             obj.proximity_matrix(idx, 2) = temp + s_start - 1;
                             % right down
                             temp = ceil(state_id);
                             % modulo operation
-                            temp(temp > n_pos_states(tempo_state_i - 1)) = 1;
+                            temp(temp > n_pos_states_per_pattern(tempo_state_i - 1)) = 1;
                             obj.proximity_matrix(idx, 3) = temp + s_start - 1;
                             % if left down and right down are equal set to -1
                             obj.proximity_matrix(find(rem(state_id, 1) == 0) + ...
                                 + idx(1) - 1, 3) = -1;
                         end
                         % states to up
-                        if tempo_state_i < num_tempo_states(ri)
+                        if tempo_state_i < n_tempo_states(ri)
                             % for each position state of the slow tempo find the
                             % corresponding state of the faster tempo
-                            state_id = (0:n_pos_states(tempo_state_i)-1) * ...
-                                n_pos_states(tempo_state_i + 1) /  ...
-                                n_pos_states(tempo_state_i) + 1;
+                            state_id = (0:n_pos_states_per_pattern(tempo_state_i)-1) * ...
+                                n_pos_states_per_pattern(tempo_state_i + 1) /  ...
+                                n_pos_states_per_pattern(tempo_state_i) + 1;
                             % left up
                             temp = floor(state_id);
                             % modulo operation
-                            temp(temp == 0) = n_pos_states(tempo_state_i + 1);
+                            temp(temp == 0) = n_pos_states_per_pattern(tempo_state_i + 1);
                             obj.proximity_matrix(idx, 6) = temp + idx(end);
                             % right up
                             temp = ceil(state_id);
                             % modulo operation
-                            temp(temp > n_pos_states(tempo_state_i + 1)) = 1;
+                            temp(temp > n_pos_states_per_pattern(tempo_state_i + 1)) = 1;
                             obj.proximity_matrix(idx, 5) = temp + idx(end);
                             % if left up and right up are equal set to -1
                             obj.proximity_matrix(find(rem(state_id, 1) == 0) + ...
@@ -159,8 +162,8 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                     si = si + length(idx);
                 end
             end
-            if obj.state_space.use_silence_state
-                silence_state_id = obj.state_space.n_states;
+            if obj.use_silence_state
+                silence_state_id = obj.n_states;
                 obj.tempo_from_state(silence_state_id) = 0;
                 obj.position_from_state(silence_state_id) = 0;
                 obj.pattern_from_state(silence_state_id) = obj.n_patterns + 1;
