@@ -55,9 +55,6 @@ classdef HMM
                 obj.dist_type = 'MOG';
             end
             obj.rhythm2meter = Clustering.rhythm2meter;
-            obj.rhythm2nbeats = Clustering.rhythm2nbeats;
-            % effective number of bar positions per rhythm
-            obj.Meff = bar_durations * obj.M ./ (max(bar_durations));
             obj.pattern_size = Params.pattern_size;
             if isfield(Params, 'save_inference_data')
                 obj.save_inference_data = Params.save_inference_data;
@@ -95,7 +92,7 @@ classdef HMM
             if obj.use_silence_state
                 obj.p2s = Params.p2s;
                 obj.pfs = Params.pfs;
-                obj.rhythm_names{obj.R+1} = 'silence';
+                obj.rhythm_names{obj.state_space.n_patterns+1} = 'silence';
             end
             if isfield(Params, 'correct_beats')
                 obj.correct_beats = Params.correct_beats;
@@ -131,30 +128,30 @@ classdef HMM
             % in future, but is important for compatibility with older models
             % (in old models Meff and rhythm2meter_state are row vectors
             % [1 x K] but should be column vectors)
-            if isempty(obj.Meff) && (size(obj.rhythm2meter, 1) == 1) && ...
+            if isempty(obj.state_space.max_position) && (size(obj.rhythm2meter, 1) == 1) && ...
                     isempty(obj.rhythm2meter_state)
                 obj.rhythm2meter = [obj.rhythm2meter + 2; ...
                     ones(size(obj.rhythm2meter)) * 4];
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
-                obj.Meff = obj.M * obj.rhythm2meter(1, :) ./ ...
+                obj.state_space.max_position = max(obj.state_space.max_position) * obj.rhythm2meter(1, :) ./ ...
                     obj.rhythm2meter(2, :);
             end
-            obj.Meff = obj.Meff(:);
-            if length(obj.Meff) ~= obj.R
-                obj.Meff = obj.Meff(obj.rhythm2meter_state);
-                obj.Meff = obj.Meff(:);
+            obj.state_space.max_position = obj.state_space.max_position(:);
+            if length(obj.state_space.max_position) ~= obj.state_space.n_patterns
+                obj.state_space.max_position = obj.state_space.max_position(obj.rhythm2meter_state);
+                obj.state_space.max_position = obj.state_space.max_position(:);
                 
             end
             obj.rhythm2meter_state = obj.rhythm2meter_state(:);
             % In old models, pattern change probability was not saved as
             % matrix [RxR]
-            if (length(obj.trans_model.pr(:)) == 1) && (obj.R > 1)
+            if (length(obj.trans_model.pr(:)) == 1) && (obj.state_space.n_patterns > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.trans_model.pr / (obj.R-1));
+                pr_mat = ones(obj.state_space.n_patterns, obj.state_space.n_patterns) * (obj.trans_model.pr / (obj.state_space.n_patterns-1));
                 % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1 - obj.trans_model.pr);
+                pr_mat(logical(eye(obj.state_space.n_patterns))) = (1 - obj.trans_model.pr);
                 obj.trans_model.set_pr(pr_mat);
             end
             if isempty(obj.rhythm2meter)
@@ -163,9 +160,9 @@ classdef HMM
                 obj.obs_model = ...
                     obj.obs_model.convert_to_new_model(obj.rhythm2meter);
             end
-            if isempty(obj.rhythm2nbeats)
+            if isempty(obj.state_space.n_beats_from_pattern)
                 % use the denominator of the time signature
-                obj.rhythm2nbeats = obj.rhythm2meter(:, 1);
+                obj.state_space.n_beats_from_pattern = obj.rhythm2meter(:, 1);
                 fprintf(['WARNING: loaded model file does not specify the', ...
                     'number of beats per bar. We use the numerator of', ...
                     'the time signature instead. This could be', ...
@@ -174,11 +171,11 @@ classdef HMM
                     'level.']);
                 %                 % replace denominators for compound meters
                 %                 % 6/8 has two beats
-                %                 obj.rhythm2nbeats(obj.rhythm2nbeats==6) = 2;
+                %                 obj.state_space.n_beats_from_pattern(obj.state_space.n_beats_from_pattern==6) = 2;
                 %                 % 9/8 has three beats
-                %                 obj.rhythm2nbeats(obj.rhythm2nbeats==9) = 3;
+                %                 obj.state_space.n_beats_from_pattern(obj.state_space.n_beats_from_pattern==9) = 3;
                 %                 % 12/8 has four beats
-                %                 obj.rhythm2nbeats(obj.rhythm2nbeats==12) = 4;
+                %                 obj.state_space.n_beats_from_pattern(obj.state_space.n_beats_from_pattern==12) = 4;
             end
             obj.tm_type = obj.trans_model.tm_type;
         end
@@ -200,10 +197,11 @@ classdef HMM
         function obj = make_observation_model(obj, train_data)
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
+                max(obj.state_space.max_position), obj.state_space.max_n_tempo_states, ...
+                obj.state_space.n_patterns, obj.barGrid, obj.state_space.max_position, ...
                 train_data.feature.feat_type, obj.use_silence_state, ...
-                obj.trans_model.mapping_state_position, ...
-                obj.trans_model.mapping_state_rhythm);
+                obj.state_space.position_from_state, ...
+                obj.state_space.pattern_from_state);
             % Train model
             if ~strcmp(obj.dist_type, 'RNN')
                 obj.obs_model = obj.obs_model.train_model(train_data);
@@ -212,7 +210,7 @@ classdef HMM
         end
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
-            n_states = length(obj.trans_model.mapping_state_position);
+            n_states = obj.state_space.n_states;
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
@@ -222,14 +220,14 @@ classdef HMM
                     obj.initial_prob = zeros(n_states, 1);
                     for iCluster = 1:size(tempo_per_cluster, 2)
                         meter = obj.rhythm2meter(iCluster, :);
-                        tempi = tempo_per_cluster(:, iCluster) * obj.M * obj.frame_length ...
+                        tempi = tempo_per_cluster(:, iCluster) * max(obj.state_space.max_position) * obj.frame_length ...
                             / (60 * meter(2));
                         gmm = gmdistribution.fit(tempi(~isnan(tempi)), obj.init_n_gauss);
                         lik = pdf(gmm, (1:obj.N)');
                         % start/stop index of the states that belong to the correct rhythmic pattern
-                        startInd = sub2ind([obj.M, obj.N, obj.R], 1, 1, iCluster);
-                        stopInd = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iCluster);
-                        temp = repmat(lik, 1, obj.M)';
+                        startInd = sub2ind([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], 1, 1, iCluster);
+                        stopInd = sub2ind([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], max(obj.state_space.max_position), obj.N, iCluster);
+                        temp = repmat(lik, 1, max(obj.state_space.max_position))';
                         obj.initial_prob(startInd:stopInd) = temp(:)./sum(temp(:));
                     end
                     % normalize
@@ -238,15 +236,15 @@ classdef HMM
                     if strcmp(obj.tm_type, 'whiteley')
                         obj.initial_prob = zeros(n_states, 1);
                         % compute number of valid states:
-                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(obj.R, 1);
-                        n_valid_states = obj.Meff(:)' * n_range(:);
+                        n_range = obj.trans_model.maxN - obj.trans_model.minN + ones(obj.state_space.n_patterns, 1);
+                        n_valid_states = obj.state_space.max_position(:)' * n_range(:);
                         prob = 1/n_valid_states;
-                        for r_i = 1:obj.R
+                        for r_i = 1:obj.state_space.n_patterns
                             for n_i = obj.trans_model.minN(r_i):obj.trans_model.maxN(r_i)
-                                start_state = sub2ind([obj.M, obj.trans_model.N, obj.R], 1, ...
+                                start_state = sub2ind([max(obj.state_space.max_position), obj.trans_model.N, obj.state_space.n_patterns], 1, ...
                                     n_i, r_i);
                                 obj.initial_prob(start_state:start_state+...
-                                    obj.Meff(r_i)-1) = prob;
+                                    obj.state_space.max_position(r_i)-1) = prob;
                             end
                         end
                     elseif strcmp(obj.tm_type, '2015')
@@ -308,22 +306,22 @@ classdef HMM
                 error('inference method not specified\n');
             end
             % decode state index into sub indices
-            if isprop(obj.trans_model, 'mapping_state_position') && ...
-                    ~isempty(obj.trans_model.mapping_state_position)
-                m_path = obj.trans_model.mapping_state_position(...
+            if isprop(obj.state_space, 'position_from_state') && ...
+                    ~isempty(obj.state_space.position_from_state)
+                m_path = obj.state_space.position_from_state(...
                     hidden_state_sequence)';
-                n_path = obj.trans_model.mapping_state_tempo(...
+                n_path = obj.state_space.tempo_from_state(...
                     hidden_state_sequence)';
-                r_path = obj.trans_model.mapping_state_rhythm(...
+                r_path = obj.state_space.pattern_from_state(...
                     hidden_state_sequence)';
             else
                 % For compatibility to old models (created before 2015)
-                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], ...
+                [m_path, n_path, r_path] = ind2sub([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], ...
                     hidden_state_sequence(:)');
             end
             % strip of silence state
             if obj.use_silence_state
-                idx = logical(r_path<=obj.R);
+                idx = logical(r_path<=obj.state_space.n_patterns);
             else
                 idx = true(length(r_path), 1);
             end
@@ -332,12 +330,12 @@ classdef HMM
             meter(:, idx) = obj.rhythm2meter(r_path(idx), :)';
             beats = obj.find_beat_times(m_path, r_path, y);
             if strcmp(obj.pattern_size, 'bar') && ~isempty(n_path)
-                pos_per_beat = obj.Meff(r_path(idx)) ./ ...
-                    obj.rhythm2nbeats(r_path(idx));
+                pos_per_beat = obj.state_space.max_position(r_path(idx)) ./ ...
+                    obj.state_space.n_beats_from_pattern(r_path(idx));
                 tempo = 60 .* n_path(idx)' ./ ...
                     (pos_per_beat * obj.frame_length);
             else
-                tempo = 60 .* n_path(idx) / (obj.M * obj.frame_length);
+                tempo = 60 .* n_path(idx) / (max(obj.state_space.max_position) * obj.frame_length);
             end
             results{1} = beats;
             results{2} = tempo;
@@ -347,10 +345,10 @@ classdef HMM
         
         function [obj, bar2cluster] = viterbi_training(obj, features, train_data)
             n_files = length(train_data.file_list);
-            A_n = zeros(obj.N * obj.R, obj.N);
-            A_r = zeros(obj.R, obj.R);
-            observation_per_state = cell(n_files, obj.R, obj.barGrid, features.feat_dim);
-            init = zeros(obj.N * obj.R, 1);
+            A_n = zeros(obj.N * obj.state_space.n_patterns, obj.N);
+            A_r = zeros(obj.state_space.n_patterns, obj.state_space.n_patterns);
+            observation_per_state = cell(n_files, obj.state_space.n_patterns, obj.barGrid, features.feat_dim);
+            init = zeros(obj.N * obj.state_space.n_patterns, 1);
             % pattern id that each bar was assigned to in viterbi
             bar2cluster = zeros(size(train_data.bar2cluster));
             for i_file=1:n_files
@@ -368,7 +366,7 @@ classdef HMM
                 end
                 % plot assignment from hidden states to observations after
                 % training iteration
-                [m_path, n_path, r_path] = ind2sub([obj.M, obj.N, obj.R], best_path(:)');
+                [m_path, n_path, r_path] = ind2sub([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], best_path(:)');
                 % compute beat times and bar positions of beats
                 beats = obj.find_beat_times(m_path, r_path, observations);
                 beats(:, 1) = beats(:, 1) + (belief_func{1}(1)-1) * obj.frame_length;
@@ -415,7 +413,7 @@ classdef HMM
             end
             % update initial probabilities
             init = init / sum(init);
-            obj.initial_prob = repmat(init(:)', obj.M, 1);
+            obj.initial_prob = repmat(init(:)', max(obj.state_space.max_position), 1);
             obj.initial_prob = obj.initial_prob(:);
             % update transition model
             % pattern transitions
@@ -430,14 +428,14 @@ classdef HMM
             elseif obj.tempo_tying == 1
                 a = 0;
                 b = sum(n_times_in_state_ni_at_k_1);
-                for i_r=1:obj.R
+                for i_r=1:obj.state_space.n_patterns
                     a = a + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 0));
                 end
                 obj.pn = (1 - a/b) / 2;
             elseif obj.tempo_tying == 2
                 n_up = 0;
                 n_down = 0;
-                for i_r=1:obj.R
+                for i_r=1:obj.state_space.n_patterns
                     n_up = n_up + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), 1));
                     n_down = n_down + sum(diag(A_n((i_r-1)*obj.N + 1:i_r*obj.N, :), -1));
                 end
@@ -457,12 +455,12 @@ classdef HMM
                     + 1:r_i*obj.N, :), 2), 1, 'last');
             end
             if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                obj.minN = ones(1, obj.state_space.n_patterns) * min(obj.minN);
+                obj.maxN = ones(1, obj.state_space.n_patterns) * max(obj.maxN);
                 fprintf('    New tempo limits: %i - %i\n', obj.minN(1), obj.maxN(1));
             end
             % update: mew TransitionModel
-            obj.trans_model = TransitionModel(obj.M, obj.Meff, obj.N, obj.R, obj.pn, obj.pr, ...
+            obj.trans_model = TransitionModel(max(obj.state_space.max_position), obj.state_space.max_position, obj.N, obj.state_space.n_patterns, obj.pn, obj.pr, ...
                 obj.rhythm2meter, obj.frame_length, obj.minN, obj.maxN);
             % update observation model
             train_data.feats_file_pattern_barPos_dim = observation_per_state;
@@ -525,8 +523,8 @@ classdef HMM
             n_mu = n_mix * feat_dim;
             n_sigma = feat_dim * feat_dim * n_mix;
             n_rows = n_mix + n_mu + n_sigma;
-            observation_model = zeros(obj.R * obj.obs_model.barGrid, n_rows);
-            for i_r=1:obj.R
+            observation_model = zeros(obj.state_space.n_patterns * obj.obs_model.barGrid, n_rows);
+            for i_r=1:obj.state_space.n_patterns
                 for i_pos=1:obj.obs_model.barGrid_eff(i_r)
                     col = i_pos+(i_r-1)*obj.obs_model.barGrid;
                     temp = obj.obs_model.learned_params{i_r, i_pos}.mu';
@@ -539,17 +537,17 @@ classdef HMM
             end
             if obj.use_silence_state
                 % add the silence state as last state to the model
-                col = obj.R * obj.obs_model.barGrid + 1;
-                temp = obj.obs_model.learned_params{obj.R+1, 1}.mu';
+                col = obj.state_space.n_patterns * obj.obs_model.barGrid + 1;
+                temp = obj.obs_model.learned_params{obj.state_space.n_patterns+1, 1}.mu';
                 observation_model(col, 1:1:n_mu) = temp(:);
                 observation_model(col, (n_mu+1):(n_mu+n_sigma)) = ...
-                    obj.obs_model.learned_params{obj.R+1, 1}.Sigma(:);
+                    obj.obs_model.learned_params{obj.state_space.n_patterns+1, 1}.Sigma(:);
                 observation_model(col, (n_mu+n_sigma+1):n_rows) = ...
-                    obj.obs_model.learned_params{obj.R+1, 1}.PComponents(:);
+                    obj.obs_model.learned_params{obj.state_space.n_patterns+1, 1}.PComponents(:);
             end
             N = obj.trans_model.N;
-            M = obj.M;
-            R = obj.R;
+            M = max(obj.state_space.max_position);
+            R = obj.state_space.n_patterns;
             P = obj.barGrid;
             state_to_obs = uint8(obj.obs_model.state2obs_idx);
             % rhythm_to_meter: [2 x R]
@@ -557,7 +555,7 @@ classdef HMM
             if size(rhythm_to_meter, 1) ~= 2
                 error('Error: rhythm_to_meter wrong dimension\n')
             end
-            tempo_ranges = zeros(2, obj.R);
+            tempo_ranges = zeros(2, obj.state_space.n_patterns);
             tempo_ranges(1, :) = obj.trans_model.min_bpm;
             tempo_ranges(2, :) = obj.trans_model.max_bpm;
             num_gmm_mixtures = n_mix;
@@ -633,31 +631,31 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
-            ind_stepsize = obj.barGrid * obj.R;
+            ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
             O = zeros(nStates, 1);
             validInds = ~isnan(ind); %
             for iFrame = 1:nFrames
                 if obj.save_inference_data,
-                    for iR=1:obj.R
+                    for iR=1:obj.state_space.n_patterns
                         % get start and end state index of current pattern
                         % iR
-                        start_ind = sub2ind([obj.M, obj.N, obj.R], 1, 1, iR);
-                        end_ind = sub2ind([obj.M, obj.N, obj.R], obj.M, obj.N, iR);
+                        start_ind = sub2ind([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], 1, 1, iR);
+                        end_ind = sub2ind([max(obj.state_space.max_position), obj.N, obj.state_space.n_patterns], max(obj.state_space.max_position), obj.N, iR);
                         % compressed M
-                        M_c = round(obj.M / x_fac);
+                        M_c = round(max(obj.state_space.max_position) / x_fac);
                         % get state indices of current pattern in
                         % compressed states
-                        start_ind_c = sub2ind([M_c, obj.N, obj.R], 1, 1, iR);
-                        end_ind_c = sub2ind([M_c, obj.N, obj.R], M_c, obj.N, iR);
+                        start_ind_c = sub2ind([M_c, obj.N, obj.state_space.n_patterns], 1, 1, iR);
+                        end_ind_c = sub2ind([M_c, obj.N, obj.state_space.n_patterns], M_c, obj.N, iR);
                         % expand delta
                         if start_ind < minState
                             delta_ex = [zeros(minState-1, 1); delta(1:end_ind-minState+1)];
                         else
                             delta_ex = delta(start_ind-minState+1:end_ind-minState+1);
                         end
-                        frame = reshape(full(delta_ex), obj.M, obj.N);
+                        frame = reshape(full(delta_ex), max(obj.state_space.max_position), obj.N);
                         % average x_fac blocks
                         frame = conv2(frame, ones(x_fac, 1) ./ x_fac, 'full');
                         % take every x_fac-th block
@@ -690,7 +688,7 @@ classdef HMM
             end
             if obj.save_inference_data,
                 % save for visualization
-                M = obj.M; N = obj.N; R = obj.R; frame_length = obj.frame_length;
+                M = max(obj.state_space.max_position); N = obj.N; R = obj.state_space.n_patterns; frame_length = obj.frame_length;
                 save(['./', fname, '_hmm.mat'], ...
                     'logP_data', 'M', 'N', 'R', 'frame_length', 'obs_lik', 'x_fac');
             end
@@ -742,11 +740,11 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], ...
+            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames ], ...
                 obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ...
                 ones(nStates, 1));
-            ind_stepsize = obj.barGrid * obj.R;
+            ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
             O = zeros(nStates, 1);
             validInds = ~isnan(ind);
             for iFrame = 1:nFrames
@@ -850,11 +848,11 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.R, obj.barGrid, nFrames ], ...
+            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames ], ...
                 obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                 obj.obs_model.state2obs_idx(minState:maxState, 2), ...
                 ones(nStates, 1));
-            ind_stepsize = obj.barGrid * obj.R;
+            ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
             %             % start index at the first belief function
             %             ind = ind + ind_stepsize * (start_frame-1);
             O = zeros(nStates, 1);
@@ -922,13 +920,13 @@ classdef HMM
             A = obj.trans_model.A(minState:maxState, minState:maxState);
             perc = round(0.1*nFrames);
             if obj.use_silence_state
-                ind = sub2ind([obj.R+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                ind = sub2ind([obj.state_space.n_patterns+1, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                     obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
-                ind_stepsize = obj.barGrid * (obj.R + 1);
+                ind_stepsize = obj.barGrid * (obj.state_space.n_patterns + 1);
             else
-                ind = sub2ind([obj.R, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
+                ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
                     obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
-                ind_stepsize = obj.barGrid * obj.R;
+                ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
             end
             best_states = zeros(nFrames, 1);
             % incorporate first observation
@@ -998,7 +996,7 @@ classdef HMM
                 r = obj.trans_model.mapping_state_rhythm;
                 obs_lik = obs_lik(:, :, 1:rec_len);
                 frame_length = obj.frame_length;
-                M = obj.M;
+                M = max(obj.state_space.max_position);
                 save(['/tmp/', fname, '_hmm_forward.mat'], ...
                     'alpha_mat', 'm', 'n', 'r', 'obs_lik', 'best_states', ...
                     'frame_length', 'M', 'y');
@@ -1029,7 +1027,7 @@ classdef HMM
             if obj.correct_beats
                 % resolution of observation model in
                 % position_states:
-                res_obs = obj.M/obj.barGrid;
+                res_obs = max(obj.state_space.max_position)/obj.barGrid;
                 [dist, btype] = max(beatpositions{rhythm_state(1)} - ...
                     position_state(1));
                 if (abs(dist) < res_obs/2) && (dist < 0)
@@ -1049,7 +1047,7 @@ classdef HMM
                 end
             end
             for i = 1:numframes-1
-                if rhythm_state(i) == obj.R + 1;
+                if rhythm_state(i) == obj.state_space.n_patterns + 1;
                     % silence state
                     continue;
                 end
@@ -1063,8 +1061,8 @@ classdef HMM
                     elseif ((position_state(i+1) > beat_pos) ...
                             && (position_state(i+1) < position_state(i)))
                         % bar transition between frame i and frame i+1
-                        bt = interp1([position_state(i); obj.Meff(rhythm_state(i)) + position_state(i+1)], ...
-                            [i; i+1], obj.Meff(rhythm_state(i)) + beat_pos);
+                        bt = interp1([position_state(i); obj.state_space.max_position(rhythm_state(i)) + position_state(i+1)], ...
+                            [i; i+1], obj.state_space.max_position(rhythm_state(i)) + beat_pos);
                         beat_detected = true;
                     elseif ((position_state(i) < beat_pos) ...
                             && (position_state(i+1) > beat_pos))
@@ -1098,7 +1096,7 @@ classdef HMM
             if ~isempty(beats)
                 % subtract one frame, to have a beat sequence starting at 0
                 % seconds.
-                beats(:, 1) = (beats(:, 1) - 1) * obj.frame_length;
+                beats(:, 1) = (beats(:, 1) ) * obj.frame_length;
             end
         end
         
@@ -1117,10 +1115,10 @@ classdef HMM
         function possible_successors = find_successors(obj, successors)
             r_id = obj.trans_model.mapping_state_rhythm(successors)';
             % do not use transitions that go into the silence state
-            n_valid_successors = sum(r_id <= obj.R);
+            n_valid_successors = sum(r_id <= obj.state_space.n_patterns);
             extended_states = zeros(1, n_valid_successors * 6);
             p = 1;
-            for i_s = find(r_id <= obj.R) % loop over all possible
+            for i_s = find(r_id <= obj.state_space.n_patterns) % loop over all possible
                 extended_states(p:p+5)= obj.trans_model.proximity_matrix(...
                     successors(i_s), :);
                 p = p + 6;
@@ -1135,10 +1133,9 @@ classdef HMM
             num_states_hypothesis = [length(obj.initial_prob);
                 size(obj.obs_model.state2obs_idx, 1);
                 size(obj.trans_model.A, 1);
-                length(obj.trans_model.mapping_state_tempo);
-                length(obj.trans_model.mapping_state_position);
-                length(obj.trans_model.mapping_state_rhythm);
-                length(obj.trans_model.mapping_tempo_state_id)];
+                length(obj.state_space.position_from_state);
+                length(obj.state_space.tempo_from_state);
+                length(obj.state_space.pattern_from_state)];
             % remove zeros which come from older model versions
             num_states_hypothesis = ...
                 num_states_hypothesis(num_states_hypothesis > 0);
@@ -1162,7 +1159,7 @@ classdef HMM
                 % col2: sparse vector that is one for possible states
                 belief_func = cell(length(Constraint.data{c}), 2);
                 beatpositions = obj.beat_positions;
-                bar_pos_per_beat = obj.Meff ./ obj.rhythm2nbeats;
+                bar_pos_per_beat = obj.state_space.max_position ./ obj.state_space.n_beats_from_pattern;
                 win_pos = tol_downbeats .* bar_pos_per_beat;
                 for i_db = 1:length(Constraint.data{c})
                     i_frame = max([1, round(Constraint.data{c}(i_db) / ...
@@ -1170,7 +1167,7 @@ classdef HMM
                     belief_func{i_db, 1} = i_frame;
                     idx = false(obj.trans_model.num_states, 1);
                     % how many bar positions are one beat?
-                    for i_r = 1:obj.R
+                    for i_r = 1:obj.state_space.n_patterns
                         idx_r = obj.trans_model.mapping_state_rhythm == ...
                             i_r;
                         win_left = obj.trans_model.mapping_state_position > ...
@@ -1191,8 +1188,8 @@ classdef HMM
                 beatpositions = obj.beat_positions;
                 % find states which are considered in the window
                 idx = false(obj.trans_model.num_states, 1);
-                state_pos_per_beat = obj.Meff./obj.rhythm2nbeats;
-                for i_r = 1:obj.R
+                state_pos_per_beat = obj.state_space.max_position./obj.state_space.n_beats_from_pattern;
+                for i_r = 1:obj.state_space.n_patterns
                     win_pos = tol_beats * state_pos_per_beat(i_r);
                     for i_b = 1:length(beatpositions{i_r})
                         win_left = obj.trans_model.mapping_state_position > ...
@@ -1212,7 +1209,7 @@ classdef HMM
                     % in BPM maps to a different state-space tempo
                     % which depends on whether we have eight note beats or
                     % quarter note beats
-                    for i_r = 1:obj.R
+                    for i_r = 1:obj.state_space.n_patterns
                         idx_r = (obj.trans_model.mapping_state_rhythm ...
                             == i_r);
                         tempo_ss = state_pos_per_beat(i_r) * ...
@@ -1250,9 +1247,9 @@ classdef HMM
         end
         
         function beat_positions = get.beat_positions(obj)
-            for i_r = 1:obj.R
-                pos_per_beat = obj.Meff(i_r) / obj.rhythm2nbeats(i_r);
-                obj.beat_positions{i_r} = 1:pos_per_beat:obj.Meff(i_r);
+            for i_r = 1:obj.state_space.n_patterns
+                pos_per_beat = obj.state_space.max_position(i_r) / obj.state_space.n_beats_from_pattern(i_r);
+                obj.beat_positions{i_r} = 1:pos_per_beat:obj.state_space.max_position(i_r);
             end
             beat_positions = obj.beat_positions;
         end

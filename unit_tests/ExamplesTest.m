@@ -39,6 +39,10 @@ classdef ExamplesTest < matlab.unittest.TestCase
         
         function testEx3(testCase)
             addpath(testCase.example_path)
+            % Initialize the random number generator using a seed of 1 
+            % to make the results in this example repeatable
+            rng('default');
+            rng(1);
             % Train a HMM and test it
             Results = ex3_train_and_test_hmm(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);

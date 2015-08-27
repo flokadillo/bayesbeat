@@ -16,9 +16,9 @@ classdef ObservationModel
         % parameters for all except one files)
         lik_func_handle     % function handle to likelihood function
         state2obs_idx       % specifies which states are tied (share the same parameters)
-        % [nStates, 2]. first columns is the rhythmic
-        % pattern indicator, second one the bar
-        % position (e.g., 1, 2 .. 64 )
+                            % [nStates, 2]. first columns is the rhythmic
+                            % pattern indicator, second one the bar
+                            % position (e.g., 1, 2 .. 64 )
         use_silence_state
         feat_type           % cell array (features (extension) to be used)
     end

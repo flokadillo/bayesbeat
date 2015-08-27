@@ -80,7 +80,7 @@ classdef BeatTracker < handle
                     end
                 elseif strcmp(obj.Params.transition_model_type, 'whiteley')
                     if ~isfield(obj.Params, 'pn')
-                        obj.Params.transition_params.pn = 0.01;
+                        obj.Params.transition_params.pn = 0.01; 
                     else
                         obj.Params.transition_params.pn = obj.Params.pn;
                     end
@@ -123,7 +123,7 @@ classdef BeatTracker < handle
                     obj.Params.pattern_size, featStr, '.mat']);
             end
             % load or create probabilistic model
-            obj.init_model();
+            obj.init_model();            
         end
         
         
@@ -217,7 +217,7 @@ classdef BeatTracker < handle
                 % process silence data
                 if obj.Params.use_silence_state
                     fid = fopen(obj.Params.silence_lab, 'r');
-                    silence_files = textscan(fid, '%s\n');
+                    silence_files = textscan(fid, '%s\n'); 
                     silence_files = silence_files{1};
                     fclose(fid);
                     obj.train_data.feats_silence = [];
@@ -282,7 +282,7 @@ classdef BeatTracker < handle
                 end
                 fprintf('* Set up initial distribution\n');
                 obj.model = obj.model.make_initial_distribution(...
-                    [tempo_min_per_cluster; tempo_max_per_cluster]);
+                    [obj.Params.min_tempo_bpm; obj.Params.max_tempo_bpm]);
                 % save trained model
                 fln = fullfile(obj.Params.results_path, 'model.mat');
                 switch obj.Params.inferenceMethod(1:2)
@@ -322,15 +322,15 @@ classdef BeatTracker < handle
                 [~, ~, ext] = fileparts(fln);
                 fln = strrep(fln, ext, ['.', obj.Params.constraint_type{c}]);
                 if strcmp(obj.Params.constraint_type{c}, 'downbeats')
-                    data = load(fln);
-                    constraints{c} = data(:, 1);
+                   data = load(fln);
+                   constraints{c} = data(:, 1);
                 end
                 if strcmp(obj.Params.constraint_type{c}, 'beats')
-                    data = load(fln);
-                    constraints{c} = data(:, 1);
+                   data = load(fln);
+                   constraints{c} = data(:, 1);
                 end
                 if strcmp(obj.Params.constraint_type{c}, 'meter')
-                    constraints{c} = Data.load_annotations_bt(fln);
+                   constraints{c} = Data.load_annotations_bt(fln);
                 end
             end
         end
@@ -505,7 +505,7 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-        
+                
         function new_model = convert_to_new_model_format(old_model)
             new_model = old_model.convert_old_model_to_new();
         end
