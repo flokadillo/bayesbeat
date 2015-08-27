@@ -89,6 +89,10 @@ classdef ObservationModel
             % ------------------------------------------------------------------------
             nFrames = size(observations, 1);
             obsLik = ones(obj.R, obj.barGrid, nFrames) * (-1);
+            if isempty(obj.learned_params)
+               % in cases where no parameters are learned, just pass zero matrix
+               obj.learned_params = zeros(obj.R+1, obj.barGrid);
+            end
             for iR = 1:obj.R
                 barPos = obj.barGrid_eff(iR);
                 obsLik(iR, 1:barPos, :) = obj.lik_func_handle(observations, ...

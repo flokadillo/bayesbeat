@@ -43,6 +43,9 @@ classdef BeatTracker < handle
                 obj.Params.feat_type = {'lo230_superflux.mvavg', ...
                     'hi250_superflux.mvavg'};
             end
+            if ~isfield(obj.Params, 'observationModelType')
+                obj.Params.observationModelType = 'MOG';
+            end
             if ~isfield(obj.Params, 'save_beats')
                 obj.Params.save_beats = 1;
             end
@@ -77,7 +80,7 @@ classdef BeatTracker < handle
                     end
                 elseif strcmp(obj.Params.transition_model_type, 'whiteley')
                     if ~isfield(obj.Params, 'pn')
-                        obj.Params.transition_params.pn = 0.01; 
+                        obj.Params.transition_params.pn = 0.01;
                     else
                         obj.Params.transition_params.pn = obj.Params.pn;
                     end
@@ -120,7 +123,7 @@ classdef BeatTracker < handle
                     obj.Params.pattern_size, featStr, '.mat']);
             end
             % load or create probabilistic model
-            obj.init_model();            
+            obj.init_model();
         end
         
         
@@ -144,9 +147,18 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                % initialise training data to see how many pattern states
-                % we need and which time signatures have to be modelled
-                obj.init_train_data();
+                if strcmp(obj.Params.observationModelType, 'RNN')
+                    obj.train_data.clustering.rhythm2nbeats = 1;
+                    obj.train_data.clustering.rhythm2meter = [1, 4];
+                    obj.train_data.clustering.rhythm_names = {'rnn'};
+                    obj.train_data.clustering.pr = 1;
+                    obj.train_data.feature = obj.feature;
+                    obj.Params.R = 1;
+                else
+                    % initialise training data to see how many pattern states
+                    % we need and which time signatures have to be modelled
+                    obj.init_train_data();
+                end
                 if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
@@ -205,7 +217,7 @@ classdef BeatTracker < handle
                 % process silence data
                 if obj.Params.use_silence_state
                     fid = fopen(obj.Params.silence_lab, 'r');
-                    silence_files = textscan(fid, '%s\n'); 
+                    silence_files = textscan(fid, '%s\n');
                     silence_files = silence_files{1};
                     fclose(fid);
                     obj.train_data.feats_silence = [];
@@ -303,6 +315,26 @@ classdef BeatTracker < handle
             end
         end
         
+        function constraints = load_constraints(obj, test_file_id)
+            for c = 1:length(obj.Params.constraint_type)
+                fln = strrep(obj.test_data.file_list{test_file_id}, 'audio', ...
+                    ['annotations/', obj.Params.constraint_type{c}]);
+                [~, ~, ext] = fileparts(fln);
+                fln = strrep(fln, ext, ['.', obj.Params.constraint_type{c}]);
+                if strcmp(obj.Params.constraint_type{c}, 'downbeats')
+                    data = load(fln);
+                    constraints{c} = data(:, 1);
+                end
+                if strcmp(obj.Params.constraint_type{c}, 'beats')
+                    data = load(fln);
+                    constraints{c} = data(:, 1);
+                end
+                if strcmp(obj.Params.constraint_type{c}, 'meter')
+                    constraints{c} = Data.load_annotations_bt(fln);
+                end
+            end
+        end
+        
         function test_file_ids = retrain_model(obj, test_files_to_exclude)
             % test_files_to_exclude can be either a scalar
             % (index of the file to be excluded for leave-one-out
@@ -369,9 +401,18 @@ classdef BeatTracker < handle
                 obj.test_data.file_list{test_file_id}, ...
                 obj.Params.save_features_to_file, ...
                 obj.Params.load_features_from_file);
+            if isfield(obj.Params, 'constraint_type')
+                Constraint.type = obj.Params.constraint_type;
+                Constraint.data = obj.load_constraints(test_file_id);
+                belief_func = obj.model.make_belief_function(Constraint);
+                results = obj.model.do_inference(observations, fname, ...
+                    obj.Params.inferenceMethod, belief_func);
+            else
+                results = obj.model.do_inference(observations, fname, ...
+                    obj.Params.inferenceMethod);
+            end
             % compute observation likelihoods
-            results = obj.model.do_inference(observations, fname, ...
-                obj.Params.inferenceMethod, do_output);
+            
             if obj.model.save_inference_data
                 % save state sequence of annotations to file
                 annot_fln = strrep(strrep(obj.test_data.file_list{test_file_id}, ...
@@ -464,7 +505,7 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-                
+        
         function new_model = convert_to_new_model_format(old_model)
             new_model = old_model.convert_old_model_to_new();
         end

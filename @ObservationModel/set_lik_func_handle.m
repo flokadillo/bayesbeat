@@ -15,6 +15,14 @@ function functionHandle = set_lik_func_handle(obj)
 functionHandle = str2func(obj.dist_type);
 end
 
+function O = RNN(activations, obs_params)
+    barGrid = length(obs_params);
+    O = zeros(barGrid, size(activations, 1));
+    O(1, :) = activations(:);
+    O(2:end, :) = repmat((1-activations(:)) / ...
+        (barGrid-1), 1, barGrid-1)';
+end
+
 function O = gamma(observation, obs_params)
 observation(observation<eps) = eps;
 O = zeros(length(obs_params), length(observation));

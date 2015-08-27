@@ -10,6 +10,7 @@ classdef Data < handle
         beats                % beats of each file {nFiles x 1}[n_beats 2]
         beats_per_bar        % number of beats per bar [nFiles x 1]
         n_bars               % number of (complete) bars of each file [nFiles x 1]
+        n_beats_per_bar      % number of beats per bar of predominant time signature
         bar_start_id         % cell [nFiles x 1] [nBeats x 1] with index of first beat of each bar
         full_bar_beats       % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln          % file with cluster id of each bar
@@ -185,6 +186,7 @@ classdef Data < handle
                             obj.get_full_bars(obj.beats{iFile});
                     else
                         obj.n_bars(iFile) = size(obj.beats{iFile}, 1) - 1;
+                        obj.n_beats_per_bar(iFile) = 1;
                     end
                 end
             end
