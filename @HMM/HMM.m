@@ -182,7 +182,7 @@ classdef HMM
                 % call BeatTrackingTransitionModel2006
             end
             % Check transition model
-            if transition_model_is_corrupt(obj.trans_model, 0)
+            if obj.trans_model.is_corrupt();
                 error('Corrupt transition model');
             end
         end

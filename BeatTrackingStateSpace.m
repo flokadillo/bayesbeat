@@ -12,7 +12,7 @@ classdef BeatTrackingStateSpace < handle
         %                           Each cell contains a vector of length
         %                           n_tempo_states. n_positions are counted per
         %                           beat, i.e., if you need the
-        %                           positions per bar, multiply with 
+        %                           positions per bar, multiply with
         %                           n_beats_from_pattern
         max_position
         position_from_state
@@ -44,6 +44,13 @@ classdef BeatTrackingStateSpace < handle
             obj.frame_length = frame_length;
             obj.use_silence_state = use_silence_state;
             obj.store_proximity = store_proximity;
+        end
+        
+        function [position, tempo, pattern] = decode_state(obj, state)
+            % decode state into (position, tempo, pattern)
+            position = obj.position_from_state(state);
+            tempo = obj.tempo_from_state(state);
+            pattern = obj.pattern_from_state(state);
         end
     end
     

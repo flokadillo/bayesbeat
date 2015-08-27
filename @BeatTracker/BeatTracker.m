@@ -259,8 +259,7 @@ classdef BeatTracker < handle
         function train_model(obj)
             if isempty(obj.init_model_fln)
                 fprintf('* Set up transition model\n');
-                obj = obj.train_transition_model(obj.Params.min_tempo_bpm, ...
-                    obj.Params.max_tempo_bpm);
+                obj.train_transition_model();
                 fprintf('* Set up observation model\n');
                 if obj.Params.use_silence_state
                     obj.model = obj.model.make_observation_model(...
@@ -291,12 +290,10 @@ classdef BeatTracker < handle
         end
         
         
-        function obj = train_transition_model(obj, tempo_min_per_cluster, ...
-                tempo_max_per_cluster)
+        function [] = train_transition_model(obj)
             switch obj.Params.inferenceMethod(1:2)
                 case 'HM'
                     obj.model = obj.model.make_transition_model(...
-                        tempo_min_per_cluster, tempo_max_per_cluster, ...
                         obj.Params.transition_params);
                 case 'PF'
                     obj.model = obj.model.make_transition_model(...
