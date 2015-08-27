@@ -26,10 +26,11 @@ else
     bar_grid_max = round(whole_note_div / 4);
 end
 nchar = 0;
-feat_dim = length(obj.feature.feat_type);
-feat_from_bar_and_gmm = [];
+% feat_from_bar_and_gmm = [];
 bar2file = zeros(sum(obj.n_bars), 1);
 idLastBar = 0;
+feat_from_bar_and_gmm = cell(sum(obj.n_bars), bar_grid_max, ...
+    obj.feature.feat_dim);
 %main loop over all files
 for iFile=1:length(obj.file_list)
     fprintf(repmat('\b', 1, nchar));
@@ -84,7 +85,7 @@ for iFile=1:length(obj.file_list)
             barStartIdx = 1:nBars;
         end
         beatsBarPos = (0:beats_per_bar) / beats_per_bar * bar_grid_eff + 1;
-        barData = cell(nBars, bar_grid_eff, feat_dim);
+        barData = cell(nBars, bar_grid_eff, obj.feature.feat_dim);
         for iBar=1:nBars
             % compute start and end frame of bar using fr
             first_frame_of_bar = floor(beats(barStartIdx(iBar), 1) * fr) + ...
@@ -102,8 +103,8 @@ for iFile=1:length(obj.file_list)
                 'linear','extrap'));
             barPosLin(barPosLin < 1) = 1;
             % group all feature values that belong to the same barPos
-            labels = [repmat(barPosLin(:), feat_dim, 1) ...             %# Replicate the row indices
-                kron(1:feat_dim, ones(1, numel(barPosLin))).'];  %'# Create column indices
+            labels = [repmat(barPosLin(:), obj.feature.feat_dim, 1) ...             %# Replicate the row indices
+                kron(1:obj.feature.feat_dim, ones(1, numel(barPosLin))).'];  %'# Create column indices
             currBarData = accumarray(labels, featBar(:), ...
                 [bar_grid_eff+2, 2], @(x) {x});
             % add to bar cell array; last element belongs to next bar -> remove it
@@ -133,8 +134,10 @@ for iFile=1:length(obj.file_list)
             if currBarGrid < bar_grid_max,
                 barData = [barData, cell(size(barData, 1), bar_grid_max-size(barData, 2), 2)];
             end
-            feat_from_bar_and_gmm = [feat_from_bar_and_gmm; barData];
-            bar2file((idLastBar + 1):(idLastBar + nNewBars)) = iFile;
+            bar_idx = (idLastBar + 1):(idLastBar + nNewBars);
+            feat_from_bar_and_gmm(bar_idx, :, :) = barData;
+%             feat_from_bar_and_gmm = [feat_from_bar_and_gmm; barData];
+            bar2file(bar_idx) = iFile;
             idLastBar = idLastBar + nNewBars;
         end
     end
