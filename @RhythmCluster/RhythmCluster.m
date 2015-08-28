@@ -16,12 +16,12 @@ classdef RhythmCluster < handle
         exclude_songs_fln   % vector of file ids that contain more than one bar and have supported meter
         n_clusters          % number of clusters
         pattern_size        % size of one rhythmical pattern {'beat', 'bar'}
-        data_per_bar        % [nBars x feat_dim*bar_grid]
+        data_per_patt        % [nPatt x feat_dim*bar_grid]
         data_per_song       % [nSongs x feat_dim*bar_grid]
-        bar2file            % [1 x nBars] vector
+        patt2file            % [1 x nPatts] vector
         bar_2_cluster
         file_2_cluster
-        bar_2_meter         % [nBars x 2]
+        patt_2_meter         % [nPatts x 2]
         file_2_meter        % [nFiles x 2]
         rhythm2meter        % [nRhythms x 2]
         rhythm2meterID      % [nRhythms x 1] storing the mapping between rhythm pattern ID and meter ID
@@ -129,24 +129,24 @@ classdef RhythmCluster < handle
             if exist(obj.train_lab_fln, 'file')
                 fprintf('    Found %i files in %s\n', length(obj.train_file_list), ...
                     obj.train_lab_fln);
-                dataPerBar = [];
+                dataPerPatt = [];
                 for iDim =1:obj.feature.feat_dim
                     % organise features into bar position grid
-                    Output = Data.extract_bars_from_feature(obj.train_file_list, ...
+                    Output = Data.extract_patts_from_feature(obj.train_file_list, ...
                         obj.feature.feat_type{iDim}, whole_note_div, ...
                         obj.feature.frame_length, obj.pattern_size, 1);
                     % compute mean feature of each bar position cell. 
-                    dataPerBar = [dataPerBar, cellfun(@mean, Output.dataPerBar)];
+                    dataPerPatt = [dataPerPatt, cellfun(@mean, Output.dataPerPatt)];
                 end
                 % save data to object
-                obj.bar2file = Output.bar2file;
-                obj.data_per_bar = dataPerBar;
+                obj.patt2file = Output.patt2file;
+                obj.data_per_patt = dataPerPatt;
                 obj.file_2_meter = Output.file2meter;
-                obj.bar_2_meter = Output.file2meter(obj.bar2file, :);
+                obj.patt_2_meter = Output.file2meter(obj.patt2file, :);
                 % save features organised by bars positions to file
                 obj.feat_matrix_fln = fullfile(obj.data_save_path, ['onsetFeat_', ...
                     num2str(obj.feature.feat_dim), 'd_', obj.dataset, '.txt']);
-                dlmwrite(obj.feat_matrix_fln, dataPerBar, 'delimiter', '\t', 'precision', 4);
+                dlmwrite(obj.feat_matrix_fln, dataPerPatt, 'delimiter', '\t', 'precision', 4);
                 fprintf('    Saved data per bar to %s\n', obj.feat_matrix_fln);
             else
                 error('    %s not found', obj.train_lab_fln)

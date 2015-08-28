@@ -2,7 +2,7 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 % [data, error] = load_annotations_bt( filename, dooutput )
 %
 %   Loads annotations according to the extension of the file from file.
-%   Supports .beats, .bpm, .meter, .rhythm, .dancestyle, .onsets.
+%   Supports .beats, .bpm, .meter, .rhythm, .dancestyle, .onsets, .section
 %   The following cases are supported
 %   1) The extension does not match the supported ones. Please specify
 %   ann_type in this case
@@ -23,7 +23,7 @@ function [ data, error ] = load_annotations_bt( filename, ann_type )
 % ----------------------------------------------------------------------
 
 % supported extensions:
-sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', '.rhythm'};
+sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', '.rhythm', '.section'};
 % get extension of filename
 [path, fname, ext] = fileparts(filename);
 if sum(strcmp(sup_ext, ext)) > 0
@@ -47,6 +47,10 @@ if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
     data = double(cell2mat(textscan(fid, '%d%d', 'delimiter', '/')));
     fclose(fid);
     if data(2) == 0, data = data(1); end
+elseif strcmp(ext, '.section') || strcmp(ann_type, 'section')
+    % Load section
+    fid = fopen(filename, 'r');
+    data = double(cell2mat(textscan(fid, '%d', 'delimiter', ',')));
 elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
     % Load onset annotations
     data = load('-ascii', filename);

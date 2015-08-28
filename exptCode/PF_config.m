@@ -16,7 +16,7 @@ function Params = PF_config(base_path)
 
 %% PRELIMINARIES
 % Name the system here
-Params.system = 'PF_MeterTracker';
+Params.system = 'PF_SectionTracker';
 % The name of the dataset
 % Params.dataset = 'CMCMDa_small';
 % Params.dataset = 'BallroomDataset';
@@ -64,19 +64,20 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 %% SYSTEM PARAMETERS:
 % State space size
 % ----------------
-% Maximum position state (used for the meter with the longest duration)
+% Maximum position state (used for the meter with the longest duration),
+% distributed further into sections if needed
 Params.M = 1600;
 % Maximum tempo state 
 Params.N = 15;
-% Number of rhythmic pattern states
+% Number of rhythmic pattern states, divided per section as needed
 Params.R = 4;
 % Number of position grid points per whole note. This is important for the
-% observation model, as parameters are tied within this grid.
+% observation model, as parameters are tied within this grid
 Params.whole_note_div = 64; 
 % Number of grid points of one pattern per meter
 % Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
-Params.pattern_size = 'bar'; % 'beat' or 'bar'
+Params.pattern_size = 'section'; % 'beat' or 'bar' or 'section'
 % Audio frame length [sec]
 Params.frame_length = 0.02;
 % Model initial distribution over tempo states by mixture of init_n_gauss

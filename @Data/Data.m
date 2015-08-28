@@ -320,9 +320,11 @@ classdef Data < handle
             end
         end
         
-        [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose);
+        % [nBars, beatIdx, barStartIdx] = get_full_bars(beats, tolInt, verbose);
+        [nBars, nPatts, beatIdx, barStartIdx, pattStartIdx, secLabelIdx] = get_full_patts(beats, meter, section, tolInt, ...
+    verbose)
         
-        Output = extract_bars_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
+        Output = extract_patts_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
         
         dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
         

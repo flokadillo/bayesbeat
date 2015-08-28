@@ -24,7 +24,6 @@ procLongFiles = 1;      % Set it to 1 if you wish to process longer files
 timeFormat = 'HH:MM:SS.FFF dd-mmm-yyyy';
 Params.startTime = datestr(clock, timeFormat);
 frame_length = 0.02; 
-pattern_size = 'bar';
 for r = 1:length(numPatts)
     for t = 1:nTalas
         for ex = 1:numExp
@@ -50,7 +49,7 @@ for r = 1:length(numPatts)
                     fprintf('Approximate inference using a Particle Filter: %s\n', Params.store_name);
                     Params.nParticles = 1500*numPatts(r); % Params.nParticles/nTalas*numPatts(r);  % 1500 particles/pattern
                 end                
-                Params.store_name = [Params.store_name '_6000'];
+                Params.store_name = [Params.store_name '_6000_SPMtest'];
                 Params.results_path = fullfile(Params.results_path, Params.dataset,...
                     'Tracking', Params.store_name, Params.meterNames{1}, ...
                     ['nPatts_' num2str(Params.R)], num2str(sim_id));
@@ -66,13 +65,13 @@ for r = 1:length(numPatts)
                 % CLUSTERING THE DATASET
                 data_save_path = Params.results_path;
                 Clustering = RhythmCluster(Params.trainLab, Params.feat_type, frame_length,...
-                    data_save_path, pattern_size);
+                    data_save_path, Params.pattern_size);
                 % cluster the dataset according to the meter of each file
                 % Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
                 Clustering.make_feats_per_bar(Params.whole_note_div);
                 Params.clusterIdFln = Clustering.do_clustering(Params.R, ...
-                    pattern_size,'meter_names',Params.meter_names, 'save_pattern_fig',...
-                    Params.fig_store_flag,'plotting_path',Params.results_path);
+                    Params.pattern_size,'meter_names',Params.meter_names, ..., 
+                    'save_pattern_fig', Params.fig_store_flag,'plotting_path',Params.results_path);
                 % Params.clusterIdFln = Clustering.do_
                 % TRAINING THE MODEL
                 % create beat tracker object
