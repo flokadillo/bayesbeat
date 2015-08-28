@@ -195,17 +195,9 @@ classdef HMM
         
         function obj = make_observation_model(obj, train_data, ...
                 cells_per_whole_note)
-            
             obj.obs_model = BeatTrackingObservationModelHMM(obj.state_space, ...
                 train_data.feature.feat_type, obj.dist_type, ...
                 cells_per_whole_note);
-            % Create observation model
-            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                max(obj.state_space.max_position), obj.state_space.max_n_tempo_states, ...
-                obj.state_space.n_patterns, obj.barGrid, obj.state_space.max_position, ...
-                train_data.feature.feat_type, obj.use_silence_state, ...
-                obj.state_space.position_from_state, ...
-                obj.state_space.pattern_from_state);
             % Train model
             if ~strcmp(obj.dist_type, 'RNN')
                 obj.obs_model = obj.obs_model.train_model(train_data);
@@ -635,10 +627,11 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames ], obj.obs_model.state2obs_idx(minState:maxState, 1), ...
-                obj.obs_model.state2obs_idx(minState:maxState, 2), ones(nStates, 1));
+            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames], ...
+                obj.state_space.pattern_from_state(minState:maxState), ...
+                obj.obs_model.cell_from_state(minState:maxState), ...
+                ones(nStates, 1, 'uint32'));
             ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
-            O = zeros(nStates, 1);
             validInds = ~isnan(ind); %
             for iFrame = 1:nFrames
                 if obj.save_inference_data,
@@ -678,6 +671,7 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
+                O = zeros(nStates, 1);
                 % ind is shifted at each time frame -> all frames are used
                 O(validInds) = obs_lik(ind(validInds));
                 % increase index to new time frame
@@ -1135,7 +1129,7 @@ classdef HMM
         
         function hmm_corrupt = hmm_is_corrupt(obj)
             num_states_hypothesis = [length(obj.initial_prob);
-                size(obj.obs_model.state2obs_idx, 1);
+                length(obj.obs_model.cell_from_state);
                 size(obj.trans_model.A, 1);
                 length(obj.state_space.position_from_state);
                 length(obj.state_space.tempo_from_state);
@@ -1252,8 +1246,11 @@ classdef HMM
         
         function beat_positions = get.beat_positions(obj)
             for i_r = 1:obj.state_space.n_patterns
-                pos_per_beat = obj.state_space.max_position(i_r) / obj.state_space.n_beats_from_pattern(i_r);
-                obj.beat_positions{i_r} = 1:pos_per_beat:obj.state_space.max_position(i_r);
+                pos_per_beat = obj.state_space.max_position(i_r) / ...
+                    obj.state_space.n_beats_from_pattern(i_r);
+                % subtract eps to exclude max_position+1 
+                obj.beat_positions{i_r} = 1:pos_per_beat:...
+                    obj.state_space.max_position(i_r)+1-eps;
             end
             beat_positions = obj.beat_positions;
         end
