@@ -269,6 +269,9 @@ classdef HMM
             if obj.hmm_is_corrupt
                 error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
             end
+%             HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
+%                 obj.initial_prob);
+%             HMM.viterbi(y, 0);
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             if strcmp(inference_method, 'HMM_forward')
