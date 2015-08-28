@@ -8,6 +8,7 @@ classdef BeatTrackingStateSpace < handle
         max_n_tempo_states
         n_tempo_states
         n_beats_from_pattern
+        meter_from_pattern
         n_position_states       % cell array with n_patterns cells.
         %                           Each cell contains a vector of length
         %                           n_tempo_states. n_positions are counted per
@@ -33,7 +34,7 @@ classdef BeatTrackingStateSpace < handle
     methods
         function obj = BeatTrackingStateSpace(n_patterns, max_n_tempo_states, ...
                 max_position, min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
-                frame_length, use_silence_state, store_proximity)
+                meter_from_pattern, frame_length, use_silence_state, store_proximity)
             % store properties
             obj.n_patterns = n_patterns;
             obj.max_n_tempo_states = max_n_tempo_states;
@@ -41,6 +42,7 @@ classdef BeatTrackingStateSpace < handle
             obj.min_tempo_bpm = min_tempo_bpm;
             obj.max_tempo_bpm = max_tempo_bpm;
             obj.n_beats_from_pattern = n_beats_from_pattern;
+            obj.meter_from_pattern = meter_from_pattern;
             obj.frame_length = frame_length;
             obj.use_silence_state = use_silence_state;
             obj.store_proximity = store_proximity;

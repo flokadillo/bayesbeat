@@ -273,13 +273,8 @@ classdef BeatTracker < handle
                 fprintf('* Set up transition model\n');
                 obj.train_transition_model();
                 fprintf('* Set up observation model\n');
-                if obj.Params.use_silence_state
-                    obj.model = obj.model.make_observation_model(...
-                        obj.train_data);
-                else
-                    obj.model = obj.model.make_observation_model(...
-                        obj.train_data);
-                end
+                obj.model = obj.model.make_observation_model(...
+                        obj.train_data, obj.Params.whole_note_div);
                 fprintf('* Set up initial distribution\n');
                 obj.model = obj.model.make_initial_distribution(...
                     [obj.Params.min_tempo_bpm; obj.Params.max_tempo_bpm]);

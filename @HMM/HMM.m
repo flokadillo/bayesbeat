@@ -38,15 +38,13 @@ classdef HMM
             else
                 obj.tm_type = '2015';
             end
-            if strcmp(obj.tm_type, '2015')
-                M = max(Clustering.rhythm2nbeats);
-            else
-                M = Params.M;
-            end
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
+            if strcmp(obj.tm_type, '2015')
+                M = max(bar_durations);
+            end
             % effective number of bar positions per rhythm
-            max_position = (bar_durations) * (M ./ (max(bar_durations)));
+            max_position = bar_durations;
             obj.barGrid = max(Params.whole_note_div * bar_durations);
             obj.frame_length = Params.frame_length;
             if isfield(Params, 'observationModelType')
@@ -114,6 +112,7 @@ classdef HMM
                 obj.state_space = BeatTrackingStateSpace2015(Params.R, ...
                     n_tempo_states, max_position, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
+                    Clustering.rhythm2meter, ...
                     Params.frame_length, obj.use_silence_state, store_proximity);
             elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
                 obj.state_space = BeatTrackingStateSpace2006;
@@ -194,7 +193,12 @@ classdef HMM
             end
         end
         
-        function obj = make_observation_model(obj, train_data)
+        function obj = make_observation_model(obj, train_data, ...
+                cells_per_whole_note)
+            
+            obj.obs_model = BeatTrackingObservationModelHMM(obj.state_space, ...
+                train_data.feature.feat_type, obj.dist_type, ...
+                cells_per_whole_note);
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
                 max(obj.state_space.max_position), obj.state_space.max_n_tempo_states, ...
