@@ -24,7 +24,7 @@ Params.system = 'PF_SectionTracker';
 % Params.dataset = 'CMCMDa_v2';
 % Params.dataset = 'HMDs';
 % Params.dataset = 'HMDf';
-Params.dataset = 'HMDl';
+Params.dataset = 'HMDf';
 
 % Path settings
 if exist('base_path', 'var')
@@ -70,7 +70,7 @@ Params.M = 1600;
 % Maximum tempo state 
 Params.N = 15;
 % Number of rhythmic pattern states, specified per section 
-Params.R = 1;       % 1 pattern per section of a meter
+Params.R = 2;       % 1 pattern per section of a meter
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid
 Params.whole_note_div = 64; 

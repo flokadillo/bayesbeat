@@ -30,7 +30,7 @@ for ex = 1:numExp
         Params = PF_config(basepath);
         Params.M = max(Params.M);
         % Set a name to store the results
-        Params.store_name = [Params.store_name '_6000'];
+        Params.store_name = [Params.store_name '_6000_SPMtest'];
         if Params.inferenceMethod(1:2) == 'HM'
             disp('An exact inference using HMM chosen');
         elseif Params.inferenceMethod(1:2) == 'PF'
@@ -50,13 +50,15 @@ for ex = 1:numExp
         % CLUSTERING THE DATASET
         data_save_path = Params.results_path;
         Clustering = RhythmCluster(Params.trainLab, Params.feat_type, frame_length,...
-            data_save_path, pattern_size);
+            data_save_path, Params.pattern_size);
         % cluster the dataset according to the meter of each file
         % Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
-        Clustering.make_feats_per_bar(Params.whole_note_div);
+        Clustering.make_feats_per_patt(Params.whole_note_div);
         Params.clusterIdFln = Clustering.do_clustering(Params.R, ...
-            pattern_size,'meter_names',Params.meter_names, 'save_pattern_fig',...
-            Params.fig_store_flag,'plotting_path',Params.results_path);
+            'meters', Params.meters, 'meter_names', Params.meter_names,...
+            'sections', Params.sections, 'section_names', Params.section_names,...
+            'save_pattern_fig', Params.fig_store_flag, ...
+            'plotting_path', Params.results_path);        
         % Params.clusterIdFln = Clustering.do_
         % TRAINING THE MODEL
         % create beat tracker object

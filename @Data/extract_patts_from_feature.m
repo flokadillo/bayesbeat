@@ -50,6 +50,9 @@ for iFile=1:nFiles
     [meter, error1] = Data.load_annotations_bt(listing(iFile).name, 'meter');
     [section, error2] = Data.load_annotations_bt(listing(iFile).name, 'section');
     section = section(:)';
+    if strcmp(pattern_size, 'bar')     % Set it explicitly here!!
+        section = 1;
+    end
     [beats_all{iFile}, error3] = Data.load_annotations_bt(listing(iFile).name, 'beats');
     if error1
         Output.file2meter(iFile, 1) = max(beats_all{iFile}(:, 2));
