@@ -682,7 +682,6 @@ classdef HMM
 %                 ind = ind + ind_stepsize;
                 O = obs_lik(obj.obs_model.gmm_from_state(minState:maxState), ...
                     iFrame);
-                figure(1); plot(O)
                 delta_max = O .* delta_max';
                 % normalize
                 norm_const = sum(delta_max);
