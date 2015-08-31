@@ -53,7 +53,7 @@ classdef HiddenMarkovModel < handle
     methods (Access = protected)
         function bestpath = viterbi_matlab(obj, obs_lik)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
-            % initial_prob)
+            % init_distribution)
             % Implementation of the Viterbi algorithm
             % ----------------------------------------------------------------------
             %INPUT parameter:
@@ -66,7 +66,7 @@ classdef HiddenMarkovModel < handle
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            nFrames = size(obs_lik, 3);
+            nFrames = size(obs_lik, 2);            
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
             maxState = max([row; col]);
@@ -86,13 +86,8 @@ classdef HiddenMarkovModel < handle
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
-            ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames], ...
-                obj.state_space.pattern_from_state(minState:maxState), ...
-                obj.obs_model.cell_from_state(minState:maxState), ...
-                ones(nStates, 1, 'uint32'));
-            ind_stepsize = obj.barGrid * obj.state_space.n_patterns;
-            validInds = ~isnan(ind); %
             for iFrame = 1:nFrames
+               
                 % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
                 % D = matrix of probabilities of best sequences with state i at time
                 % t-1 and state j at time t, when bserving y(1:t)
@@ -102,11 +97,8 @@ classdef HiddenMarkovModel < handle
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
-                % ind is shifted at each time frame -> all frames are used
-                O(validInds) = obs_lik(ind(validInds));
-                % increase index to new time frame
-                ind = ind + ind_stepsize;
+                O = obs_lik(obj.obs_model.gmm_from_state(minState:maxState), ...
+                    iFrame);
                 delta_max = O .* delta_max';
                 % normalize
                 norm_const = sum(delta_max);

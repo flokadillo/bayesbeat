@@ -30,7 +30,7 @@ classdef BeatTrackingObservationModelHMM < BeatTrackingObservationModel
         end
         
         function [] = set_gmm_from_state(obj)
-            obj.gmm_from_state = zeros(obj.state_space.n_states, 1);
+            obj.gmm_from_state = zeros(obj.state_space.n_states, 1, 'uint32');
             for i_s = 1:obj.state_space.n_states
                 obj.gmm_from_state(i_s) = ...
                     (obj.state_space.pattern_from_state(i_s) - 1) * ...

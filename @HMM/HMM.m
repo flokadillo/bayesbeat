@@ -271,7 +271,7 @@ classdef HMM
             end
 %             HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
 %                 obj.initial_prob);
-%             HMM.viterbi(y, 0);
+%             hidden_state_sequence = HMM.viterbi(y, 0);
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             if strcmp(inference_method, 'HMM_forward')
@@ -603,7 +603,7 @@ classdef HMM
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             
-            nFrames = size(obs_lik, 3);
+            nFrames = size(obs_lik, 2);
             
             % don't compute states that are irreachable:
             [row, col] = find(obj.trans_model.A);
@@ -630,6 +630,7 @@ classdef HMM
             perc = round(0.1*nFrames);
             i_row = 1:nStates;
             j_col = 1:nStates;
+            % linear state indices of observations at frame 1
             ind = sub2ind([obj.state_space.n_patterns, obj.barGrid, nFrames], ...
                 obj.state_space.pattern_from_state(minState:maxState), ...
                 obj.obs_model.cell_from_state(minState:maxState), ...
@@ -674,11 +675,14 @@ classdef HMM
                 D = sparse(i_row, j_col, delta(:), nStates, nStates);
                 [delta_max, psi_mat(:, iFrame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                O = zeros(nStates, 1);
+%                 O = zeros(nStates, 1);
                 % ind is shifted at each time frame -> all frames are used
-                O(validInds) = obs_lik(ind(validInds));
+%                 O(validInds) = obs_lik(ind(validInds));
                 % increase index to new time frame
-                ind = ind + ind_stepsize;
+%                 ind = ind + ind_stepsize;
+                O = obs_lik(obj.obs_model.gmm_from_state(minState:maxState), ...
+                    iFrame);
+                figure(1); plot(O)
                 delta_max = O .* delta_max';
                 % normalize
                 norm_const = sum(delta_max);
@@ -822,7 +826,7 @@ classdef HMM
             state_ids_i = cs_from_s(state_ids_i);
             bestpath = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
                 obj.initial_prob(s_from_cs), obs_lik, ...
-                obj.obs_model.state2obs_idx(s_from_cs, :));
+                obj.obs_model.gmm_from_state(s_from_cs));
             % uncompress states
             bestpath = s_from_cs(bestpath);
             fprintf(' done\n');
