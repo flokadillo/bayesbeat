@@ -1267,6 +1267,8 @@ classdef HMM
         [bestpath] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
             initial_prob, obs_lik, state2obs_idx);
         
+        [obs_lik, gmm_from_state] = re_order_obs_lik(obj, obs_lik)
+        
     end
     
     

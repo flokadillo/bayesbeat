@@ -42,7 +42,7 @@ classdef BeatTrackingObservationModel < handle
         end
         
         function obs_lik = compute_obs_lik(obj, observations)
-            % [ obsLik ] = compute_obs_lik(o1, observations)
+            % obs_lik = compute_obs_lik(obj, observations)
             %
             % pre-computes the likelihood of the observations
             %
