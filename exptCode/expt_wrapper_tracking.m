@@ -36,12 +36,14 @@ for r = 1:length(numPatts)
                 % For PF
                 Params = PF_config(basepath);
                 % Some more parameters to be changed
-                Params.meters = Params.meters(:,t);
-                Params.meterNames = Params.meter_names(t);
+                Params.meter = Params.meters(t,:);
+                Params.meterName = Params.meter_names(t);
+                Params.section = Params.sections(t);
+                Params.sectionName = Params.section_names(t);
                 Params.min_tempo = Params.min_tempo(t);
                 Params.max_tempo = Params.max_tempo(t);
                 Params.R = numPatts(r);
-                Params.M = Params.M(t);% * Params.meters(1)/Params.meters(2);
+                Params.M = Params.M(t);% * Params.meter(1)/Params.meter(2);
                 % Set a name to store the results
                 if Params.inferenceMethod(1:2) == 'HM'
                     disp('An exact inference using HMM chosen');
@@ -51,27 +53,29 @@ for r = 1:length(numPatts)
                 end                
                 Params.store_name = [Params.store_name '_6000_SPMtest'];
                 Params.results_path = fullfile(Params.results_path, Params.dataset,...
-                    'Tracking', Params.store_name, Params.meterNames{1}, ...
+                    'Tracking', Params.store_name, Params.meterName{1}, ...
                     ['nPatts_' num2str(Params.R)], num2str(sim_id));
                 if ~isdir(Params.results_path)
                     mkdir(Params.results_path);
                 end
-                Params.train_set = ['train_' num2str(fld) '_' Params.meterNames{1}];
+                Params.train_set = ['train_' num2str(fld) '_' Params.meterName{1}];
                 % Path to lab files
                 Params.trainLab = fullfile(Params.base_path, 'Data', Params.dataset, ...
-                            ['train_' num2str(fld) '_' Params.meterNames{1} '.lab']);
+                            ['train_' num2str(fld) '_' Params.meterName{1} '.lab']);
                 Params.testLab = fullfile(Params.base_path, 'Data', Params.dataset, ...
-                            ['test_' num2str(fld) '_' Params.meterNames{1} '.lab']);
+                            ['test_' num2str(fld) '_' Params.meterName{1} '.lab']);
                 % CLUSTERING THE DATASET
                 data_save_path = Params.results_path;
                 Clustering = RhythmCluster(Params.trainLab, Params.feat_type, frame_length,...
                     data_save_path, Params.pattern_size);
                 % cluster the dataset according to the meter of each file
                 % Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
-                Clustering.make_feats_per_bar(Params.whole_note_div);
+                Clustering.make_feats_per_patt(Params.whole_note_div);
                 Params.clusterIdFln = Clustering.do_clustering(Params.R, ...
-                    Params.pattern_size,'meter_names',Params.meter_names, ..., 
-                    'save_pattern_fig', Params.fig_store_flag,'plotting_path',Params.results_path);
+                    'meters', Params.meter, 'meter_names', Params.meterName,...
+                    'sections', Params.section, 'section_names', Params.sectionName,...
+                    'save_pattern_fig', Params.fig_store_flag, ...
+                    'plotting_path', Params.results_path);
                 % Params.clusterIdFln = Clustering.do_
                 % TRAINING THE MODEL
                 % create beat tracker object
@@ -106,7 +110,7 @@ for r = 1:length(numPatts)
                     end
                     close all
                     fprintf('%s tala with %d patterns: %s: %d/%d expt, %d/%d fold, %d/%d done...\n',...
-                        Params.meterNames{1}, Params.R, fname, ex, numExp, fld,...
+                        Params.meterName{1}, Params.R, fname, ex, numExp, fld,...
                         folds, k, length(BT.test_data.file_list));
                 end
                 Params.pieceDur = dur;

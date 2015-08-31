@@ -131,6 +131,7 @@ for iFile=1:nFiles
             Output.patt2file((idLastPatt + 1):(idLastPatt + nNewPatts)) = iFile;
             Output.patt2sec((idLastPatt + 1):(idLastPatt + nNewPatts)) = Output.sec_label_per_pattern{iFile}(:);
             Output.patt_num_per_frame{iFile} = Output.patt_num_per_frame{iFile} + idLastPatt;
+            Output.patt_len((idLastPatt + 1):(idLastPatt + nNewPatts)) = Output.sec_len{iFile}(Output.sec_label_per_pattern{iFile}(:));
             idLastPatt = idLastPatt + nNewPatts;
         end
     end

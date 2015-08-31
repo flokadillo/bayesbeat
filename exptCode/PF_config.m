@@ -69,8 +69,8 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 Params.M = 1600;
 % Maximum tempo state 
 Params.N = 15;
-% Number of rhythmic pattern states, divided per section as needed
-Params.R = 4;
+% Number of rhythmic pattern states, specified per section 
+Params.R = 1;       % 1 pattern per section of a meter
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid
 Params.whole_note_div = 64; 
@@ -229,7 +229,7 @@ Params.featureDim = length(Params.feat_type);
 %% MUSIC PARAMETERS
 % Meters that are modelled by the system, e.g., [9, 3; 8 4] 
 % **Carnatic
-% Params.meters = [3, 5, 7, 8; 4, 8, 8, 4];   % Make sure its in increasing order, bug in code otherwise!
+% Params.meters = [3, 5, 7, 8; 4, 8, 8, 4]';   % Make sure its in increasing order, bug in code otherwise!
 % Params.meter_names = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 % Params.min_tempo = [30 60 60 60];
 % Params.max_tempo = [110 220 220 220];
@@ -238,20 +238,25 @@ Params.featureDim = length(Params.feat_type);
 % Params.M = [1200 1000 1400 1600];   % Used only for tracking, for inference, max is used
 
 % **Ballroom
-% Params.meters = [4,4,4,4,4,4,3,3; 4,4,4,4,4,4,4,4];   
+% Params.meters = [4,4,4,4,4,4,3,3; 4,4,4,4,4,4,4,4]';   
 % Params.meter_names = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
 % Params.min_tempo = [60 60 60 60];
 % Params.max_tempo = [230 230 230 230];
 
 % **Hindustani
-Params.meters = [7, 10, 12, 16; 8, 8, 8, 8];   
+Params.meters = [7, 10, 12, 16; 8, 8, 8, 8]';   
 Params.meter_names = {'rupak', 'jhap', 'ek', 'teen'};
+Params.sections = {[1, 4, 6], [1, 3, 6, 8], [1, 3, 5, 7, 9, 11], [1, 5, 9, 13]};
+Params.section_names = {{'3matra1', '2matra1', '2matra2'}, ...
+    {'2matra1', '3matra1', '2matra2', '3matra2'}, ...
+    {'2matra1', '2matra2', '2matra3', '2matra4', '2matra5', '2matra6'},...
+    {'4matra1', '4matra2', '4matra3', '4matra4'}};
 Params.min_tempo = [10 10 10 10];
 Params.max_tempo = [320 320 320 320];
 Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
 
 % **Cretan
-% Params.meters = [2; 4];   
+% Params.meters = [2 4];   
 % Params.meter_names = {'cretan'};
 % Params.min_tempo = [60];
 % Params.max_tempo = [230];
