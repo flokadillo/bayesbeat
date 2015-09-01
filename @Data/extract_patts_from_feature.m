@@ -14,7 +14,7 @@ function [Output] = extract_patts_from_feature(source, feature_type, whole_note_
 % frame_length       : feature frame_length [0.02]
 %
 %OUTPUT parameter:
-% Output.dataPerBar : [nBars x whole_note_div] matrix of double 
+% Output.dataPerPatt : [nBars x whole_note_div] matrix of double 
 %                       from this, cellfun(@mean, Output.dataPerBar)
 %                       computes the mean of each bar and position and can
 %                       be plotted by plot(mean(cellfun(@mean, Output.dataPerBar)))
@@ -190,7 +190,7 @@ end
 pattLen = secLens(secLabelIdx);
 
 pattData = cell(nPatts, max(bar_grid_eff));
-pattData(:) = {nan};
+% pattData(:) = {nan};
 patt_pos_per_frame = nan(size(E), 'single');
 patt_num_per_frame = nan(size(E), 'single');
 sec_label_per_frame = nan(size(E), 'single');
@@ -212,7 +212,8 @@ for iBar=1:nPatts
      
 	% interpolate to find bar position of each audio frame
 	pattPosLin = round(interp1(beats(pattStartIdx(iBar):pattStartIdx(iBar+1), 1), beatsBarPos, t,'linear','extrap'));
-    pattPosLin(pattPosLin < 1) = 1;
+    pattPosLin(pattPosLin < min(beatsBarPos)) = min(beatsBarPos);
+    pattPosLin(pattPosLin > max(beatsBarPos)) = max(beatsBarPos);
     % pattern position 64th grid per frame
     patt_pos_per_frame(first_frame_of_patt:first_frame_of_next_patt-1) = pattPosLin(1:end-1);
     patt_num_per_frame(first_frame_of_patt:first_frame_of_next_patt-1) = ones(first_frame_of_next_patt-first_frame_of_patt, 1) * iBar;

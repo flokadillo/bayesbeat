@@ -3,10 +3,23 @@ classdef Data < handle
     properties
         file_list                       % list of files in the dataset
         lab_fln                         % lab file with list of files of dataset
-        bar2file                        % specifies for each bar the file id [nBars x 1]
-        bar2cluster                     % specifies for each bar the cluster id [nBars x 1]
+        patt2file                       % specifies for each pattern the file id [nPatts x 1]
+        patt2cluster                    % specifies for each pattern the cluster id [nPatts x 1]
+        patt2len                        % specifies for each pattern the length [nPatts x 1]
+        patt2meter                      % specifies for each pattern the meter [nPatts x 2]
+        patt2pattclass                  % specifies for each pattern the pattern class [nPatts x 1]
+        pattInfo                        % A structure that stores pattern classes, has n_PattClass elements
+        rhythm_names                    % cell array of rhythmic pattern names
+        rhythm2meter                    % specifies for each rhythm the corresponding meter [R x 2]
+        rhythm2meterID                  % specifies for each rhythm the corresponding meter ID [R x 1]
+        rhythm2pattclass                % specifies for each rhythm the corresponding pattern class [R x 1]
+        rhythm2section                  % specifies for each rhythm the corresponding section [R x 1]
+        rhythm2len_num                  % specifies for each rhythm the corresponding section length numerator [R x 1]
+        rhythm2len_den                  % specifies for each rhythm the corresponding section length denominator [R x 1]
         pr                              % rhythm transition probability matrix [R x R]
         prprior                         % rhythm prior probability matrix [1 x R]
+        B_pr                            % section transition probability matrix [n_PattClass x n_PattClass]
+        B_prprior                       % section prior probability matrix [1 x n_PattClass]    
         meter                           % meter of each file [nFiles x 2]
         beats                           % beats of each file {nFiles x 1}[n_beats 3]
         n_bars                          % number of bars of each file [nFiles x 1]
@@ -14,16 +27,13 @@ classdef Data < handle
         full_bar_beats                  % cell [nFiles x 1] [nBeats x 1] 1 = if beat belongs to full bar
         cluster_fln                     % file with cluster id of each bar
         n_clusters                      % total number of clusters
-        rhythm_names                    % cell array of rhythmic pattern names
-        rhythm2meter                    % specifies for each bar the corresponding meter [R x 2]
-        rhythm2meterID                  % specifies for each bar the corresponding meter ID [R x 1]
-        feats_file_pattern_barPos_dim   % feature values organized by file, pattern, barpos and dim
+        feats_file_pattern_pattPos_dim  % feature values organized by file, pattern, barpos and dim
         feats_silence                   % feature vector of silence
         pattern_size                    % size of one rhythmical pattern {'beat', 'bar'}
         dataset                         % name of the dataset
-        barpos_per_frame                % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
-        pattern_per_frame               % cell array [nFiles x 1] of rhythm of each frame
-        feat_type                       % cell array (features (extension) to be used)
+        pattpos_per_frame               % cell array [nFiles x 1] of bar position (1..bar pos 64th grid) of each frame
+        patt_num_per_frame              % cell array [nFiles x 1] of rhythm of each frame
+        feat_type                       % cell array (features (extension) to be used) 
     end
     
     
@@ -74,32 +84,48 @@ classdef Data < handle
             % creates n_clusters
             if exist(cluster_fln, 'file')
                 C = load(cluster_fln);
-                obj.bar2file = C.bar2file;
-                obj.n_bars = C.file2nBars;
+                obj.patt2file = C.patt2file;
+                obj.patt2len = C.patt2len;
+                obj.patt2meter = C.patt2meter;
+                obj.patt2pattclass = C.patt2pattclass;
+                obj.patt2cluster = C.patt2rhythm;
                 obj.rhythm_names = C.rhythm_names;
-                obj.bar2cluster = C.bar2rhythm;
                 obj.rhythm2meter = C.rhythm2meter;
                 obj.rhythm2meterID = C.rhythm2meterID;
+                obj.rhythm2pattclass = C.rhythm2pattclass;
+                obj.rhythm2section = C.rhythm2section;
+                obj.rhythm2len_num = C.rhythm2len_num;
+                obj.rhythm2len_den = C.rhythm2len_den;
+                obj.B_pr = C.B_pr;
+                obj.B_prprior = C.B_prprior;
+                obj.pr = C.pr;
+                obj.prprior = C.prprior;
+                obj.pattInfo = C.pattInfo; 
+                % obj.n_bars = C.file2nBars;
+                % obj.rhythm_names = C.rhythm_names;
+                % obj.bar2cluster = C.bar2rhythm;
+                % obj.rhythm2meter = C.rhythm2meter;
+                % obj.rhythm2meterID = C.rhythm2meterID;
                 % Adi tala should be 8/4 ideally
                 % if any(ismember(obj.rhythm2meter, [8, 4], 'rows'))   % Does not 
                 %   fprintf('WARNING Data/read_pattern_bars, 8/4 meter is replaced by 8/8\n');
                 %   obj.rhythm2meter = repmat([8,8], size(obj.rhythm2meter, 1), 1);
                 % end
-                if isfield(C, 'pr')
-                    % only newer models
-                    obj.pr = C.pr;
-                end
-                if isfield(C, 'prprior')
-                    % only newer models
-                    obj.prprior = C.prprior;
-                end
+                % if isfield(C, 'pr')
+                %    % only newer models
+                %    obj.pr = C.pr;
+                % end
+                % if isfield(C, 'prprior')
+                %    % only newer models
+                %    obj.prprior = C.prprior;
+                % end
             else
                 error('Cluster file %s not found\n', cluster_fln);
             end
             obj.cluster_fln = cluster_fln;
-            if ismember(0, obj.bar2cluster), obj.bar2cluster = ...
-                    obj.bar2cluster + 1; end
-            obj.n_clusters = max(obj.bar2cluster);
+            if ismember(0, obj.patt2cluster), obj.patt2cluster = ...
+                    obj.patt2cluster + 1; end
+            obj.n_clusters = max(obj.patt2cluster);
             
             % read pattern_size
             if exist('pattern_size', 'var')
@@ -182,12 +208,23 @@ classdef Data < handle
                     fprintf('   WARNING @Data/get_tempo_per_cluster.m: outlier_percentile too high!\n');
                     beat_periods = median(beat_periods);
                 end
-                styleId = unique(obj.bar2cluster(obj.bar2file == iFile));  % This makes the styleID as a sorted array
-                if ~isempty(styleId)
-                    tempo_min_per_cluster(iFile, styleId) = 60/max(beat_periods);
-                    tempo_max_per_cluster(iFile, styleId) = 60/min(beat_periods);
-                end
+                
+                rhythmIDs = unique(obj.patt2cluster(obj.patt2file == iFile));
+                tempo_min_per_cluster(iFile, rhythmIDs) = 60/max(beat_periods);
+                tempo_max_per_cluster(iFile, rhythmIDs) = 60/min(beat_periods);
+                
+%                 if ~isempty(rhythmIDs)
+%                     maxt = cell(1, obj.n_clusters);
+%                     mint = cell(1, obj.n_clusters);
+%                     mint(rhythmIDs) = num2cell(ones(1,length(rhythmIDs))*60/max(beat_periods));
+%                     maxt(rhythmIDs) = num2cell(ones(1,length(rhythmIDs))*60/min(beat_periods));        
+%                     tempo_min_accum(iFile, :) = cellfun(@(x,y) [x y], tempo_min_accum(iFile, :), mint, 'unif', 0);
+%                     tempo_max_accum(iFile, :) = cellfun(@(x,y) [x y], tempo_max_accum(iFile, :), maxt, 'unif', 0);
+%                 end
             end
+%             tempo_min_per_cluster = cellfun(@min, tempo_min_accum);
+%             tempo_max_per_cluster = cellfun(@max, tempo_max_accum);
+            
             if sum(isnan(max(tempo_max_per_cluster))) > 0 % cluster without tempo
                 error('cluster without bar assignment\n');
             end
@@ -205,28 +242,27 @@ classdef Data < handle
                 fprintf('* Extract and organise training data: \n');
                 for iDim = 1:featureDim
                     fprintf('    dim%i\n', iDim);
-                    TrainData = Data.extract_bars_from_feature(obj.file_list, ...
+                    TrainData = Data.extract_patts_from_feature(obj.file_list, ...
                         featureType{iDim}, whole_note_div, frame_length, obj.pattern_size, 1);
-                    temp{iDim} = Data.sort_bars_into_clusters(TrainData.dataPerBar, ...
-                        obj.bar2cluster, obj.bar2file);
+                    temp{iDim} = Data.sort_patts_into_clusters(TrainData.dataPerPatt, ...
+                        obj.patt2cluster, obj.patt2file);
                 end
                 [n_files, ~, bar_grid_max] = size(temp{1});
                 dataPerFile = cell(n_files, obj.n_clusters, bar_grid_max, featureDim);
                 for iDim = 1:featureDim
                     dataPerFile(:, :, :, iDim) = temp{iDim};
                 end
-                obj.barpos_per_frame = TrainData.bar_pos_per_frame;
-                for i=1:length(TrainData.pattern_per_frame)
-                    obj.pattern_per_frame{i} = TrainData.pattern_per_frame{i};
-                    obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})) = obj.bar2cluster(obj.pattern_per_frame{i}(~isnan(obj.pattern_per_frame{i})));
+                obj.pattpos_per_frame = TrainData.patt_pos_per_frame;
+                for i=1:length(TrainData.patt_num_per_frame)
+                    obj.patt_num_per_frame{i} = TrainData.patt_num_per_frame{i};
+                    obj.patt_num_per_frame{i}(~isnan(obj.patt_num_per_frame{i})) = obj.patt2cluster(obj.patt_num_per_frame{i}(~isnan(obj.patt_num_per_frame{i})));
                 end
-                barpos_per_frame = obj.barpos_per_frame;
-                pattern_per_frame = obj.pattern_per_frame;
-                save(featuresFln, 'dataPerFile', 'barpos_per_frame', 'pattern_per_frame', '-v7');
+                pattpos_per_frame = obj.pattpos_per_frame;
+                patt_num_per_frame = obj.patt_num_per_frame;
+                save(featuresFln, 'dataPerFile', 'pattpos_per_frame', 'patt_num_per_frame', '-v7');
                 fprintf('    Saved organized features to %s\n', featuresFln);
             end
-            obj.feats_file_pattern_barPos_dim = dataPerFile;
-            
+            obj.feats_file_pattern_pattPos_dim = dataPerFile;
         end
         
         
@@ -326,7 +362,7 @@ classdef Data < handle
         
         Output = extract_patts_from_feature(source, featExt, barGrid, barGrid_eff, framelength, pattern_size, dooutput);
         
-        dataPerFile = sort_bars_into_clusters(dataPerBar, clusterIdx, bar2file);
+        dataPerFile = sort_patts_into_clusters(dataPerPatt, clusterIdx, patt2file);
         
         [ data, error ] = load_annotations_bt( filename, ann_type );
     end

@@ -24,7 +24,7 @@ Params.system = 'PF_SectionTracker';
 % Params.dataset = 'CMCMDa_v2';
 % Params.dataset = 'HMDs';
 % Params.dataset = 'HMDf';
-Params.dataset = 'HMDf';
+Params.dataset = 'HMDl';
 
 % Path settings
 if exist('base_path', 'var')
@@ -73,7 +73,7 @@ Params.N = 15;
 Params.R = 2;       % 1 pattern per section of a meter
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid
-Params.whole_note_div = 64; 
+Params.whole_note_div = 128; 
 % Number of grid points of one pattern per meter
 % Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
 % Length of rhythmic patterns {beat', 'bar'}
@@ -252,7 +252,7 @@ Params.section_names = {{'3matra1', '2matra1', '2matra2'}, ...
     {'2matra1', '2matra2', '2matra3', '2matra4', '2matra5', '2matra6'},...
     {'4matra1', '4matra2', '4matra3', '4matra4'}};
 Params.min_tempo = [10 10 10 10];
-Params.max_tempo = [320 320 320 320];
+Params.max_tempo = [370 370 370 370];
 Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
 
 % **Cretan

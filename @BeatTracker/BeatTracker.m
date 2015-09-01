@@ -118,9 +118,7 @@ classdef BeatTracker < handle
                             obj.train_data.rhythm2meter, ...
                             obj.train_data.rhythm_names);
                     case 'PF'
-                        obj.model = PF(obj.Params, ...
-                            obj.train_data.rhythm2meter, ...
-                            obj.train_data.rhythm_names);
+                        obj.model = PF(obj.Params, obj.train_data);
                     otherwise
                         error('BeatTracker.init_model: inference method %s not known', ...
                             obj.Params.inferenceMethod);
@@ -143,6 +141,14 @@ classdef BeatTracker < handle
             if ~isempty(obj.train_data.prprior)
                 % if prprior is given in cluster file save it here
                 obj.Params.prprior = obj.train_data.prprior;
+            end
+            if ~isempty(obj.train_data.B_pr)
+                % if B_pr is given in cluster file save it here
+                obj.Params.pr = obj.train_data.B_pr;
+            end
+            if ~isempty(obj.train_data.B_prprior)
+                % if B_prprior is given in cluster file save it here
+                obj.Params.prprior = obj.train_data.B_prprior;
             end
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
@@ -189,7 +195,7 @@ classdef BeatTracker < handle
         
         function train_model(obj)
             if isempty(obj.init_model_fln)
-                if length(obj.Params.min_tempo) == size(obj.Params.meters, 2);
+                if length(obj.Params.min_tempo) == size(obj.Params.meters, 1);
                     min_tempo_param_per_rhythm = obj.Params.min_tempo(obj.train_data.rhythm2meterID);
                 elseif length(obj.Params.min_tempo) == 1
                     min_tempo_param_per_rhythm = repmat(obj.Params.min_tempo, 1, obj.Params.R);
@@ -199,7 +205,7 @@ classdef BeatTracker < handle
                     disp('Taking only the first value of min_tempo...');
                     min_tempo_param_per_rhythm = repmat(obj.Params.min_tempo(1),1,obj.Params.R);
                 end                
-                if length(obj.Params.max_tempo) == size(obj.Params.meters, 2);
+                if length(obj.Params.max_tempo) == size(obj.Params.meters, 1);
                     max_tempo_param_per_rhythm = obj.Params.max_tempo(obj.train_data.rhythm2meterID);
                 elseif length(obj.Params.max_tempo) == 1
                     max_tempo_param_per_rhythm = repmat(obj.Params.max_tempo,1,obj.Params.R);
@@ -249,8 +255,7 @@ classdef BeatTracker < handle
                 else
                     obj.model = obj.model.make_observation_model(obj.train_data);
                 end
-                obj.model = obj.model.make_initial_distribution(...
-                    [tempo_min_per_cluster; tempo_max_per_cluster]);
+                obj.model = obj.model.make_initial_distribution();
                 
                 fln = fullfile(obj.sim_dir, 'model.mat');
                 switch obj.inferenceMethod(1:2)
@@ -276,31 +281,18 @@ classdef BeatTracker < handle
         
         function obj = train_transition_model(obj, tempo_min_per_cluster, ...
                 tempo_max_per_cluster)
-            if isfield(obj.Params, 'cluster_transitions_fln') && ...
-                    exist(obj.Params.cluster_transitions_fln, 'file')
-                % load pr from separate file
-                pr = dlmread(obj.Params.cluster_transitions_fln);
-            else
-                % use pr of config file
-                pr = obj.Params.pr;
-            end
-            if isfield(obj.Params, 'cluster_prior_fln') && ...
-                    exist(obj.Params.cluster_prior_fln, 'file')
-                % load pr from separate file
-                prprior = dlmread(obj.Params.cluster_transitions_fln);
-            else
-                % use pr of config file
-                prprior = obj.Params.prprior;
-            end
+            pr = obj.train_data.pr;
+            prprior = obj.train_data.prprior;
             switch obj.inferenceMethod(1:2)
                 case 'HM'
+                    % To be corrected!!
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
                         obj.Params.alpha, obj.Params.pn, pr, prprior);
                 case 'PF'
                     obj.model = obj.model.make_transition_model(...
                         tempo_min_per_cluster, tempo_max_per_cluster, ...
-                        obj.Params.alpha, obj.Params.sigmaN, pr, prprior);
+                        obj.Params, obj.train_data);
             end
         end
         

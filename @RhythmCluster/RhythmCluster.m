@@ -32,6 +32,8 @@ classdef RhythmCluster < handle
         rhythm2section      % [n_clust_tot x 1] storing the mapping between cluster ID and section ID
         rhythm2pattclass    % [n_clust_tot x 1] storing the mapping between cluster ID and combined pattern ID
         rhythm_names        % {n_clust_tot x 1} strings
+        rhythm2len_num      % [n_clust_tot x 1] storing the mapping between cluster ID and section length numerator
+        rhythm2len_den      % [n_clust_tot x 1] storing the mapping between cluster ID and section length denominator
         cluster_transition_matrix  % The transition matrix between clusters
         cluster_prior              % Cluster prior probability vector
         section_transition_matrix  % The transition matrix between sections
@@ -312,6 +314,8 @@ classdef RhythmCluster < handle
             obj.rhythm2meterID = zeros(obj.n_cluster_tot, 1);
             obj.rhythm2section = zeros(obj.n_cluster_tot, 1);
             obj.rhythm2pattclass = zeros(obj.n_cluster_tot, 1);
+            obj.rhythm2len_num = zeros(obj.n_cluster_tot, 1);
+            obj.rhythm2len_den = zeros(obj.n_cluster_tot, 1);
             
             for iPatt = 1:length(obj.pattInfo.ID)
                 idx_i = (patt_id == iPatt);
@@ -331,6 +335,10 @@ classdef RhythmCluster < handle
                         = repmat(obj.pattInfo.class(iPatt, 3), ...
                         obj.pattInfo.n_clusters(iPatt), 1);
                     obj.rhythm2pattclass(p:p+obj.pattInfo.n_clusters(iPatt)-1, 1) = iPatt;
+                    obj.rhythm2len_den(p:p+obj.pattInfo.n_clusters(iPatt)-1, 1) ...
+                        = repmat(obj.pattInfo.class(iPatt, 2), ...
+                        obj.pattInfo.n_clusters(iPatt), 1);
+                    obj.rhythm2len_num(p:p+obj.pattInfo.n_clusters(iPatt)-1, 1) = obj.pattInfo.len(iPatt);
                     p = p + obj.pattInfo.n_clusters(iPatt);
                 else
                     ctrs(p, :) = mean(S(idx_i, :));
@@ -339,6 +347,8 @@ classdef RhythmCluster < handle
                     obj.rhythm2meterID(p) = find(ismember(meters, obj.pattInfo.class(iPatt, 1:2), 'rows'));
                     obj.rhythm2section(p) = obj.pattInfo.class(iPatt, 3);
                     obj.rhythm2pattclass(p) = iPatt;
+                    obj.rhythm2len_num(p) = obj.pattInfo.len(iPatt);
+                    obj.rhythm2len_den(p) = obj.obj.pattInfo.class(iPatt, 2);
                     p=p+1;
                 end
             end
@@ -575,10 +585,13 @@ classdef RhythmCluster < handle
             prprior = obj.cluster_prior;
             B_pr = obj.section_transition_matrix;
             B_prprior = obj.section_prior;
+            rhythm2len_num = obj.rhythm2len_num;
+            rhythm2len_den = obj.rhythm2len_den;
             save(obj.clusters_fln, '-v7.3', ...
                 'rhythm2meter', 'rhythm2meterID', 'rhythm2section', 'rhythm2pattclass',...
-                'patt2file', 'patt2rhythm', 'patt2sec', 'patt2meter', 'patt2pattclass', ...
-                'patt2len', 'rhythm_names', 'pattInfo', 'pr', 'prprior', 'B_pr', 'B_prprior');
+                'rhythm2len_num', 'rhythm2len_den', 'patt2file', 'patt2rhythm', ...
+                'patt2sec', 'patt2meter', 'patt2pattclass', 'patt2len', 'rhythm_names', ...
+                'pattInfo', 'pr', 'prprior', 'B_pr', 'B_prprior');
             fprintf('    Saved pattern variables to %s\n', obj.clusters_fln);
         end
         

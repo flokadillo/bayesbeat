@@ -5,14 +5,22 @@ classdef PF < handle
         Meff                        % number of positions per rhythm [R x 1]
         N                           % number of tempo states
         R                           % number of rhythmic pattern states
+        V                           % number of section pattern states
         T                           % number of meters
         pr                          % probability of a switch in rhythmic pattern
         prprior                     % prior probability of a pattern
+        B_pr                        % probability of a switch in a section
+        B_prprior                   % prior probability of a section
         frames_per_beat             % cell arrays with tempi relative to the framerate
         % frames_per_beat{1} is a row vector with tempo
         % values in [audio frames per beat] for pattern 1
         rhythm2meter                % assigns each rhythmic pattern to a meter [R x 1]
         rhythm2meterID              % assigns each rhythmic pattern to a meter state (better if present)
+        rhythm2pattclass            % assigns each rhythmic pattern to a pattern class 
+        rhythm2section              % assigns each rhythmic pattern to a section
+        rhythm2len_num              % assigns each rhythmic pattern to the length (numerator)
+        rhythm2len_den              % assigns each rhythmic pattern to the length (denominator)
+        pattInfo                    % Pattern info structure
         rhythm2meter_state          % assigns each rhythmic pattern to a
         % meter state (1, 2, ...)  - var not needed anymore but keep due to
         % compatibility
@@ -30,6 +38,7 @@ classdef PF < handle
         initial_m                   % initial value of m for each particle
         initial_n                   % initial value of n for each particle
         initial_r                   % initial value of r for each particle
+        initial_v                   % initial value of v for each particle
         nParticles                  % number of particles
         particles
         particles_grid              % particle grid for viterbi
@@ -59,27 +68,33 @@ classdef PF < handle
     end
     
     methods
-        function obj = PF(Params, rhythm2meter, rhythm_names)
+        function obj = PF(Params, data)
             obj.M = Params.M;
             obj.N = Params.N;
-            obj.R = Params.R;
+            obj.R = Params.R * length(data.pattInfo.ID);
+            obj.V = length(data.pattInfo.ID);
             obj.T = size(Params.meters, 2);
             obj.nParticles = Params.nParticles;
             %             obj.sigma_N = Params.sigmaN; % moved this to
             %             make_transition_model
-            obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ...
-                ./ Params.meters(2, :)));
+            obj.barGrid = max(Params.whole_note_div * data.rhythm2len_num ...
+                ./ data.rhythm2len_den);
             obj.frame_length = Params.frame_length;
             obj.dist_type = Params.observationModelType;
-            obj.rhythm2meter = rhythm2meter;
-            for iR = 1:obj.R
-                obj.rhythm2meterID(iR) = find(ismember(Params.meters',rhythm2meter(iR,:),'rows'));
-            end
-            obj.pr = Params.pr;
-            obj.prprior = Params.prprior;
-            bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
-            obj.Meff = round((bar_durations) ...
-                * (Params.M ./ (max(bar_durations)))); 
+            obj.rhythm2meter = data.rhythm2meter;
+            obj.rhythm2meterID = data.rhythm2meterID;
+            obj.rhythm2pattclass = data.rhythm2pattclass;
+            obj.rhythm2section = data.rhythm2section;
+            obj.rhythm2len_num = data.rhythm2len_num;
+            obj.rhythm2len_den = data.rhythm2len_den;
+            obj.pr = data.pr;
+            obj.prprior = data.prprior;
+            obj.B_pr = data.B_pr;
+            obj.B_prprior = data.B_prprior;
+            obj.pattInfo = data.pattInfo;
+            patt_durations = data.rhythm2len_num ./ data.rhythm2len_den;
+            obj.Meff = round((patt_durations) ...
+                * (Params.M ./ (max(patt_durations)))); 
             obj.Meff = obj.Meff(:);
             obj.ratio_Neff = Params.ratio_Neff;
             obj.resampling_scheme = Params.resampling_scheme;
@@ -90,7 +105,7 @@ classdef PF < handle
             obj.cluster_splitting_thr = Params.cluster_splitting_thr;
             obj.n_max_clusters = Params.n_max_clusters;
             obj.n_initial_clusters = Params.n_initial_clusters;
-            obj.rhythm_names = rhythm_names;
+            obj.rhythm_names = data.rhythm_names;
             obj.pattern_size = Params.pattern_size;
             obj.resampling_interval = Params.res_int;
             obj.use_silence_state = Params.use_silence_state;
@@ -107,17 +122,18 @@ classdef PF < handle
             end
         end
         
-        function obj = make_initial_distribution(obj, tempo_per_cluster)
+        function obj = make_initial_distribution(obj)
             
             % TODO: Implement prior initial distribution for tempo
             obj.initial_m = zeros(obj.nParticles, 1);
             obj.initial_n = zeros(obj.nParticles, 1);
             obj.initial_r = zeros(obj.nParticles, 1);
+            obj.initial_v = zeros(obj.nParticles, 1);
             
             % use pseudo random monte carlo
             % n_grid = min(obj.minN):max(obj.maxN);
             % n_m_cells = floor(obj.nParticles / length(n_grid));
-            m_grid_size_init = min(obj.Meff ./ obj.rhythm2meter(:, 1))/8;  % 8th of a beat resolution for initial grid
+            m_grid_size_init = min(obj.Meff ./ obj.rhythm2len_num)/8;  % 8th of a beat resolution for initial grid
             m_grid_points = ceil(sum(obj.Meff) / m_grid_size_init);
             n_grid_points = floor(obj.nParticles / m_grid_points);
             n_inv_grid = linspace(1/max(obj.maxN), 1/min(obj.minN), n_grid_points);
@@ -167,6 +183,7 @@ classdef PF < handle
                 obj.initial_m(c:end) = m_between_0_and_1 .* ...
                     (obj.Meff(obj.initial_r(c:end))-1) + 1;
             end
+            obj.initial_v = obj.rhythm2pattclass(obj.initial_r);
             if (obj.patt_trans_opt == 2 || obj.patt_trans_opt == 3)
                 obj.pattWtMatInit = ones(obj.nParticles,1) * obj.prprior;  % Use from prior specified
                 obj.currBarStartInit = ones(obj.nParticles,1);  % The curr bar started just now
@@ -174,10 +191,11 @@ classdef PF < handle
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
-                alpha, sigmaN, pr, prprior)
-            position_states_per_beat = obj.Meff ./ obj.rhythm2meter(:, 1);
-            obj.sigma_N = sigmaN;
+                params, data)
+            position_states_per_beat = obj.Meff ./ obj.rhythm2len_num(:, 1);
+            obj.sigma_N = params.sigmaN;
             % save pattern change probability and save as matrix [RxR]
+            pr = data.pr;
             if (length(pr(:)) == 1) && (obj.R > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
@@ -191,7 +209,7 @@ classdef PF < handle
             else
                 error('p_r has wrong dimensions!\n');
             end
-            obj.prprior = prprior;
+            obj.prprior = data.prprior;
             % convert from BPM into barpositions / audio frame
             % obj.minN = floor(position_states_per_beat .* obj.frame_length .* minTempo ./ 60);
             obj.minN = 0.8*position_states_per_beat .* obj.frame_length .* minTempo ./ 60; % 20% allowance on lower side
@@ -232,9 +250,11 @@ classdef PF < handle
         function obj = make_observation_model(obj, train_data)
             
             % Create observation model
-            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
-                train_data.feat_type, obj.use_silence_state);
+%             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
+%                 obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
+%                 train_data.feat_type, obj.use_silence_state);
+            obj.obs_model = ObservationModel(obj.dist_type, train_data, ...
+                 obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, obj.use_silence_state);
             
             % Train model
             obj.obs_model = obj.obs_model.train_model(train_data);

@@ -24,10 +24,9 @@ classdef ObservationModel
     end
     
     methods
-        function obj = ObservationModel(dist_type, rhythm2meter, ...
-                M, N, R, barGrid, Meff, feat_type, ...
-                use_silence_state, position_state_map, rhythm_state_map)
-            obj.rhythm2meter = rhythm2meter;
+        function obj = ObservationModel(dist_type, data, ...
+                M, N, R, barGrid, Meff, use_silence_state, position_state_map, rhythm_state_map)
+            obj.rhythm2meter = data.rhythm2meter;
             obj.dist_type = dist_type;
             obj.lik_func_handle = set_lik_func_handle(obj);
             obj.M = M;
@@ -35,8 +34,8 @@ classdef ObservationModel
             obj.N = N;
             obj.R = R;
             obj.barGrid = barGrid;
-            bar_durations = obj.rhythm2meter(:, 1) ./ obj.rhythm2meter(:, 2);
-            obj.barGrid_eff = round(bar_durations .* obj.barGrid ./ max(bar_durations));
+            patt_durations = data.rhythm2len_num ./ data.rhythm2len_den;
+            obj.barGrid_eff = round(patt_durations .* obj.barGrid ./ max(patt_durations));
             obj.use_silence_state = use_silence_state;
             % create mapping from states to gmms
             if exist('position_state_map', 'var')
@@ -45,14 +44,14 @@ classdef ObservationModel
                 obj = obj.make_state2obs_idx(position_state_map, ...
                     rhythm_state_map);
             end
-            obj.feat_type = feat_type;
+            obj.feat_type = data.feat_type;
         end
         
         params = fit_distribution(obj, data_file_pattern_barpos_dim)
         
         function obj = train_model(obj, train_data)
             % data_file_pattern_barpos_dim: cell [n_files x n_patterns x barpos x feat_dim]
-            obj.learned_params = obj.fit_distribution(train_data.feats_file_pattern_barPos_dim);
+            obj.learned_params = obj.fit_distribution(train_data.feats_file_pattern_pattPos_dim);
             if obj.use_silence_state
                 temp{1} = train_data.feats_silence;
                 obj.learned_params(obj.R+1, 1) = obj.fit_distribution(temp);
