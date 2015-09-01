@@ -48,7 +48,7 @@ classdef HiddenMarkovModel < handle
     
     
     methods (Access = protected)
-        function bestpath = viterbi_matlab(obj, obs_lik)
+        function path = viterbi_matlab(obj, obs_lik)
             % [ bestpath, delta, loglik ] = viterbi_cont_int( A, obslik, y,
             % init_distribution)
             % Implementation of the Viterbi algorithm
@@ -73,7 +73,6 @@ classdef HiddenMarkovModel < handle
                 % store psi as 16 bit unsigned integer
                 psi_mat = zeros(obj.n_states, n_frames, 'uint16');
             end
-            perc = round(0.1*n_frames);
             i_row = 1:obj.n_states;
             j_col = 1:obj.n_states;
             for i_frame = 1:n_frames
@@ -86,34 +85,30 @@ classdef HiddenMarkovModel < handle
                 delta = obs_lik(obj.obs_model.gmm_from_state, i_frame) .* delta';
                 % normalize
                 delta = delta / sum(delta);
-                if rem(i_frame, perc) == 0
-                    fprintf('.');
-                end
             end
             % Backtracing
-            bestpath = zeros(n_frames, 1);
-            [m, bestpath(n_frames)] = max(delta);
+            path = zeros(n_frames, 1);
+            [m, path(n_frames)] = max(delta);
             maxIndex = find(delta == m);
-            bestpath(n_frames) = round(median(maxIndex));
+            path(n_frames) = round(median(maxIndex));
             for i_frame=n_frames-1:-1:1
-                bestpath(i_frame) = psi_mat(bestpath(i_frame+1), i_frame+1);
+                path(i_frame) = psi_mat(path(i_frame+1), i_frame+1);
             end
-            fprintf(' done\n');
         end
         
         function path = viterbi_mex(obj, obs_lik)
             % convert transition matrix to three vectors containing the
             % from_state, to_state and the transition probability
             [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
-            path = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
-                obj.initial_prob, obs_lik, obj.obs_model.gmm_from_state);
-            fprintf(' done\n');
+            path = obj.viterbi_cpp(state_ids_i, state_ids_j, trans_prob_ij, ...
+                obj.init_distribution, obs_lik, obj.obs_model.gmm_from_state);
         end
         
     end
     
     methods (Static)
-        [path] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
+        
+        [path] = viterbi_cpp(state_ids_i, state_ids_j, trans_prob_ij, ...
                 initial_prob, obs_lik, gmm_from_state);
     end
     

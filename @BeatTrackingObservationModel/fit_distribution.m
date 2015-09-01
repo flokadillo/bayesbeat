@@ -17,6 +17,8 @@ Params = cell(n_patterns, n_position_cells);
 switch obj.dist_type
     case 'MOG'
         options = statset('MaxIter', 200);
+        n_replicates = 1;
+        fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
 end
 for i_pattern=1:n_patterns
     for i_pos=1:n_position_cells
@@ -36,7 +38,7 @@ for i_pattern=1:n_patterns
             case 'MOG'
                 Params{i_pattern, i_pos} = gmdistribution.fit(feature_values, ...
                     2, 'Options', options, 'Regularize', 1e-10, ...
-                    'Replicates', 10);
+                    'Replicates', n_replicates);
             otherwise
                 error('distribution type %s unknown !', obj.dist_type);
         end

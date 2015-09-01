@@ -9,6 +9,7 @@ classdef BeatTrackingStateSpace < handle
         n_tempo_states
         n_beats_from_pattern
         meter_from_pattern
+        pattern_names
         n_position_states       % cell array with n_patterns cells.
         %                           Each cell contains a vector of length
         %                           n_tempo_states. n_positions are counted per
@@ -34,7 +35,8 @@ classdef BeatTrackingStateSpace < handle
     methods
         function obj = BeatTrackingStateSpace(n_patterns, max_n_tempo_states, ...
                 max_position, min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
-                meter_from_pattern, frame_length, use_silence_state, store_proximity)
+                meter_from_pattern, frame_length, pattern_names, ...
+                use_silence_state, store_proximity)
             % store properties
             obj.n_patterns = n_patterns;
             obj.max_n_tempo_states = max_n_tempo_states;
@@ -43,6 +45,7 @@ classdef BeatTrackingStateSpace < handle
             obj.max_tempo_bpm = max_tempo_bpm;
             obj.n_beats_from_pattern = n_beats_from_pattern;
             obj.meter_from_pattern = meter_from_pattern;
+            obj.pattern_names = pattern_names;
             obj.frame_length = frame_length;
             obj.use_silence_state = use_silence_state;
             obj.store_proximity = store_proximity;
@@ -53,6 +56,16 @@ classdef BeatTrackingStateSpace < handle
             position = obj.position_from_state(state);
             tempo = obj.tempo_from_state(state);
             pattern = obj.pattern_from_state(state);
+        end
+        
+        function [bpm] = convert_tempo_to_bpm(obj, tempo)
+            pos_per_beat = obj.max_position(1) / obj.n_beats_from_pattern(1);
+            bpm = 60 * tempo / (pos_per_beat * obj.frame_length);
+        end
+        
+        function [tempo] = convert_tempo_from_bpm(obj, bpm)
+            pos_per_beat = obj.max_position(1) / obj.n_beats_from_pattern(1);
+            tempo = bpm * pos_per_beat * obj.frame_length / 60;
         end
     end
     

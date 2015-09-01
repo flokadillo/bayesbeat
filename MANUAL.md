@@ -89,8 +89,6 @@ Number of rhythmic pattern states to be used
 Number of position grid points per whole note. This value determines how many probability distributions (e.g., GMMs) are fitted per whole note in a bar. This is important for the observation model, as parameters are tied within this grid. For example, *whole_note_div = 64* means, that a 4/4 bar will be divided into 64 cells, and for each of the cells there will be one probability distribution (e.g., GMM) describing the features within this cell.
 * `pattern_size` = 'bar'  
 Cycle length of a rhythmic pattern {'beat', 'bar'} 
-* `init_n_gauss` = 0  
-Model initial distribution over tempo states by mixture of init_n_gauss Gaussians.  
 * `use_silence_state` = 0
 Use one state that represents silence. From there, you can go to the first position of all rhythmic patterns. Currently, you can only enter a silence state at the end of a rhythmic pattern.  
 * `p2s` = 0.00001  
