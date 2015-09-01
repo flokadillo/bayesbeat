@@ -44,9 +44,6 @@ classdef HiddenMarkovModel < handle
             end
         end
         
-        function path = forward(obj, observations)
-            
-        end
     end
     
     
@@ -66,64 +63,58 @@ classdef HiddenMarkovModel < handle
             %
             % 26.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
-            nFrames = size(obs_lik, 2);            
-            % don't compute states that are irreachable:
-            [row, col] = find(obj.trans_model.A);
-            maxState = max([row; col]);
-            minState = min([row; col]);
-            nStates = maxState + 1 - minState;
+            n_frames = size(obs_lik, 2);            
             delta = obj.init_distribution;
-            valid_states = false(maxState, 1);
-            valid_states(unique(col)) = true;
-            delta(~valid_states) = 0;
-            delta = delta(minState:maxState);
-            A = obj.trans_model.A(minState:maxState, minState:maxState);
+            A = obj.trans_model.A;
             if length(delta) > 65535
-                psi_mat = zeros(nStates, nFrames, 'uint32');  % 32 bit unsigned integer
+                % store psi as 32 bit unsigned integer
+                psi_mat = zeros(obj.n_states, n_frames, 'uint32');  
             else
-                psi_mat = zeros(nStates, nFrames, 'uint16'); % 16 bit unsigned integer
+                % store psi as 16 bit unsigned integer
+                psi_mat = zeros(obj.n_states, n_frames, 'uint16');
             end
-            perc = round(0.1*nFrames);
-            i_row = 1:nStates;
-            j_col = 1:nStates;
-            for iFrame = 1:nFrames
-               
-                % delta = prob of the best sequence ending in state j at time t, when observing y(1:t)
-                % D = matrix of probabilities of best sequences with state i at time
-                % t-1 and state j at time t, when bserving y(1:t)
-                % create a matrix that has the same value of delta for all entries with
-                % the same state i (row)
-                % same as repmat(delta, 1, col)
-                D = sparse(i_row, j_col, delta(:), nStates, nStates);
-                [delta_max, psi_mat(:, iFrame)] = max(D * A);
+            perc = round(0.1*n_frames);
+            i_row = 1:obj.n_states;
+            j_col = 1:obj.n_states;
+            for i_frame = 1:n_frames
+                % create a matrix that has the same value of delta for all 
+                % entries with the same state i (row)
+                % (same as repmat(delta, 1, col), but faster)
+                D = sparse(i_row, j_col, delta(:), obj.n_states, obj.n_states);
+                [delta, psi_mat(:, i_frame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                O = obs_lik(obj.obs_model.gmm_from_state(minState:maxState), ...
-                    iFrame);
-                delta_max = O .* delta_max';
+                delta = obs_lik(obj.obs_model.gmm_from_state, i_frame) .* delta';
                 % normalize
-                norm_const = sum(delta_max);
-                delta = delta_max / norm_const;
-                if rem(iFrame, perc) == 0
+                delta = delta / sum(delta);
+                if rem(i_frame, perc) == 0
                     fprintf('.');
                 end
             end
             % Backtracing
-            bestpath = zeros(nFrames,1);
-            [ m, bestpath(nFrames)] = max(delta);
+            bestpath = zeros(n_frames, 1);
+            [m, bestpath(n_frames)] = max(delta);
             maxIndex = find(delta == m);
-            bestpath(nFrames) = round(median(maxIndex));
-            for iFrame=nFrames-1:-1:1
-                bestpath(iFrame) = psi_mat(bestpath(iFrame+1),iFrame+1);
+            bestpath(n_frames) = round(median(maxIndex));
+            for i_frame=n_frames-1:-1:1
+                bestpath(i_frame) = psi_mat(bestpath(i_frame+1), i_frame+1);
             end
-            % add state offset
-            bestpath = bestpath + minState - 1;
             fprintf(' done\n');
         end
         
         function path = viterbi_mex(obj, obs_lik)
-            
+            % convert transition matrix to three vectors containing the
+            % from_state, to_state and the transition probability
+            [state_ids_i, state_ids_j, trans_prob_ij] = find(obj.trans_model.A);
+            path = obj.viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
+                obj.initial_prob, obs_lik, obj.obs_model.gmm_from_state);
+            fprintf(' done\n');
         end
         
+    end
+    
+    methods (Static)
+        [path] = viterbi(state_ids_i, state_ids_j, trans_prob_ij, ...
+                initial_prob, obs_lik, gmm_from_state);
     end
     
 end

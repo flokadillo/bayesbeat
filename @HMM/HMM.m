@@ -269,9 +269,9 @@ classdef HMM
             if obj.hmm_is_corrupt
                 error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
             end
-%             HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
-%                 obj.initial_prob);
-%             hidden_state_sequence = HMM.viterbi(y, 0);
+            HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
+                obj.initial_prob);
+            hidden_state_sequence = HMM.viterbi(y, 1);
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             if strcmp(inference_method, 'HMM_forward')
@@ -285,19 +285,19 @@ classdef HMM
                     % use viterbi with belief functions
                     hidden_state_sequence = obj.viterbi_iteration(obs_lik, ...
                         belief_func);
-                else
-                    if obj.use_mex_viterbi
-                        try
-                            hidden_state_sequence = ...
-                                obj.viterbi_decode_mex(obs_lik, fname);
-                        catch
-                            fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
-                            hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
-                        end
-                    else
-                        hidden_state_sequence = obj.viterbi_decode(obs_lik, ...
-                            fname);
-                    end
+%                 else
+%                     if obj.use_mex_viterbi
+%                         try
+%                             hidden_state_sequence = ...
+%                                 obj.viterbi_decode_mex(obs_lik, fname);
+%                         catch
+%                             fprintf('\n    WARNING: viterbi.cpp has to be compiled, using the pure MATLAB version instead\n');
+%                             hidden_state_sequence = obj.viterbi_decode(obs_lik, fname);
+%                         end
+%                     else
+%                         hidden_state_sequence = obj.viterbi_decode(obs_lik, ...
+%                             fname);
+%                     end
                 end
             elseif strcmp(inference_method, 'HMM_viterbi_lag')
                 hidden_state_sequence = obj.viterbi_fixed_lag_decode(obs_lik, 2);
