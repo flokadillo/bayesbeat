@@ -78,7 +78,7 @@ number of clusters for the kmeans clustering algorithm.
 If n_depends_on_r=true, then use different tempo limits for each rhythm state.
 * `frame_length` = 0.02  
 Audio frame length [sec] of the system  
-* `M = 1600  
+* `M = 1600`  
 Maximum position state (used for the meter with the longest duration)  
 * `N = nan`  
 Number of tempo states. This setting is only relevant for the '2015' transition model. If set to *nan*
@@ -89,8 +89,6 @@ Number of rhythmic pattern states to be used
 Number of position grid points per whole note. This value determines how many probability distributions (e.g., GMMs) are fitted per whole note in a bar. This is important for the observation model, as parameters are tied within this grid. For example, *whole_note_div = 64* means, that a 4/4 bar will be divided into 64 cells, and for each of the cells there will be one probability distribution (e.g., GMM) describing the features within this cell.
 * `pattern_size` = 'bar'  
 Cycle length of a rhythmic pattern {'beat', 'bar'} 
-* `init_n_gauss` = 0  
-Model initial distribution over tempo states by mixture of init_n_gauss Gaussians.  
 * `use_silence_state` = 0
 Use one state that represents silence. From there, you can go to the first position of all rhythmic patterns. Currently, you can only enter a silence state at the end of a rhythmic pattern.  
 * `p2s` = 0.00001  
@@ -101,9 +99,9 @@ Probability of leaving the silence state
 Probability of rhythmic pattern change  
 * `correct_beats` = 0  
 Correct beat position afterwards by shifting it to a loacl max of the onset detection function. This hwas used in the RNNBeatTracker [1] to correct for the rough discretisation of the observation model.
-* `min_tempo` = 60  
+* `min_tempo_bpm` = 60  
 Lower tempo limit in BPM (same for all rhythmic patterns).
-* `max_tempo` = 230  
+* `max_tempo_bpm` = 230  
 Upper tempo limit in BPM (same for all rhythmic patterns).
 * `learn_tempo_ranges` = 1
 Learn tempo ranges from training data. If *min_tempo* and *max_tempo* are set, all ranges are restricted to be between *min_tempo* and *max_tempo*  

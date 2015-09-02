@@ -218,8 +218,12 @@ classdef TransitionModel
                 for ri = 1:obj.R
                     n_const = diag(ones(obj.N, 1) * (1-sum(obj.pn)), 0);
                     % Also adjust for values at minN and maxN
-                    n_const(obj.minN(ri), obj.minN(ri)) = 1 - obj.pn(1);
-                    n_const(obj.maxN(ri),obj.maxN(ri)) = 1 - obj.pn(2);
+                    if obj.maxN(ri) > obj.minN(ri)
+                        n_const(obj.minN(ri), obj.minN(ri)) = 1 - obj.pn(1);
+                        n_const(obj.maxN(ri),obj.maxN(ri)) = 1 - obj.pn(2);
+                    elseif obj.maxN(ri) == obj.minN(ri)
+                        n_const(obj.minN(ri), obj.minN(ri)) = 1;
+                    end
                     n_up = diag(ones(obj.N, 1) * obj.pn(1), 1);
                     n_down = diag(ones(obj.N, 1) * obj.pn(2), -1);
                     % add the three matrices
