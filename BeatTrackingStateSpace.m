@@ -6,7 +6,6 @@ classdef BeatTrackingStateSpace < handle
         n_patterns
         n_states
         max_n_tempo_states
-        n_tempo_states
         n_beats_from_pattern
         meter_from_pattern
         pattern_names
@@ -33,14 +32,14 @@ classdef BeatTrackingStateSpace < handle
     end
     
     methods
-        function obj = BeatTrackingStateSpace(n_patterns, max_n_tempo_states, ...
-                max_position, min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
+        function obj = BeatTrackingStateSpace(State_space_params, ...
+                min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
                 meter_from_pattern, frame_length, pattern_names, ...
                 use_silence_state, store_proximity)
             % store properties
-            obj.n_patterns = n_patterns;
-            obj.max_n_tempo_states = max_n_tempo_states;
-            obj.max_position = max_position;
+            obj.n_patterns = State_space_params.n_patterns;
+            obj.max_n_tempo_states = State_space_params.n_tempi;
+            obj.max_position = State_space_params.max_positions;
             obj.min_tempo_bpm = min_tempo_bpm;
             obj.max_tempo_bpm = max_tempo_bpm;
             obj.n_beats_from_pattern = n_beats_from_pattern;
@@ -49,6 +48,9 @@ classdef BeatTrackingStateSpace < handle
             obj.frame_length = frame_length;
             obj.use_silence_state = use_silence_state;
             obj.store_proximity = store_proximity;
+            if obj.use_silence_state
+                obj.n_states = obj.n_states + 1;
+            end
         end
         
         function [position, tempo, pattern] = decode_state(obj, state)

@@ -3,27 +3,25 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
     %   Detailed explanation goes here
     
     properties
-        
+        tempi_from_pattern
     end
     
     methods
-        function obj = BeatTrackingStateSpace2015(n_patterns, max_n_tempo_states, ...
-                max_position, min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
+        function obj = BeatTrackingStateSpace2015(State_space_params, ...
+                min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
                 meter_from_pattern, frame_length, pattern_names, ...
                 use_silence_state, store_proximity)
             % Call superclass constructor
-            obj@BeatTrackingStateSpace(n_patterns, max_n_tempo_states, ...
-                max_position, min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
+            obj@BeatTrackingStateSpace(State_space_params, min_tempo_bpm, ...
+                max_tempo_bpm, n_beats_from_pattern, ...
                 meter_from_pattern, frame_length, pattern_names, ...
                 use_silence_state, store_proximity);
             obj.compute_n_position_states();
             obj.n_states = cellfun(@(x) sum(x), obj.n_position_states)' * ...
                 obj.n_beats_from_pattern(:);
-            if obj.use_silence_state
-                obj.n_states = obj.n_states + 1;
-            end
             obj.compute_state_mappings();
-            obj.n_tempo_states = cellfun(@(x) length(x), obj.n_position_states);
+            obj.tempi_from_pattern = cellfun(@(x) length(x), ...
+                obj.n_position_states);
         end
     end
     
@@ -36,7 +34,7 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
             %OUTPUT parameter:
             %   obj.n_position_states   cell array with n_patterns cells.
             %                           Each cell contains a vector of length
-            %                           [n_tempo_states(r), 1] of positions per 
+            %                           [tempi_from_pattern(r), 1] of positions per 
             %                           beat 
             % ------------------------------------------------------------------
             % number of frames per beat (slowest tempo)
@@ -67,7 +65,7 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                         2.^(linspace(log2(min_frames_per_beat(ri)), ...
                         log2(max_frames_per_beat(ri)), gridpoints));
                     % slowly increase gridpoints, until we have
-                    % n_tempo_states tempo states
+                    % tempi_from_pattern tempo states
                     while (length(unique(round(obj.n_position_states{ri}))) < N_ri)
                         gridpoints = gridpoints + 1;
                         obj.n_position_states{ri} = ...
@@ -97,13 +95,13 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                     'int32') * (-1);
             end
             si = 1;
-            n_tempo_states = cellfun(@(x) length(x), ...
+            tempi_from_pattern = cellfun(@(x) length(x), ...
                 obj.n_position_states);
             beat_length = obj.max_position ./ obj.n_beats_from_pattern;
             for ri = 1:obj.n_patterns
                 n_pos_states_per_pattern = obj.n_position_states{ri} * ...
                     obj.n_beats_from_pattern(ri);
-                for tempo_state_i = 1:n_tempo_states(ri)
+                for tempo_state_i = 1:tempi_from_pattern(ri)
                     idx = si:(si+n_pos_states_per_pattern(tempo_state_i)-1);
                     obj.pattern_from_state(idx) = ri;
                     obj.tempo_from_state(idx) = ...
@@ -140,7 +138,7 @@ classdef BeatTrackingStateSpace2015 < handle & BeatTrackingStateSpace
                                 + idx(1) - 1, 3) = -1;
                         end
                         % states to up
-                        if tempo_state_i < n_tempo_states(ri)
+                        if tempo_state_i < tempi_from_pattern(ri)
                             % for each position state of the slow tempo find the
                             % corresponding state of the faster tempo
                             state_id = (0:n_pos_states_per_pattern(tempo_state_i)-1) * ...

@@ -18,7 +18,8 @@ classdef BeatTrackingObservationModelHMM < BeatTrackingObservationModel
         end
         
         function [] = set_cell_from_state(obj)
-            positions_per_cell = 1 ./ obj.cells_per_whole_note;
+            positions_per_cell = obj.state_space.max_position ./ ...
+                obj.cells_from_pattern;
             empty_states = ~(obj.state_space.pattern_from_state > 0);
             obj.cell_from_state = uint32(floor((obj.state_space.position_from_state ...
                 - 1) / positions_per_cell) + 1);

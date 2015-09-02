@@ -28,7 +28,7 @@ classdef BeatTrackerHMM < handle
     
     methods
         function obj = BeatTrackerHMM(Params, Clustering)
-            [n_tempo_states, store_proximity] = obj.parse_params(Params);
+            [State_space_params, store_proximity] = obj.parse_params(Params);
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
             obj.max_bar_cells = max(Params.whole_note_div * bar_durations);
@@ -38,14 +38,22 @@ classdef BeatTrackerHMM < handle
             end
             % Create state_space
             if strcmp(obj.tm_type, '2015')
-                obj.state_space = BeatTrackingStateSpace2015(Params.R, ...
-                    n_tempo_states, bar_durations, Params.min_tempo_bpm, ...
+                State_space_params.max_positions = bar_durations;
+                obj.state_space = BeatTrackingStateSpace2015(...
+                    State_space_params, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                     Clustering.rhythm2meter, Params.frame_length, ...
                     Clustering.rhythm_names, obj.use_silence_state, ...
                     store_proximity);
             elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
-                obj.state_space = BeatTrackingStateSpace2006;
+                State_space_params.max_positions = ...
+                    round(State_space_params.max_positions * bar_durations);
+                obj.state_space = BeatTrackingStateSpace2006(...
+                    State_space_params, Params.min_tempo_bpm, ...
+                    Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
+                    Clustering.rhythm2meter, Params.frame_length, ...
+                    Clustering.rhythm_names, obj.use_silence_state, ...
+                    store_proximity);
             end
         end
         
@@ -62,8 +70,9 @@ classdef BeatTrackerHMM < handle
             if strcmp(obj.tm_type, '2015')
                 obj.trans_model = BeatTrackingTransitionModel2015(...
                     obj.state_space, transition_probability_params);
-            elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
-                % call BeatTrackingTransitionModel2006
+            elseif strcmp(obj.tm_type, 'whiteley')
+                obj.trans_model = BeatTrackingTransitionModel2006(...
+                    obj.state_space, transition_probability_params);
             end
             % Check transition model
             if obj.trans_model.is_corrupt();
@@ -84,13 +93,22 @@ classdef BeatTrackerHMM < handle
         end
         
         function make_initial_distribution(obj)
-            n_states = obj.state_space.n_states;
+                n_states = obj.state_space.n_states;
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
                 obj.initial_prob(end) = 1;
             else
-                obj.initial_prob = ones(n_states, 1) / n_states;
+                if strcmp(obj.tm_type, '2015')
+                    obj.initial_prob = ones(n_states, 1) / n_states;
+                elseif strcmp(obj.tm_type, 'whiteley')
+                    num_state_ids = max(obj.state_space.max_position) * ...
+                        obj.state_space.max_n_tempo_states * ...
+                        obj.state_space.n_patterns;
+                    obj.initial_prob = zeros(num_state_ids, 1);
+                    obj.initial_prob(obj.state_space.position_from_state > 0) = ...
+                        1 / n_states;
+                end
             end
         end
         
@@ -362,7 +380,7 @@ classdef BeatTrackerHMM < handle
                         end
                         % madmom does not use interpolation. This yields
                         % ~round(bt)
-                        beats = [beats; [bt, j]];
+                        beats = [beats; [round(bt), j]];
                         break;
                     end
                 end
@@ -392,7 +410,8 @@ classdef BeatTrackerHMM < handle
             end
         end
         
-        function [n_tempo_states, store_proximity] = parse_params(obj, Params)
+        function [State_space_params, store_proximity] = ...
+                parse_params(obj, Params)
             % Store parameters and set defaults
             if isfield(Params, 'transition_model_type')
                 obj.tm_type = Params.transition_model_type;
@@ -424,11 +443,21 @@ classdef BeatTrackerHMM < handle
             else
                 obj.use_mex_viterbi = 1;
             end
-            if isfield(Params, 'N') && strcmp(obj.tm_type, '2015')
-                n_tempo_states = Params.N;
-            else
-                n_tempo_states = nan;
+            if isfield(Params, 'N')
+                State_space_params.n_tempi = Params.N;
+            elseif strcmp(obj.tm_type, '2015')
+                State_space_params.n_tempi = nan;
+            elseif strcmp(obj.tm_type, 'whiteley')
+                State_space_params.n_tempi = 30;                
             end
+            if strcmp(obj.tm_type, 'whiteley')
+                if isfield(Params, 'M')
+                    State_space_params.max_positions = Params.M; 
+                else
+                    State_space_params.max_positions = 1600; 
+                end 
+            end
+            State_space_params.n_patterns = Params.R;
         end
     end
 end

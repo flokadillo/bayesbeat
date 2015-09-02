@@ -22,6 +22,9 @@ classdef BeatTrackingTransitionModel < handle
             if obj.state_space.use_silence_state
                 obj.pfs = transition_params.pfs;
                 obj.p2s = transition_params.p2s;
+            else
+                obj.pfs = 0;
+                obj.p2s = 0;
             end
         end
         

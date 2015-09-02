@@ -4,6 +4,7 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
     
     properties
         transition_lambda
+        tempi_from_pattern
     end
     
     methods
@@ -28,7 +29,7 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             tempo_transition_threshold = eps;
             % store variables locally to avoid long filenames
             n_patterns = obj.state_space.n_patterns;
-            n_tempo_states = obj.state_space.n_tempo_states;
+            tempi_from_pattern = obj.state_space.tempi_from_pattern;
             n_position_states = obj.state_space.n_position_states;
             n_beats_from_pattern = obj.state_space.n_beats_from_pattern;
             n_states = obj.state_space.n_states;
@@ -38,8 +39,8 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             % iterate over all tempo states
             for ri = 1:n_patterns
                 for rj = 1:n_patterns
-                    tempo_trans{ri, rj} = zeros(n_tempo_states(ri), ...
-                        n_tempo_states(rj));
+                    tempo_trans{ri, rj} = zeros(tempi_from_pattern(ri), ...
+                        tempi_from_pattern(rj));
                     for tempo_state_i = 1:length(n_position_states{ri})
                         for tempo_state_j = 1:length(n_position_states{rj})
                             % compute the ratio of the number of beat states 
@@ -70,15 +71,15 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             % since these transitions are already included in the tempo transitions
             % Then everything multiplicated with the number of beats with
             % are modelled in the patterns
-            n_tempo_transitions = (n_tempo_states .* n_tempo_states)' * ...
+            n_tempo_transitions = (tempi_from_pattern .* tempi_from_pattern)' * ...
                 n_beats_from_pattern(:);
             if obj.state_space.use_silence_state
                 obj.n_transitions = n_states + n_tempo_transitions - ...
-                    (n_tempo_states' * n_beats_from_pattern(:)) + ...
-                    2 * sum(n_tempo_states) + 1;
+                    (tempi_from_pattern' * n_beats_from_pattern(:)) + ...
+                    2 * sum(tempi_from_pattern) + 1;
             else
                 obj.n_transitions = n_states + n_tempo_transitions - ...
-                    (n_tempo_states' * n_beats_from_pattern(:));
+                    (tempi_from_pattern' * n_beats_from_pattern(:));
             end
             % initialise vectors to store the transitions in sparse format
             % rows (states at previous time)
@@ -118,9 +119,9 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             % transition counter
             p = 1;
             for ri = 1:n_patterns
-                for ni = 1:n_tempo_states(ri)
+                for ni = 1:tempi_from_pattern(ri)
                     for bi = 1:n_beats_from_pattern(ri)
-                        for nj = 1:n_tempo_states(ri)
+                        for nj = 1:tempi_from_pattern(ri)
                             if bi == 1 % bar crossing > pattern change?
                                 for rj = find(obj.pr(ri, :))
                                     if (tempo_trans{ri, rj}(ni, nj) > 0)
@@ -162,17 +163,17 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                 if obj.state_space.use_silence_state
                     % transition to silence state possible at bar
                     % transition
-                    idx = p:(p + n_tempo_states(ri) - 1);
+                    idx = p:(p + tempi_from_pattern(ri) - 1);
                     row_i(idx) = state_before_beat{ri, 1}(:);
                     col_j(idx) = silence_state_id;
                     val(idx) = obj.p2s;
-                    p = p + n_tempo_states(ri);
+                    p = p + tempi_from_pattern(ri);
                 end
             end % over R
             % add transitions from silence state
             if obj.state_space.use_silence_state
                 % one self transition and one transition to each R
-                idx = p:(p + sum(n_tempo_states));
+                idx = p:(p + sum(tempi_from_pattern));
                 % start at silence
                 row_i(idx) = silence_state_id;
                 % self transition
@@ -180,13 +181,13 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                 val(p) = 1 - obj.pfs;
                 p = p + 1;
                 % transition from silence state to m=1, n(:), r(:)
-                prob_from_silence = obj.pfs / sum(n_tempo_states);
+                prob_from_silence = obj.pfs / sum(tempi_from_pattern);
                 for i_r=1:n_patterns
-                    idx = p:(p + n_tempo_states(i_r) - 1);
+                    idx = p:(p + tempi_from_pattern(i_r) - 1);
                     % go to first position of each tempo
                     col_j(idx) = state_at_beat{i_r, 1};
                     val(idx) = prob_from_silence;
-                    p = p + n_tempo_states(i_r);
+                    p = p + tempi_from_pattern(i_r);
                 end
             end
             idx = (row_i > 0);

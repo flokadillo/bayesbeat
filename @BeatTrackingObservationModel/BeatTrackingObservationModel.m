@@ -6,7 +6,7 @@ classdef BeatTrackingObservationModel < handle
         state_space
         feat_type
         dist_type
-        cells_per_whole_note
+        cells_from_pattern
         max_cells
         compute_likelihood
         learned_params
@@ -18,9 +18,10 @@ classdef BeatTrackingObservationModel < handle
             obj.state_space = state_space;
             obj.feat_type = feat_type;
             obj.dist_type = dist_type;
-            obj.cells_per_whole_note = cells_per_whole_note;
-            obj.max_cells = max(obj.state_space.max_position) * ...
-                obj.cells_per_whole_note;
+            bar_durations = obj.state_space.meter_from_pattern(:, 1) ./ ...
+                obj.state_space.meter_from_pattern(:, 2);
+            obj.cells_from_pattern = bar_durations * cells_per_whole_note;
+            obj.max_cells = max(obj.cells_from_pattern);
             obj.set_likelihood_function_handle();
         end
         
@@ -57,7 +58,6 @@ classdef BeatTrackingObservationModel < handle
             % -----------------------------------------------------------------
             n_frames = size(observations, 1);
             n_patterns = obj.state_space.n_patterns;
-            
             obs_lik = ones(n_patterns, obj.max_cells, n_frames) * (-1);
             if isempty(obj.learned_params)
                % In cases where no parameters were learned, just pass zero 
@@ -65,8 +65,7 @@ classdef BeatTrackingObservationModel < handle
                obj.learned_params = zeros(n_patterns + 1, obj.max_cells);
             end
             for r = 1:n_patterns
-                max_pos_r = obj.state_space.max_position(r) * ...
-                    obj.cells_per_whole_note;
+                max_pos_r = obj.cells_from_pattern(r);
                 obs_lik(r, 1:max_pos_r, :) = obj.compute_likelihood...
                     (observations, obj.learned_params(r, 1:max_pos_r));
             end
@@ -122,8 +121,7 @@ classdef BeatTrackingObservationModel < handle
             mean_params = zeros(obj.state_space.n_patterns, obj.max_cells, ...
                 length(obj.feat_type));
             for r=1:obj.state_space.n_patterns
-                n_cells = obj.state_space.max_position(r) * ...
-                    obj.cells_per_whole_note;
+                n_cells = obj.cells_from_pattern(r);
                 for b=1:n_cells
                     % TODO: vectorise
                     mean_params(r, b, :)= obj.compute_distribution_mean(...
