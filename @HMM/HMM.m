@@ -1098,7 +1098,7 @@ classdef HMM
             if ~isempty(beats)
                 % subtract one frame, to have a beat sequence starting at 0
                 % seconds.
-                beats(:, 1) = (beats(:, 1) - 1) * obj.frame_length;
+                beats(:, 1) = beats(:, 1) * obj.frame_length;
             end
         end
         
