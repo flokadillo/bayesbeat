@@ -62,27 +62,30 @@ classdef HiddenMarkovModel < handle
             % bestpath      : MAP state sequence
             %
             % 26.7.2012 by Florian Krebs
-            % ----------------------------------------------------------------------
+            % ------------------------------------------------------------------
+            n_state_ids = ...
+                length(obj.trans_model.state_space.position_from_state);
             n_frames = size(obs_lik, 2);            
             delta = obj.init_distribution;
             A = obj.trans_model.A;
             if length(delta) > 65535
                 % store psi as 32 bit unsigned integer
-                psi_mat = zeros(obj.n_states, n_frames, 'uint32');  
+                psi_mat = zeros(n_state_ids, n_frames, 'uint32');  
             else
                 % store psi as 16 bit unsigned integer
-                psi_mat = zeros(obj.n_states, n_frames, 'uint16');
+                psi_mat = zeros(n_state_ids, n_frames, 'uint16');
             end
-            i_row = 1:obj.n_states;
-            j_col = 1:obj.n_states;
+            i_row = 1:n_state_ids;
+            j_col = 1:n_state_ids;
             for i_frame = 1:n_frames
                 % create a matrix that has the same value of delta for all 
                 % entries with the same state i (row)
                 % (same as repmat(delta, 1, col), but faster)
-                D = sparse(i_row, j_col, delta(:), obj.n_states, obj.n_states);
+                D = sparse(i_row, j_col, delta(:), n_state_ids, n_state_ids);
                 [delta, psi_mat(:, i_frame)] = max(D * A);
                 % compute likelihood p(yt|x1:t)
-                delta = obs_lik(obj.obs_model.gmm_from_state, i_frame) .* delta';
+                delta = obs_lik(obj.obs_model.gmm_from_state, ...
+                    i_frame) .* delta';
                 % normalize
                 delta = delta / sum(delta);
             end

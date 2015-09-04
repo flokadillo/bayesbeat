@@ -18,11 +18,11 @@ classdef BeatTrackingObservationModelHMM < BeatTrackingObservationModel
         end
         
         function [] = set_cell_from_state(obj)
-            positions_per_cell = obj.state_space.max_position ./ ...
-                obj.cells_from_pattern;
-            empty_states = ~(obj.state_space.pattern_from_state > 0);
-            obj.cell_from_state = uint32(floor((obj.state_space.position_from_state ...
-                - 1) / positions_per_cell) + 1);
+            positions_per_cell = obj.state_space.max_position(1) ./ ...
+                obj.cells_from_pattern(1);
+            empty_states = (obj.state_space.pattern_from_state <= 0);
+            obj.cell_from_state = floor((obj.state_space.position_from_state ...
+                - 1) / positions_per_cell) + 1;
             obj.cell_from_state(empty_states) = nan;
             if obj.state_space.use_silence_state
                 % use first cell for silence state
@@ -31,7 +31,7 @@ classdef BeatTrackingObservationModelHMM < BeatTrackingObservationModel
         end
         
         function [] = set_gmm_from_state(obj)
-            obj.gmm_from_state = zeros(obj.state_space.n_states, 1, 'uint32');
+            obj.gmm_from_state = zeros(obj.state_space.n_states, 1);
             for i_s = 1:obj.state_space.n_states
                 obj.gmm_from_state(i_s) = ...
                     (obj.state_space.pattern_from_state(i_s) - 1) * ...

@@ -16,7 +16,7 @@ function [ ] = compute_beats_mirex_2013( input_file_name, output_file_name )
 [func_path, ~, ~] = fileparts(mfilename('fullpath'));
 fprintf('Processing %s ',input_file_name);
 % ---------- SET PARAMETERS --------------------------------------------
-Params.model_fln = fullfile(func_path, 'mirex_2013_hmm.mat');
+Params.model_fln = fullfile(func_path, 'mirex_2013_hmm_new.mat');
 Params.use_mex_viterbi = 1;
 Params.testLab = input_file_name;
 % ---------- COMPUTE BEATS --------------------------------------------

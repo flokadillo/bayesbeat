@@ -129,15 +129,15 @@ classdef BeatTrackerHMM < handle
                         belief_func);
                 else
                     if obj.use_mex_viterbi
-                        try
-                            hidden_state_sequence = ...
-                                obj.HMM.viterbi(y, obj.use_mex_viterbi);
-                        catch
-                            fprintf(['\n    WARNING: viterbi.cpp has to be', ...
-                                'compiled, using the pure MATLAB version', ...
-                                'instead\n']);
+%                         try
+%                             hidden_state_sequence = ...
+%                                 obj.HMM.viterbi(y, obj.use_mex_viterbi);
+%                         catch
+%                             fprintf(['\n    WARNING: viterbi.cpp has to be', ...
+%                                 'compiled, using the pure MATLAB version', ...
+%                                 'instead\n']);
                             hidden_state_sequence = obj.HMM.viterbi(y, 0);
-                        end
+%                         end
                     else
                         hidden_state_sequence = obj.HMM.viterbi(y, ...
                             obj.use_mex_viterbi);
