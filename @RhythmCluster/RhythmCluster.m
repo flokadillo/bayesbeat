@@ -75,10 +75,10 @@ classdef RhythmCluster < handle
             addRequired(parser, 'n_clusters', @isnumeric);
             addOptional(parser, 'pattern_scope', default_scope, ...
                 check_scope);
-            addParameter(parser, 'meter_names', '', @iscell);
-            addParameter(parser, 'meters', -1, @isnumeric);
-            addParameter(parser, 'save_pattern_fig', 1, @isnumeric);
-            addParameter(parser, 'plotting_path', default_plotting_path, ...
+            addParamValue(parser, 'meter_names', '', @iscell);
+            addParamValue(parser, 'meters', -1, @isnumeric);
+            addParamValue(parser, 'save_pattern_fig', 1, @isnumeric);
+            addParamValue(parser, 'plotting_path', default_plotting_path, ...
                 @ischar);
             parse(parser, obj, n_clusters, ...
                 varargin{:});
