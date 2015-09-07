@@ -25,8 +25,7 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             % N.Whiteley et al.. "Bayesian Modelling of Temporal Structure
             % in Musical Audio." ISMIR. 2006.
             % set up pattern transition matrix
-            num_state_ids = max(obj.state_space.max_position) * ...
-                obj.state_space.max_n_tempo_states * obj.state_space.n_patterns;
+            num_state_ids = obj.state_space.n_states;
             if obj.state_space.use_silence_state
                 silence_state_id = num_state_ids + 1;
             end
@@ -37,6 +36,7 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             N = obj.state_space.max_n_tempo_states;
             M = max(obj.state_space.max_position);
             M_from_pattern = obj.state_space.max_position;
+            state_from_substate = obj.state_space.state_from_substate;
             % Set up tempo transition matrix [R*N, N], which has an NxN
             % transition matrix for each pattern            %
             if size(obj.pn, 1) == R * N
@@ -83,13 +83,21 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             ri = zeros(num_state_ids * 3, 1);
             cj = zeros(num_state_ids * 3, 1);
             val = zeros(num_state_ids * 3, 1);
+%             state_start_id = 1;
             for rhi = 1:R
                 mi=1:M_from_pattern(rhi);
                 for ni = min_tempo_ss(rhi):max_tempo_ss(rhi)
                     % decode m, n, r into state index i
-                    i = sub2ind([M, N, R], mi, repmat(ni, 1, ...
-                        M_from_pattern(rhi)), ...
+                    lin_idx = sub2ind([M, N, R], mi, ...
+                        repmat(ni, 1, M_from_pattern(rhi)), ...
                         repmat(rhi, 1, M_from_pattern(rhi)));
+                    state_ids = state_from_substate(lin_idx);
+%                     state_ids = state_start_id:(state_start_id + ...
+%                         M_from_pattern(rhi) - 1);
+%                     state_start_id = state_start_id + M_from_pattern(rhi);
+%                     state_ids = sub2ind([M, N, R], mi, repmat(ni, 1, ...
+%                         M_from_pattern(rhi)), ...
+%                         repmat(rhi, 1, M_from_pattern(rhi)));
                     % position of state j
                     mj = mod(mi + ni - 1, M_from_pattern(rhi)) + 1; 
                     % ----------------------------------------------------------
@@ -109,12 +117,16 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                             if ni == max_tempo_ss(rhi), continue; end
                             nj = ni + 1;
                         end
-                        j_n = mj(bar_crossing) + (nj - 1) * M;
+%                         j_n = mj(bar_crossing) + (nj - 1) * M;
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:R
                             prob2 = obj.pr(rhi, rhj);
-                            j = (rhj - 1) * N * M + j_n;
-                            ri(p:p+n_bc-1) = i(bar_crossing);
+                            lin_idx = sub2ind([M, N, R], mj(bar_crossing), ...
+                                repmat(nj, 1, n_bc), ...
+                                repmat(rhj, 1, n_bc));
+                            j = state_from_substate(lin_idx);
+%                             j = (rhj - 1) * N * M + j_n;
+                            ri(p:p+n_bc-1) = state_ids(bar_crossing);
                             cj(p:p+n_bc-1) = j;
                             val(p:p+n_bc-1) = prob * prob2 * (1-obj.p2s);
                             p = p + n_bc;
@@ -123,14 +135,14 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                     if obj.state_space.use_silence_state
                         % transition to silence state possible at bar
                         % transition
-                        ri(p:p+n_bc-1) = i(bar_crossing);
+                        ri(p:p+n_bc-1) = state_ids(bar_crossing);
                         cj(p:p+n_bc-1) = silence_state_id;
                         val(p:p+n_bc-1) = obj.p2s;
                         p = p + n_bc;
                     end
                     % ----------------------------------------------------------
                     % inside the bar
-                    j_mr = (rhi - 1) * N * M + mj(~bar_crossing);
+%                     j_mr = (rhi - 1) * N * M + mj(~bar_crossing);
                     % possible transitions: 3
                     for n_ind = 1:3 % decrease, constant, increase
                         if n_ind == 1 % tempo decrease
@@ -143,8 +155,12 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                             nj = ni + 1;
                         end
                         prob = n_r_trans((rhi-1)*N + ni, nj);
-                        j = (nj - 1) * M + j_mr;
-                        ri(p:p+nn_bc-1) = i(~bar_crossing);
+                        lin_idx = sub2ind([M, N, R], mj(~bar_crossing), ...
+                                repmat(nj, 1, nn_bc), ...
+                                repmat(rhj, 1, nn_bc));
+                        j = state_from_substate(lin_idx);
+%                         j = (nj - 1) * M + j_mr;
+                        ri(p:p+nn_bc-1) = state_ids(~bar_crossing);
                         cj(p:p+nn_bc-1) = j;
                         val(p:p+nn_bc-1) = prob;
                         p = p + nn_bc;
@@ -161,6 +177,8 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                 % transition from silence state to m=1, n(:), r(:)
                 n = [];
                 r = [];
+                error(['WARNING: silence state with old models is not', ...
+                    'implemented yet!']);
                 for i_r=1:R
                     n = [n, min_tempo_ss(i_r):max_tempo_ss(i_r)];
                     r = [r, ones(1, length(min_tempo_ss(i_r):max_tempo_ss(i_r))) ...
@@ -171,15 +189,20 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                 val(p:p+length(n(:))-1) = obj.pfs/(length(n(:)));
                 p = p + length(n(:));
                 ri(p0:p-1) = silence_state_id;
-                obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
+                idx = 1:p-1;
+                % remove transitions to unpossible states (state = -1)
+                idx = (cj(idx) > 0) & (ri(idx) > 0);
+                obj.A = sparse(ri(idx), cj(idx), val(idx), ...
                     num_state_ids + 1, num_state_ids + 1);
             else
-                obj.A = sparse(ri(1:p-1), cj(1:p-1), val(1:p-1), ...
+                idx = 1:p-1;
+                % remove transitions to unpossible states (state = -1)
+                idx = (cj(idx) > 0) & (ri(idx) > 0);
+                obj.A = sparse(ri(idx), cj(idx), val(idx), ...
                     num_state_ids, num_state_ids);
             end
-            obj.n_transitions = length(find(ri(1:p-1)));
+            obj.n_transitions = length(find(ri(idx)));
         end
-        
     end
 end
 

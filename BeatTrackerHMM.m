@@ -99,16 +99,7 @@ classdef BeatTrackerHMM < handle
                 obj.initial_prob = zeros(n_states, 1);
                 obj.initial_prob(end) = 1;
             else
-                if strcmp(obj.tm_type, '2015')
-                    obj.initial_prob = ones(n_states, 1) / n_states;
-                elseif strcmp(obj.tm_type, 'whiteley')
-                    num_state_ids = max(obj.state_space.max_position) * ...
-                        obj.state_space.max_n_tempo_states * ...
-                        obj.state_space.n_patterns;
-                    obj.initial_prob = zeros(num_state_ids, 1);
-                    obj.initial_prob(obj.state_space.position_from_state > 0) = ...
-                        1 / n_states;
-                end
+                obj.initial_prob = ones(n_states, 1) / n_states;
             end
         end
         

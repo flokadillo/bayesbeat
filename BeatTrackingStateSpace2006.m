@@ -5,6 +5,7 @@ classdef BeatTrackingStateSpace2006 < handle & BeatTrackingStateSpace
     properties
         min_tempo_ss
         max_tempo_ss
+        state_from_substate
     end
     
     methods
@@ -29,27 +30,32 @@ classdef BeatTrackingStateSpace2006 < handle & BeatTrackingStateSpace
         
         
         function [] = compute_state_mappings(obj)
-            num_states = max(obj.max_position) * obj.max_n_tempo_states * ...
-                obj.n_patterns;
+            num_tempo_states = obj.max_tempo_ss - obj.min_tempo_ss + 1;
+            obj.n_states = obj.max_position(:)' * num_tempo_states(:);
             % alloc memory for mappings
-            obj.position_from_state = ones(num_states, 1) * (-1);
-            obj.tempo_from_state = ones(num_states, 1) * (-1);
-            obj.pattern_from_state = ones(num_states, 1) * (-1);
+            obj.position_from_state = ones(obj.n_states, 1) * (-1);
+            obj.tempo_from_state = ones(obj.n_states, 1) * (-1);
+            obj.pattern_from_state = ones(obj.n_states, 1) * (-1);
+            obj.state_from_substate = ones(max(obj.max_position), ...
+                obj.max_n_tempo_states, obj.n_patterns) * (-1);
+            counter = 1;
             for rhi = 1:obj.n_patterns
                 mi=1:obj.max_position(rhi);
                 for ni = obj.min_tempo_ss(rhi):obj.max_tempo_ss(rhi)
-                    % decode m, n, r into state index i
-                    i = sub2ind([max(obj.max_position), obj.max_n_tempo_states, ...
-                        obj.n_patterns], mi, repmat(ni, 1, ...
-                        obj.max_position(rhi)), ...
-                        repmat(rhi, 1, obj.max_position(rhi)));
+                    idx = counter:(counter + obj.max_position(rhi) - 1);
                     % save state mappings
-                    obj.position_from_state(i) = mi;
-                    obj.tempo_from_state(i) = ni;
-                    obj.pattern_from_state(i) = rhi;
+                    obj.position_from_state(idx) = mi;
+                    obj.tempo_from_state(idx) = ni;
+                    obj.pattern_from_state(idx) = rhi;
+                    lin_idx = sub2ind([max(obj.max_position), ...
+                        obj.max_n_tempo_states, obj.n_patterns], mi, ...
+                        repmat(ni, 1, obj.max_position(rhi)), ...
+                        repmat(rhi, 1, obj.max_position(rhi)));
+                    obj.state_from_substate(lin_idx) = idx;
+                    counter = counter + obj.max_position(rhi);
+                    
                 end
             end
-            obj.n_states = sum(obj.position_from_state > 0);
         end
         
     end
