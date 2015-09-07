@@ -92,12 +92,6 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                         repmat(ni, 1, M_from_pattern(rhi)), ...
                         repmat(rhi, 1, M_from_pattern(rhi)));
                     state_ids = state_from_substate(lin_idx);
-%                     state_ids = state_start_id:(state_start_id + ...
-%                         M_from_pattern(rhi) - 1);
-%                     state_start_id = state_start_id + M_from_pattern(rhi);
-%                     state_ids = sub2ind([M, N, R], mi, repmat(ni, 1, ...
-%                         M_from_pattern(rhi)), ...
-%                         repmat(rhi, 1, M_from_pattern(rhi)));
                     % position of state j
                     mj = mod(mi + ni - 1, M_from_pattern(rhi)) + 1; 
                     % ----------------------------------------------------------
@@ -117,7 +111,6 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                             if ni == max_tempo_ss(rhi), continue; end
                             nj = ni + 1;
                         end
-%                         j_n = mj(bar_crossing) + (nj - 1) * M;
                         prob = n_r_trans(ind_rn, nj);
                         for rhj=1:R
                             prob2 = obj.pr(rhi, rhj);
@@ -125,7 +118,6 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                                 repmat(nj, 1, n_bc), ...
                                 repmat(rhj, 1, n_bc));
                             j = state_from_substate(lin_idx);
-%                             j = (rhj - 1) * N * M + j_n;
                             ri(p:p+n_bc-1) = state_ids(bar_crossing);
                             cj(p:p+n_bc-1) = j;
                             val(p:p+n_bc-1) = prob * prob2 * (1-obj.p2s);
@@ -141,8 +133,8 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                         p = p + n_bc;
                     end
                     % ----------------------------------------------------------
-                    % inside the bar
-%                     j_mr = (rhi - 1) * N * M + mj(~bar_crossing);
+                    % inside the bar, no rhythm change possible
+                    rhj = rhi;
                     % possible transitions: 3
                     for n_ind = 1:3 % decrease, constant, increase
                         if n_ind == 1 % tempo decrease
@@ -159,7 +151,6 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                                 repmat(nj, 1, nn_bc), ...
                                 repmat(rhj, 1, nn_bc));
                         j = state_from_substate(lin_idx);
-%                         j = (nj - 1) * M + j_mr;
                         ri(p:p+nn_bc-1) = state_ids(~bar_crossing);
                         cj(p:p+nn_bc-1) = j;
                         val(p:p+nn_bc-1) = prob;
@@ -197,7 +188,7 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             else
                 idx = 1:p-1;
                 % remove transitions to unpossible states (state = -1)
-                idx = (cj(idx) > 0) & (ri(idx) > 0);
+                idx = (cj(idx) > 0) & (ri(idx) > 0) & (val(idx) > 0);
                 obj.A = sparse(ri(idx), cj(idx), val(idx), ...
                     num_state_ids, num_state_ids);
             end
