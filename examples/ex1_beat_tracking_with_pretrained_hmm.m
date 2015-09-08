@@ -16,7 +16,7 @@ function Results = ex1_beat_tracking_with_pretrained_hmm(in_file, ...
 % get path of function
 [func_path, ~, ~] = fileparts(mfilename('fullpath'));
 % pre-trained hmm model
-Params.model_fln = fullfile(func_path, 'models/hmm_boeck_new.mat');
+Params.model_fln = fullfile(func_path, 'models/hmm_boeck.mat');
 if ~exist(Params.model_fln, 'file')
    error('Did not find model file: %s\n', Params.model_fln);
 end
