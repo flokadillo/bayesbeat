@@ -14,9 +14,9 @@ classdef BeatTracker < handle
         
         function obj = BeatTracker(Params)
             % parse parameters and set defaults
-            obj.parse_params(Params);            
+            obj.parse_params(Params);
             % load or create probabilistic model
-            obj.init_model();            
+            obj.init_model();
         end
         
         function init_model(obj)
@@ -25,7 +25,7 @@ classdef BeatTracker < handle
                     c = load(obj.Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
-%                     obj.model = obj.convert_to_new_model_format(obj.model);
+                    %                     obj.model = obj.convert_to_new_model_format(obj.model);
                     obj.init_model_fln = obj.Params.model_fln;
                     obj.feature = Feature(obj.model.obs_model.feat_type, ...
                         obj.model.frame_length);
@@ -86,7 +86,7 @@ classdef BeatTracker < handle
                 end
             end
         end
-              
+        
         function init_train_data(obj)
             % set up the training data and load or compute the cluster
             % assignments of the bars/beats
@@ -108,7 +108,7 @@ classdef BeatTracker < handle
                 % process silence data
                 if obj.Params.use_silence_state
                     fid = fopen(obj.Params.silence_lab, 'r');
-                    silence_files = textscan(fid, '%s\n'); 
+                    silence_files = textscan(fid, '%s\n');
                     silence_files = silence_files{1};
                     fclose(fid);
                     obj.train_data.feats_silence = [];
@@ -119,31 +119,31 @@ classdef BeatTracker < handle
                             silence_files{iFile})];
                     end
                 end
-                % Check if cluster assignment file is given. If yes load
-                % cluster assignments from yes, if no compute them.
-                if isfield(obj.Params, 'clusterIdFln') && ...
-                        exist(obj.Params.clusterIdFln, 'file')
-                    obj.train_data = obj.train_data.read_pattern_bars(...
-                        obj.Params.clusterIdFln, obj.Params.pattern_size);
-                else
-                    fprintf('* Clustering data by %s ...', ...
+            end
+            % save extracted training data
+            if obj.Params.store_training_data
+                data = obj.train_data;
+                save(obj.Params.stored_train_data_fln, 'data');
+            end
+            % Check if cluster assignment file is given. If yes load
+            % cluster assignments from yes, if no compute them.
+            if isfield(obj.Params, 'clusterIdFln') && ...
+                    exist(obj.Params.clusterIdFln, 'file')
+                obj.train_data = obj.train_data.read_pattern_bars(...
+                    obj.Params.clusterIdFln, obj.Params.pattern_size);
+            else
+                fprintf('* Clustering data by %s ...', ...
+                    obj.Params.cluster_type);
+                if ismember(obj.Params.cluster_type, {'meter', ...
+                        'rhythm'})
+                    obj.train_data.cluster_from_labels(...
                         obj.Params.cluster_type);
-                    if ismember(obj.Params.cluster_type, {'meter', ...
-                            'rhythm'})
-                        obj.train_data.cluster_from_labels(...
-                            obj.Params.cluster_type);
-                    elseif strcmp(obj.Params.cluster_type, 'kmeans')
-                        obj.train_data.cluster_from_features(...
-                            obj.Params.n_clusters);
-                    end
-                    fprintf('done\n  %i clusters detected.\n', ...
-                        obj.train_data.clustering.n_clusters);
+                elseif strcmp(obj.Params.cluster_type, 'kmeans')
+                    obj.train_data.cluster_from_features(...
+                        obj.Params.n_clusters);
                 end
-                % save extracted training data
-                if obj.Params.store_training_data
-                    data = obj.train_data;
-                    save(obj.Params.stored_train_data_fln, 'data');
-                end
+                fprintf('done\n  %i clusters detected.\n', ...
+                    obj.train_data.clustering.n_clusters);
             end
             obj.Params.R = obj.train_data.clustering.n_clusters;
             if isempty(obj.train_data.clustering.pr)
@@ -187,19 +187,19 @@ classdef BeatTracker < handle
                 [~, ~, ext] = fileparts(fln);
                 fln = strrep(fln, ext, ['.', obj.Params.constraint_type{c}]);
                 if strcmp(obj.Params.constraint_type{c}, 'downbeats')
-                   data = load(fln);
-                   constraints{c} = data(:, 1);
+                    data = load(fln);
+                    constraints{c} = data(:, 1);
                 end
                 if strcmp(obj.Params.constraint_type{c}, 'beats')
-                   data = load(fln);
-                   constraints{c} = data(:, 1);
+                    data = load(fln);
+                    constraints{c} = data(:, 1);
                 end
                 if strcmp(obj.Params.constraint_type{c}, 'meter')
-                   constraints{c} = Data.load_annotations_bt(fln);
+                    constraints{c} = Data.load_annotations_bt(fln);
                 end
             end
-        end       
-
+        end
+        
         function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
             % load feature
@@ -224,7 +224,7 @@ classdef BeatTracker < handle
             names = fieldnames(temp);
             obj.model = temp.(names{1});
         end
-
+        
         function [] = save_results(obj, results, save_dir, fname)
             if ~exist(save_dir, 'dir')
                 system(['mkdir ', save_dir]);
@@ -320,7 +320,7 @@ classdef BeatTracker < handle
                     end
                 elseif strcmp(obj.Params.transition_model_type, 'whiteley')
                     if ~isfield(obj.Params, 'pn')
-                        obj.Params.transition_params.pn = 0.01; 
+                        obj.Params.transition_params.pn = 0.01;
                     else
                         obj.Params.transition_params.pn = obj.Params.pn;
                     end
