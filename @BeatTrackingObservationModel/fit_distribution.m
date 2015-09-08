@@ -18,7 +18,7 @@ switch obj.dist_type
     case 'MOG'
         options = statset('MaxIter', 200);
         n_replicates = 10;
-        fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
+%         fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
 end
 for i_pattern=1:n_patterns
     for i_pos=1:n_position_cells

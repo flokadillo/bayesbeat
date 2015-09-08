@@ -15,7 +15,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
             Results = ex1_beat_tracking_with_pretrained_hmm(...
                 testCase.audio_files{1}, testCase.result_folder);
             % add all beats and compare to expected solution
-            exp_sum_beats = 777.48;
+            exp_sum_beats = 776.36;
             act_sum_beats = sum(Results{1}(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);
@@ -43,7 +43,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
             Results = ex3_train_and_test_hmm(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);
             % add all beats and compare to expected solution
-            exp_sum_beats = 776.72;
+            exp_sum_beats = 775.6;
             act_sum_beats = sum(Results{1}(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);
@@ -56,7 +56,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
             Results = ex4_train_and_test_hmm(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);
             % add all beats and compare to expected solution
-            exp_sum_beats = 776.72;
+            exp_sum_beats = 775.6;
             act_sum_beats = sum(Results{1}(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);

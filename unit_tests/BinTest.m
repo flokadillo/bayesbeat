@@ -16,7 +16,7 @@ classdef BinTest < matlab.unittest.TestCase
             compute_beats_mirex_2013(testCase.audio_files{1}, results_fln);
             results = load(results_fln);
             % add all beats and compare to expected solution
-            exp_sum_beats = 777.36;
+            exp_sum_beats = 776.24;
             act_sum_beats = sum(results);
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);
