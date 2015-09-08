@@ -9,7 +9,7 @@ In case of questions, please contact the author
 
 * Invoke the program with:
 
-matlab -r "mirex_2013_hmm('%input','%output'); quit;"
+matlab -r "compute_beats_mirex_2013('%input','%output'); quit;"
 
 * The program needs the following software to run:
 

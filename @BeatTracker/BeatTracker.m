@@ -315,7 +315,8 @@ classdef BeatTracker < handle
                         obj.Params.transition_params.transition_lambda = ...
                             100;
                     else
-                        obj.Params.transition_param = obj.Params.alpha;
+                        obj.Params.transition_params.transition_lambda = ...
+                            obj.Params.alpha;
                     end
                 elseif strcmp(obj.Params.transition_model_type, 'whiteley')
                     if ~isfield(obj.Params, 'pn')

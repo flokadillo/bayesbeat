@@ -129,6 +129,7 @@ classdef BeatTrackerHMM < handle
 %                                 'compiled, using the pure MATLAB version', ...
 %                                 'instead\n']);
                             hidden_state_sequence = obj.HMM.viterbi(y, 0);
+                            fprintf('\n');
 %                         end
                     else
                         hidden_state_sequence = obj.HMM.viterbi(y, ...

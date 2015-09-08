@@ -114,6 +114,11 @@ classdef RhythmCluster < handle
             n_feat_dims_clustering = size(S, 2) * size(S, 3);
             S = reshape(S, [n_items, n_feat_dims_clustering]);
             [meters, idx, ~] = unique(meter_per_item, 'rows');
+            if size(meters, 1) > obj.n_clusters
+                fprintf(['    WARNING: need %i patterns to describe all time', ...
+                    'signatures in the data\n'], size(meters, 1));
+                obj.n_clusters = size(meters, 1);
+            end
             beats_per_bar = n_beats_per_item(idx);
             if parser.Results.meters == -1
                 % no meters given as input: use all meters that were found
@@ -246,17 +251,20 @@ classdef RhythmCluster < handle
             % ------------------------------------------------------------
             % 11.08.2015 by Florian Krebs
             % ------------------------------------------------------------
-            A = zeros(obj.n_clusters, obj.n_clusters);
-            for iFile=1:max(obj.data.bar2file)
-                bars = find(obj.data.bar2file==iFile);
-                for iBar=bars(1:end-1)
-                    A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) = ...
-                        A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) + 1;
+            if obj.n_clusters > 1
+                A = zeros(obj.n_clusters, obj.n_clusters);
+                for iFile=1:max(obj.data.bar2file)
+                    bars = find(obj.data.bar2file==iFile);
+                    for iBar=bars(1:end-1)
+                        A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) = ...
+                            A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) + 1;
+                    end
                 end
+                % normalise transition matrix
+                obj.pr = bsxfun(@rdivide, A , sum(A , 2));
+            else % only one pattern
+                obj.pr = 1;
             end
-            % normalise transition matrix
-            A = bsxfun(@rdivide, A , sum(A , 2));
-            obj.pr = A;
         end
         
         
