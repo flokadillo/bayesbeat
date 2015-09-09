@@ -1,4 +1,4 @@
-function [ ] = compute_beats_mirex_2013( input_file_name, output_file_name )
+function [ ] = compute_beats_mirex_2013( input_file_name, output_folder )
 % [ ] = compute_beats_mirex_2013( input_file_name, output_file_name )
 %   Computes beat times of input_file_name and saves them to
 %   output_file_name
@@ -22,17 +22,10 @@ Params.testLab = input_file_name;
 % ---------- COMPUTE BEATS --------------------------------------------
 beat_tracker = BeatTracker(Params);
 beat_tracker.init_test_data();
-results = beat_tracker.do_inference(1);
-beats = results{1}(:,1);
+Results = beat_tracker.do_inference(1);
 % ---------- SAVE BEATS --------------------------
-[pathstr, ~, ~] = fileparts(output_file_name);
-if ~exist(pathstr,'dir') && ~isempty(pathstr)
-    fprintf('\n''%s'' not found, creating new\n',pathstr);
-    mkdir(pathstr);
-end
-fid = fopen(output_file_name, 'w');
-fprintf(fid,'%.3f\n',beats);
-fclose(fid);
+[~, fname, ~] = fileparts(input_file_name);
+beat_tracker.save_results(Results, output_folder, fname);
 end
 
 

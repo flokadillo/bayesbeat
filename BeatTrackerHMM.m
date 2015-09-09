@@ -24,6 +24,8 @@ classdef BeatTrackerHMM < handle
         use_mex_viterbi     % 1: use it, 0: don't use it (~5 times slower)
         beat_positions      % cell array; contains the bar positions of the 
         %                       beats for each rhythm
+        use_meter_prior     % weight initial probability by frequency of meter 
+        %                       in the training set
     end
     
     methods
@@ -60,7 +62,7 @@ classdef BeatTrackerHMM < handle
         
         function train_model(obj, transition_probability_params, train_data, ...
                 cells_per_whole_note)
-            obj.make_initial_distribution();
+            obj.make_initial_distribution(train_data.meters);
             obj.make_transition_model(transition_probability_params);
             obj.make_observation_model(train_data, cells_per_whole_note);
             obj.HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
@@ -93,14 +95,32 @@ classdef BeatTrackerHMM < handle
             end
         end
         
-        function make_initial_distribution(obj)
-                n_states = obj.state_space.n_states;
+        function make_initial_distribution(obj, meters)
+            n_states = obj.state_space.n_states;
             if obj.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
                 obj.initial_prob(end) = 1;
             else
                 obj.initial_prob = ones(n_states, 1) / n_states;
+            end
+            if obj.use_meter_prior
+               [unique_meters, ~, idx] = unique(meters, 'rows');
+               meter_frequency = hist(idx, max(idx));
+               meter_frequency = meter_frequency / sum(meter_frequency);
+               
+               for r = 1:obj.state_space.n_patterns
+                  idx_r = (obj.state_space.pattern_from_state == r);
+                  idx_m = ismember(unique_meters, ...
+                      obj.state_space.meter_from_pattern(r, :), 'rows');
+                  obj.initial_prob(idx_r) = obj.initial_prob(idx_r) * ...
+                      meter_frequency(idx_m);
+                  fprintf('    Weighting meter %i/%i by %.2f\n', ...
+                      unique_meters(idx_m, 1), ...
+                      unique_meters(idx_m, 2), ...
+                      meter_frequency(idx_m));
+               end
+               obj.initial_prob = obj.initial_prob / sum(obj.initial_prob);
             end
         end
         
@@ -451,6 +471,11 @@ classdef BeatTrackerHMM < handle
                 end 
             end
             State_space_params.n_patterns = Params.R;
+            if isfield(Params, 'use_meter_prior')
+                obj.use_meter_prior = Params.use_meter_prior;
+            else
+                obj.use_meter_prior = 1;
+            end
         end
     end
 end

@@ -119,11 +119,11 @@ classdef BeatTracker < handle
                             silence_files{iFile})];
                     end
                 end
-            end
-            % save extracted training data
-            if obj.Params.store_training_data
-                data = obj.train_data;
-                save(obj.Params.stored_train_data_fln, 'data');
+                % save extracted training data
+                if obj.Params.store_training_data
+                    data = obj.train_data;
+                    save(obj.Params.stored_train_data_fln, 'data');
+                end
             end
             % Check if cluster assignment file is given. If yes load
             % cluster assignments from yes, if no compute them.
@@ -372,6 +372,8 @@ classdef BeatTracker < handle
     methods(Static)
         
         function [] = save_beats(beats, save_fln)
+            % save beats and downbeats in the format
+            % (beat time in [sec]) \tab (beat number)
             fid = fopen(save_fln, 'w');
             fprintf(fid, '%.3f\t%i\n', beats');
             fclose(fid);

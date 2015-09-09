@@ -4,7 +4,6 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
     
     properties
         transition_lambda
-        tempi_from_pattern
     end
     
     methods
@@ -43,13 +42,13 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                         tempi_from_pattern(rj));
                     for tempo_state_i = 1:length(n_position_states{ri})
                         for tempo_state_j = 1:length(n_position_states{rj})
-                            % compute the ratio of the number of beat states 
+                            % compute the ratio of the number of beat states
                             % between the two tempi
                             ratio = n_position_states{rj}(tempo_state_j) /...
                                 n_position_states{ri}(tempo_state_i);
                             % compute the probability for the tempo change
                             prob = exp(-obj.transition_lambda * abs(ratio - 1));
-                            % keep only transition probabilities > 
+                            % keep only transition probabilities >
                             % tempo_transition_threshold
                             if prob > tempo_transition_threshold
                                 % save the probability and apply the
@@ -121,9 +120,9 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             for ri = 1:n_patterns
                 for ni = 1:tempi_from_pattern(ri)
                     for bi = 1:n_beats_from_pattern(ri)
-                        for nj = 1:tempi_from_pattern(ri)
-                            if bi == 1 % bar crossing > pattern change?
-                                for rj = find(obj.pr(ri, :))
+                        if bi == 1 % bar crossing > pattern change?
+                            for rj = find(obj.pr(ri, :))
+                                for nj = 1:tempi_from_pattern(rj)
                                     if (tempo_trans{ri, rj}(ni, nj) > 0)
                                         % create transition
                                         % position before beat
@@ -136,7 +135,10 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                                         p = p + 1;
                                     end
                                 end
-                            else
+                            end
+                        else
+                            rj = ri;
+                            for nj = 1:tempi_from_pattern(rj)
                                 if tempo_trans{ri, ri}(ni, nj) ~= 0
                                     % create transition
                                     % position before beat
@@ -148,7 +150,8 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
                                     p = p + 1;
                                 end
                             end
-                        end % over tempo at current time
+                        end
+                        
                         % transitions of the remainder of the beat: tempo
                         % transitions are not allowed
                         idx = p:p+n_position_states{ri}(ni) - 2;
@@ -193,8 +196,8 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
             idx = (row_i > 0);
             obj.A = sparse(row_i(idx), col_j(idx), val(idx), ...
                 n_states, n_states);
-            obj.n_transitions = length(find(obj.A)); 
-    end
+            obj.n_transitions = length(find(obj.A));
+        end
         
     end
 end
