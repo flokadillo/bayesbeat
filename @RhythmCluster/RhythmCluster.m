@@ -176,7 +176,7 @@ classdef RhythmCluster < handle
             obj.data_per_song = dlmread(obj.feat_matrix_fln, '\t');
         end
         
-        function [ca_fln, clust_trans_fln, clust_prior_fln] = do_clustering(obj, n_clust_per_patt, ...
+        function [ca_fln, clust_trans_fln, clust_prior_fln] = do_clustering(obj, pattern_size, n_clust_per_patt, ...
                 varargin)
             % Clusters the bars using a kmeans algorithm
             %
@@ -267,8 +267,14 @@ classdef RhythmCluster < handle
             end
             % Assuming sections have been sanely generated! No sanity check
             sec_per_item = obj.patt_2_section;
-            sections = parser.Results.sections;
-            section_names = parser.Results.section_names;
+            if strcmp(pattern_size, 'section')
+                sections = parser.Results.sections;
+                section_names = parser.Results.section_names;
+            elseif strcmp(pattern_size, 'bar')
+                sections = cellfun(@(x) [x(1)], parser.Results.sections,'unif',0);
+                section_names = cell(size(sections));
+                section_names(:) = {{'full'}};
+            end
             % Ajay/Andre: distribute patterns equally among meters and
             % sections
             % n_clusters_per_meter = ceil(n_clusters/size(meters,1))*ones(1,size(meters,1));
@@ -282,11 +288,12 @@ classdef RhythmCluster < handle
                 sec = sections{meterID};
                 secLen = diff([sec sec(1)+patt_class(iPatt,1)]);
                 obj.pattInfo.n_clusters(iPatt) = n_clust_per_patt;
-                obj.pattInfo.class(iPatt,:) = patt_class(iPatt,:);
+                obj.pattInfo.class(iPatt,1:3) = patt_class(iPatt,:);
                 obj.pattInfo.name{iPatt} = [num2str(patt_class(iPatt,1)) '_' ...
                     num2str(patt_class(iPatt,2)) '_' num2str(patt_class(iPatt,3)) '_' ...
                     meter_names{meterID} '_' section_names{meterID}{patt_class(iPatt,3)}];
                 obj.pattInfo.len(iPatt) = secLen(patt_class(iPatt,3));
+                obj.pattInfo.class(iPatt,4) = sec(patt_class(iPatt,3));
                 % Compute how many items we have per pattern
                 n_items_per_patt(iPatt) = sum(patt_id == iPatt);
                 % Update the patt_2_pattclass variable 
@@ -348,7 +355,7 @@ classdef RhythmCluster < handle
                     obj.rhythm2section(p) = obj.pattInfo.class(iPatt, 3);
                     obj.rhythm2pattclass(p) = iPatt;
                     obj.rhythm2len_num(p) = obj.pattInfo.len(iPatt);
-                    obj.rhythm2len_den(p) = obj.obj.pattInfo.class(iPatt, 2);
+                    obj.rhythm2len_den(p) = obj.pattInfo.class(iPatt, 2);
                     p=p+1;
                 end
             end

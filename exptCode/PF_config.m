@@ -64,20 +64,21 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 %% SYSTEM PARAMETERS:
 % State space size
 % ----------------
-% Maximum position state (used for the meter with the longest duration),
+% Length of rhythmic patterns {beat', 'bar', 'section'}
+Params.pattern_size = 'bar'; % 'beat' or 'bar' or 'section'
+Params.store_name = [Params.store_name '_' Params.pattern_size];
+% Maximum position state (used for the section with the longest duration),
 % distributed further into sections if needed
 Params.M = 1600;
 % Maximum tempo state 
 Params.N = 15;
 % Number of rhythmic pattern states, specified per section 
-Params.R = 2;       % 1 pattern per section of a meter
+Params.R = 4;       % Pattern per section of a meter
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid
 Params.whole_note_div = 128; 
 % Number of grid points of one pattern per meter
 % Params.barGrid_eff = Params.whole_note_div * (Params.meters(1, :) ./ Params.meters(2, :)); 
-% Length of rhythmic patterns {beat', 'bar'}
-Params.pattern_size = 'section'; % 'beat' or 'bar' or 'section'
 % Audio frame length [sec]
 Params.frame_length = 0.02;
 % Model initial distribution over tempo states by mixture of init_n_gauss
@@ -136,9 +137,9 @@ Params.cluster_merging_thr = 20;
 % If spread > cluster_splitting_thr: split clusters
 Params.cluster_splitting_thr = 30; 
 % If number of clusters > n_max_clusters, kill cluster with lowest weight
-Params.n_max_clusters = 100;
+Params.n_max_clusters = 200;
 % Number of cluster to start with
-Params.n_initial_clusters = 32;
+Params.n_initial_clusters = 64;
 
 % ***Variant 2. Pattern transitions: Flag to say how pattern transitions are to be done
 %       0) No pattern transitions allowed 
@@ -146,6 +147,10 @@ Params.n_initial_clusters = 32;
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
 Params.patt_trans_opt = 2;
+if Params.patt_trans_opt == 2 && strcmp(Params.pattern_size, 'section')
+    disp('Cannot use a mixture observation model with section length patterns. Choosing the full model instead. Setting patt_trans_opt = 3');
+    Params.patt_trans_opt = 3;
+end
 Params.patt_trans_opt_name = {'NoTrans', 'PriorTrans', 'MixObs', 'Full'};
 Params.store_name = [Params.store_name '_' Params.patt_trans_opt_name{Params.patt_trans_opt+1}];
 % ***Variant 3. Inference mode: Hop inference or full inference
@@ -166,9 +171,13 @@ Params.peak.featID = 2;   % Dimension ID of the the feature to use for peak pick
 
 % Tempo
 % ----------------
-% Standard deviation of tempo transition. Note that the tempo n is normalised
-% by dividing by M, so the actual sigma is sigmaN * M.
-Params.sigmaN = 0.0001; 
+%%% Standard deviation of tempo transition. Note that the tempo n is normalised
+%%% by dividing by M, so the actual sigma is sigmaN * M.
+%%% Params.sigmaN = 0.0001; 
+% Standard deviation of tempo transition, expressed as a percentage of the 
+% tempo in previous frame. The tempo n is normalised by dividing by M, 
+% so the actual sigma is sigmaN * Meff/M.
+Params.sigmaN = 0.02;       % 2%
 % Squeezing factor for the tempo change distribution in the 2015 TM
 %  (higher values prefer a constant tempo over a tempo
 %               change from one beat to the next one)
@@ -195,9 +204,9 @@ Params.outlier_percentile = 5;
 % Rhythmic patterns and pattern transitions
 % ----------------------
 % Probability of rhythmic pattern change
-Params.pr = eye(Params.R);
+% Params.pr = eye(Params.R);
 % Probability of starting from a pattern
-Params.prprior = 1/Params.R*ones(1,Params.R);     
+% Params.prprior = 1/Params.R*ones(1,Params.R);     
 
 % Observation model
 % -----------------
@@ -247,13 +256,14 @@ Params.featureDim = length(Params.feat_type);
 Params.meters = [7, 10, 12, 16; 8, 8, 8, 8]';   
 Params.meter_names = {'rupak', 'jhap', 'ek', 'teen'};
 Params.sections = {[1, 4, 6], [1, 3, 6, 8], [1, 3, 5, 7, 9, 11], [1, 5, 9, 13]};
+Params.sectionLens = {[3, 2, 2], [2, 3, 2, 3], [2, 2, 2, 2, 2, 2], [4, 4, 4, 4]};
 Params.section_names = {{'3matra1', '2matra1', '2matra2'}, ...
     {'2matra1', '3matra1', '2matra2', '3matra2'}, ...
     {'2matra1', '2matra2', '2matra3', '2matra4', '2matra5', '2matra6'},...
     {'4matra1', '4matra2', '4matra3', '4matra4'}};
 Params.min_tempo = [10 10 10 10];
 Params.max_tempo = [370 370 370 370];
-Params.M = [700 1000 1200 1600];   % Used only for tracking, for inference, max is used
+Params.Minit = 200;   % Specify the value of M for a 4/4 "beat", it will be scaled as needed. 
 
 % **Cretan
 % Params.meters = [2 4];   
@@ -278,8 +288,10 @@ Params.save_features_to_file = 1;
 Params.load_features_from_file = 1;
 % Save beat times and corresponding position within a bar (.beats.txt)
 Params.save_beats = 1;
-% Save only downbeats (.downbeats.txt)
+% Save downbeats (.downbeats.txt)
 Params.save_downbeats = 1;
+% Save section times (.section.txt)
+Params.save_section_times = 1;
 % Save median tempo (.bpm.txt)
 Params.save_tempo = 1;
 % Save tempo sequence (.bpm.seq)
@@ -288,6 +300,10 @@ Params.save_tempo_seq = 0;
 Params.save_rhythm = 1;
 % Save rhythm sequence (.rhythm.seq)
 Params.save_rhythm_seq = 1;
+% Save section (.section.txt)
+Params.save_section_names = 1;
+% Save section sequence (.secname.seq)
+Params.save_section_seq = 1;
 % Save time_signature (.meter.txt)
 Params.save_meter = 1;
 end

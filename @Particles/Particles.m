@@ -9,6 +9,7 @@ classdef Particles < handle
         m                   % position inside a bar state
         n                   % tempo state
         r                   % rhythmic pattern state
+        v                   % Section state
         weight
         posterior_r         % p(r_t | z_1:t, y_1:t)
         delta               % prob of the most likely sequence ending in discrete state j at time t, when observing y(1:t)

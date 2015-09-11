@@ -15,7 +15,7 @@ end
 numExp = 3;
 folds = 2;
 nTalas = 4;
-numPatts = [4 2 1];
+numPatts = [2 1];
 % talaIDs = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 talaIDs = {'rupak', 'jhap', 'ek', 'teen'};
 % talaIDs = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
@@ -35,35 +35,48 @@ for r = 1:length(numPatts)
                 % Params = HMM_config(basepath);
                 % For PF
                 Params = PF_config(basepath);
-                % Some more parameters to be changed
-                Params.meter = Params.meters(t,:);
-                Params.meterName = Params.meter_names(t);
-                Params.section = Params.sections(t);
-                Params.sectionName = Params.section_names(t);
-                Params.min_tempo = Params.min_tempo(t);
-                Params.max_tempo = Params.max_tempo(t);
+                Params_all = Params;
+                % Some param values need to change for this iteration
+                Params.meters = Params_all.meters(t,:);
+                Params.meter_names = Params_all.meter_names(t);
+                Params.sections = Params_all.sections(t);
+                Params.sectionLens = Params_all.sectionLens(t);
+                Params.section_names = Params_all.section_names(t);
+                Params.min_tempo = Params_all.min_tempo(t);
+                Params.max_tempo = Params_all.max_tempo(t);
                 Params.R = numPatts(r);
-                Params.M = Params.M(t);% * Params.meter(1)/Params.meter(2);
+                if strcmp(Params.pattern_size,'section')
+                    secLens = Params.sectionLens{:} ./ Params.meters(2);
+                    Params.M = Params.Minit * 16 * max(secLens);
+                    clear secLens
+                else
+                    % Get the longest cycle and scale it to that
+                    Params.M = Params.Minit * 4 * Params.meters(1) / Params.meters(2);
+                end
                 % Set a name to store the results
                 if Params.inferenceMethod(1:2) == 'HM'
                     disp('An exact inference using HMM chosen');
                 elseif Params.inferenceMethod(1:2) == 'PF'
                     fprintf('Approximate inference using a Particle Filter: %s\n', Params.store_name);
-                    Params.nParticles = 1500*numPatts(r); % Params.nParticles/nTalas*numPatts(r);  % 1500 particles/pattern
+                    if strcmp(Params.pattern_size,'section')
+                        Params.nParticles = 1500*Params.R*length(Params.sections{:}); % 1500 particles/pattern/section
+                    else
+                        Params.nParticles = 1500*Params.R; % Params.nParticles/nTalas*numPatts(r);  % 1500 particles/pattern/section
+                    end
                 end                
-                Params.store_name = [Params.store_name '_6000_SPMtest'];
+                Params.store_name = [Params.store_name '_' num2str(Params.nParticles)];
                 Params.results_path = fullfile(Params.results_path, Params.dataset,...
-                    'Tracking', Params.store_name, Params.meterName{1}, ...
+                    'Tracking', Params.store_name, Params.meter_names{1}, ...
                     ['nPatts_' num2str(Params.R)], num2str(sim_id));
                 if ~isdir(Params.results_path)
                     mkdir(Params.results_path);
                 end
-                Params.train_set = ['train_' num2str(fld) '_' Params.meterName{1}];
+                Params.train_set = ['train_' num2str(fld) '_' Params.meter_names{1}];
                 % Path to lab files
                 Params.trainLab = fullfile(Params.base_path, 'Data', Params.dataset, ...
-                            ['train_' num2str(fld) '_' Params.meterName{1} '.lab']);
+                            ['train_' num2str(fld) '_' Params.meter_names{1} '.lab']);
                 Params.testLab = fullfile(Params.base_path, 'Data', Params.dataset, ...
-                            ['test_' num2str(fld) '_' Params.meterName{1} '.lab']);
+                            ['test_' num2str(fld) '_' Params.meter_names{1} '.lab']);
                 % CLUSTERING THE DATASET
                 data_save_path = Params.results_path;
                 Clustering = RhythmCluster(Params.trainLab, Params.feat_type, frame_length,...
@@ -71,12 +84,11 @@ for r = 1:length(numPatts)
                 % cluster the dataset according to the meter of each file
                 % Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
                 Clustering.make_feats_per_patt(Params.whole_note_div);
-                Params.clusterIdFln = Clustering.do_clustering(Params.R, ...
-                    'meters', Params.meter, 'meter_names', Params.meterName,...
-                    'sections', Params.section, 'section_names', Params.sectionName,...
+                Params.clusterIdFln = Clustering.do_clustering(Params.pattern_size, Params.R, ...
+                    'meters', Params.meters, 'meter_names', Params.meter_names,...
+                    'sections', Params.sections, 'section_names', Params.section_names,...
                     'save_pattern_fig', Params.fig_store_flag, ...
                     'plotting_path', Params.results_path);
-                % Params.clusterIdFln = Clustering.do_
                 % TRAINING THE MODEL
                 % create beat tracker object
                 BT = BeatTracker(Params, sim_id);
@@ -109,8 +121,8 @@ for r = 1:length(numPatts)
                         end
                     end
                     close all
-                    fprintf('%s tala with %d patterns: %s: %d/%d expt, %d/%d fold, %d/%d done...\n',...
-                        Params.meterName{1}, Params.R, fname, ex, numExp, fld,...
+                    fprintf('%s: %s tala with %d patterns: %s: %d/%d expt, %d/%d fold, %d/%d done...\n',...
+                        Params.system, Params.meter_names{1}, Params.R, fname, ex, numExp, fld,...
                         folds, k, length(BT.test_data.file_list));
                 end
                 Params.pieceDur = dur;

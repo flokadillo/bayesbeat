@@ -17,7 +17,6 @@ folds = 2;
 procLongFiles = 1;      % Set it to 1 if you wish to process longer files
 timeFormat = 'HH:MM:SS.FFF dd-mmm-yyyy';
 frame_length = 0.02; 
-pattern_size = 'bar';
 for ex = 1:numExp
     for fld = 1:folds
         Params.startTime = datestr(clock, timeFormat);
@@ -28,9 +27,16 @@ for ex = 1:numExp
         % Params = HMM_config(basepath);
         % For PF
         Params = PF_config(basepath);
-        Params.M = max(Params.M);
+        if strcmp(Params.pattern_size,'section')
+            secLens = cellfun(@(x,y) (x./y), Params.sectionLens, num2cell(Params.meters(:,2)'), 'uniformOutput', 0);
+            Params.M = Params.Minit * 16 * max([secLens{:}]);
+            clear secLens
+        else
+            % Get the longest cycle and scale it to that
+            Params.M = Params.Minit * 4 * max(Params.meters(:,1)./Params.meters(:,2));
+        end
         % Set a name to store the results
-        Params.store_name = [Params.store_name '_6000_SPMtest'];
+        Params.store_name = [Params.store_name '_' num2str(Params.nParticles)];
         if Params.inferenceMethod(1:2) == 'HM'
             disp('An exact inference using HMM chosen');
         elseif Params.inferenceMethod(1:2) == 'PF'
@@ -54,12 +60,11 @@ for ex = 1:numExp
         % cluster the dataset according to the meter of each file
         % Params.clusterIdFln = Clustering.make_cluster_assignment_file('meter');
         Clustering.make_feats_per_patt(Params.whole_note_div);
-        Params.clusterIdFln = Clustering.do_clustering(Params.R, ...
+        Params.clusterIdFln = Clustering.do_clustering(Params.pattern_size, Params.R, ...
             'meters', Params.meters, 'meter_names', Params.meter_names,...
             'sections', Params.sections, 'section_names', Params.section_names,...
             'save_pattern_fig', Params.fig_store_flag, ...
-            'plotting_path', Params.results_path);        
-        % Params.clusterIdFln = Clustering.do_
+            'plotting_path', Params.results_path);                
         % TRAINING THE MODEL
         % create beat tracker object
         BT = BeatTracker(Params, sim_id);

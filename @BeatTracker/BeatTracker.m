@@ -49,7 +49,10 @@ classdef BeatTracker < handle
                 obj.Params.save_beats = 1;
             end
             if ~isfield(obj.Params, 'save_downbeats')
-                obj.Params.save_downbeats = 0;
+                obj.Params.save_downbeats = 1;
+            end
+            if ~isfield(obj.Params, 'save_section_times')
+                obj.Params.save_section_times = 1;
             end
             if ~isfield(obj.Params, 'save_tempo')
                 obj.Params.save_tempo = 0;
@@ -62,6 +65,12 @@ classdef BeatTracker < handle
             end
             if ~isfield(obj.Params, 'save_rhythm_seq')
                 obj.Params.save_rhythm_seq = 0;
+            end            
+            if ~isfield(obj.Params, 'save_section_names')
+                obj.Params.save_section_names = 0;
+            end
+            if ~isfield(obj.Params, 'save_section_seq')
+                obj.Params.save_section_seq = 0;
             end            
             if ~isfield(obj.Params, 'save_meter')
                 obj.Params.save_meter = 0;
@@ -144,11 +153,11 @@ classdef BeatTracker < handle
             end
             if ~isempty(obj.train_data.B_pr)
                 % if B_pr is given in cluster file save it here
-                obj.Params.pr = obj.train_data.B_pr;
+                obj.Params.B_pr = obj.train_data.B_pr;
             end
             if ~isempty(obj.train_data.B_prprior)
                 % if B_prprior is given in cluster file save it here
-                obj.Params.prprior = obj.train_data.B_prprior;
+                obj.Params.B_prprior = obj.train_data.B_prprior;
             end
             % make filename of features
             [~, clusterFName, ~] = fileparts(obj.Params.clusterIdFln);
@@ -407,12 +416,16 @@ classdef BeatTracker < handle
                 BeatTracker.save_downbeats(results{1}, fullfile(save_dir, ...
                     [fname, '.downbeats.txt']));
             end
+            if obj.Params.save_section_times
+                BeatTracker.save_section_times(results{1}, fullfile(save_dir, ...
+                    [fname, '.section.txt']));
+            end
             if obj.Params.save_tempo
                 BeatTracker.save_tempo(results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.txt']));
             end
             if obj.Params.save_tempo_seq
-                BeatTracker.save_tempo_seq(results{5}, results{2}, fullfile(save_dir, ...
+                BeatTracker.save_tempo_seq(results{6}, results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.seq']));
             end
             if obj.Params.save_meter
@@ -423,10 +436,20 @@ classdef BeatTracker < handle
                 BeatTracker.save_rhythm(results{4}, fullfile(save_dir, ...
                     [fname, '.rhythm.txt']), obj.model.rhythm_names);
             end
-            if obj.Params.save_rhythm_seq
-                BeatTracker.save_rhythm_seq(results{5}, results{4}, ...
-                    results{1}(results{1}(:,2) == 1,1), ...
-                    fullfile(save_dir, [fname, '.rhythm.seq']), obj.model.rhythm_names);
+            if obj.Params.save_section_names
+                BeatTracker.save_rhythm(results{5}, fullfile(save_dir, ...
+                    [fname, '.secname.txt']), obj.model.pattInfo.name);
+            end
+            if (sum(results{1}(:,2) == 1) >= 2)         % Atleast two full cycles need to be present to get sequence of rhythm and sections 
+                if obj.Params.save_rhythm_seq
+                    BeatTracker.save_rhythm_seq(results{6}, results{4}, ...
+                        results{1}(results{1}(:,2) == 1,1), ...
+                        fullfile(save_dir, [fname, '.rhythm.seq']), obj.model.rhythm_names);
+                end
+                if obj.Params.save_section_seq
+                    BeatTracker.save_section_seq(results{6}, results{5}, results{1}, ...
+                        fullfile(save_dir, [fname, '.section.seq']), obj.model.pattInfo.name);
+                end
             end
         end
     end
@@ -434,13 +457,20 @@ classdef BeatTracker < handle
     methods(Static)
         function [] = save_beats(beats, save_fln)
             fid = fopen(save_fln, 'w');
-            fprintf(fid, '%.3f\t%i\n', beats');
+            fprintf(fid, '%.3f\t%i\n', beats(:,1:2)');
             fclose(fid);
         end
         
         function [] = save_downbeats(beats, save_fln)
             fid = fopen(save_fln, 'w');
             fprintf(fid, '%.3f\n', beats(beats(:, 2) == 1)');
+            fclose(fid);
+        end
+        
+        function [] = save_section_times(beats, save_fln)
+            sectionTimes = beats(find(diff(beats(:,3)))+1,[1 3]);
+            fid = fopen(save_fln, 'w');
+            fprintf(fid, '%.3f\t%i\n', sectionTimes');
             fclose(fid);
         end
         
@@ -470,6 +500,27 @@ classdef BeatTracker < handle
                 [dummy ii] = min(abs(ts - ind(i)));
                 r = rhythm(ii);
                 fprintf(fid, '%s, %d\n', rhythm_names{r}, r);
+            end
+            fclose(fid);
+        end
+        
+        function [] = save_section_names(sec, save_fln, sec_names)
+            r = unique(sec);
+            fid = fopen(save_fln, 'w');
+            for i=1:length(r)
+                fprintf(fid, '%s\n', sec_names{r(i)});
+            end
+            fclose(fid);
+        end
+        
+        function [] = save_section_seq(ts, sec, beats, save_fln, sec_names)
+            sectionTimes = beats(find(diff(beats(:,3)))+1,[1 3]);
+            ind = (sectionTimes(1:end-1) + sectionTimes(2:end))/2;
+            fid = fopen(save_fln, 'w');
+            for i=1:length(ind)
+                [dummy ii] = min(abs(ts - ind(i)));
+                r = sec(ii);
+                fprintf(fid, '%s, %d\n', sec_names{r}, r);
             end
             fclose(fid);
         end
