@@ -65,7 +65,7 @@ Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_
 % State space size
 % ----------------
 % Length of rhythmic patterns {beat', 'bar', 'section'}
-Params.pattern_size = 'bar'; % 'beat' or 'bar' or 'section'
+Params.pattern_size = 'section'; % 'beat' or 'bar' or 'section'
 Params.store_name = [Params.store_name '_' Params.pattern_size];
 % Maximum position state (used for the section with the longest duration),
 % distributed further into sections if needed
