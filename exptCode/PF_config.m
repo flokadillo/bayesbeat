@@ -73,7 +73,7 @@ Params.M = 1600;
 % Maximum tempo state 
 Params.N = 15;
 % Number of rhythmic pattern states, specified per section 
-Params.R = 4;       % Pattern per section of a meter
+Params.R = 1;       % Pattern per section of a meter
 % Number of position grid points per whole note. This is important for the
 % observation model, as parameters are tied within this grid
 Params.whole_note_div = 128; 
@@ -105,7 +105,6 @@ Params.online.update_interval = 1000;
 % To avoid overfitting and prevent the obs_lik to become zero, we set a
 % floor
 Params.online.obs_lik_floor = 1e-7;
-
 %% PF parameters
 % Number of particles
 Params.nParticles = 6000;
