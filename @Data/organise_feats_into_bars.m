@@ -67,15 +67,9 @@ for iFile=1:length(obj.file_list)
         % load feature values from file and up/downsample to frame_length
         E = obj.feature.load_feature(obj.file_list{iFile});
         fr = 1/obj.feature.frame_length;
-        % if feature vector is shorter than annotations, copy last value
-        if length(E) * obj.feature.frame_length < beats(end, 1)
-            E = [E; E(end, :)];
-        end
-        if beats(end, 1) > length(E) * obj.feature.frame_length;
-            fprintf('     Warning: beat annotations longer than audio file\n');
-            nchar = 0;
-            beats = beats(beats(:, 1) <= length(E) * ...
-                obj.feature.frame_length, :);
+        % if feature vector is shorter than annotations, ignore last beat
+        if size(E, 1) * obj.feature.frame_length <= beats(end, 1)
+            beats = beats(1:end-1, :);
         end
         if strcmp(obj.pattern_size, 'bar')
             nBars = obj.n_bars(iFile);
