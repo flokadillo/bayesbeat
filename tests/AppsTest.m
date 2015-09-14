@@ -1,7 +1,7 @@
-classdef BinTest < matlab.unittest.TestCase
+classdef AppsTest < matlab.unittest.TestCase
     % ExamplesTest tests the examples in the examples folder
     properties
-        result_folder = fullfile(pwd, 'temp');
+        result_folder = fullfile(pwd, 'results');
         audio_files = {fullfile(pwd, '..', ...
             'examples/data/audio/guitar_duple.flac'), fullfile(pwd, '..', ...
             'examples/data/audio/guitar_triple.flac')};
@@ -9,7 +9,7 @@ classdef BinTest < matlab.unittest.TestCase
     
     methods (Test)
         function test_mirex_2013(testCase)
-            addpath(fullfile(pwd, '..', 'bin/mirex_2013'));
+            addpath(fullfile(pwd, '..', 'apps/mirex_2013'));
             % Beat tracking with a pre-trained HMM
             compute_beats_mirex_2013(testCase.audio_files{1}, ...
                 testCase.result_folder);

@@ -1,28 +1,19 @@
-classdef BeatTrackingStateSpace < handle
+classdef BeatTrackingStateSpaceHMM < handle & BeatTrackingStateSpace
     %UNTITLED3 Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
-        n_patterns
         n_states
         max_n_tempo_states
-        n_beats_from_pattern
-        meter_from_pattern
-        pattern_names
         n_position_states       % cell array with n_patterns cells.
         %                           Each cell contains a vector of length
         %                           n_tempo_states. n_positions are counted per
         %                           beat, i.e., if you need the
         %                           positions per bar, multiply with
         %                           n_beats_from_pattern
-        max_position
         position_from_state
         tempo_from_state
         pattern_from_state
-        min_tempo_bpm
-        max_tempo_bpm
-        frame_length
-        use_silence_state
         store_proximity         % Store ids of neighborhood states
         proximity_matrix        % Ids of the neighboring states
         %                           for each state [n_states, 6]. This is
@@ -32,21 +23,17 @@ classdef BeatTrackingStateSpace < handle
     end
     
     methods
-        function obj = BeatTrackingStateSpace(State_space_params, ...
+        function obj = BeatTrackingStateSpaceHMM(State_space_params, ...
                 min_tempo_bpm, max_tempo_bpm, n_beats_from_pattern, ...
                 meter_from_pattern, frame_length, pattern_names, ...
                 use_silence_state, store_proximity)
+            % Call superclass constructor
+            obj@BeatTrackingStateSpace(State_space_params, min_tempo_bpm, ...
+                max_tempo_bpm, n_beats_from_pattern, ...
+                meter_from_pattern, frame_length, pattern_names, ...
+                use_silence_state);
             % store properties
-            obj.n_patterns = State_space_params.n_patterns;
             obj.max_n_tempo_states = State_space_params.n_tempi;
-            obj.max_position = State_space_params.max_positions;
-            obj.min_tempo_bpm = min_tempo_bpm;
-            obj.max_tempo_bpm = max_tempo_bpm;
-            obj.n_beats_from_pattern = n_beats_from_pattern;
-            obj.meter_from_pattern = meter_from_pattern;
-            obj.pattern_names = pattern_names;
-            obj.frame_length = frame_length;
-            obj.use_silence_state = use_silence_state;
             obj.store_proximity = store_proximity;
             if obj.use_silence_state
                 obj.n_states = obj.n_states + 1;
@@ -60,15 +47,7 @@ classdef BeatTrackingStateSpace < handle
             pattern = obj.pattern_from_state(state);
         end
         
-        function [bpm] = convert_tempo_to_bpm(obj, tempo)
-            pos_per_beat = obj.max_position(1) / obj.n_beats_from_pattern(1);
-            bpm = 60 * tempo / (pos_per_beat * obj.frame_length);
-        end
-        
-        function [tempo] = convert_tempo_from_bpm(obj, bpm)
-            pos_per_beat = obj.max_position(1) / obj.n_beats_from_pattern(1);
-            tempo = bpm * pos_per_beat * obj.frame_length / 60;
-        end
+
     end
     
 end

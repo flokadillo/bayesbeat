@@ -34,8 +34,8 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             max_tempo_ss = obj.state_space.max_tempo_ss;
             R = obj.state_space.n_patterns;
             N = obj.state_space.max_n_tempo_states;
-            M = max(obj.state_space.max_position);
-            M_from_pattern = obj.state_space.max_position;
+            M = max(obj.state_space.max_position_from_pattern);
+            M_from_pattern = obj.state_space.max_position_from_pattern;
             state_from_substate = obj.state_space.state_from_substate;
             % Set up tempo transition matrix [R*N, N], which has an NxN
             % transition matrix for each pattern            %
