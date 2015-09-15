@@ -96,6 +96,9 @@ classdef BeatTrackerHMM < handle
         end
         
         function make_initial_distribution(obj, meters)
+            if ~exist('meters', 'var')
+               obj.use_meter_prior = 0;
+            end
             n_states = obj.state_space.n_states;
             if obj.use_silence_state
                 % always start in the silence state
@@ -399,8 +402,6 @@ classdef BeatTrackerHMM < handle
                 end
             end
             if ~isempty(beats)
-                % subtract one frame, to have a beat sequence starting at 0
-                % seconds.
                 beats(:, 1) = beats(:, 1) * obj.frame_length;
             end
         end

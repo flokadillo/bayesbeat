@@ -37,53 +37,58 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
             M = max(obj.state_space.max_position);
             M_from_pattern = obj.state_space.max_position;
             state_from_substate = obj.state_space.state_from_substate;
-            % Set up tempo transition matrix [R*N, N], which has an NxN
-            % transition matrix for each pattern            %
-            if size(obj.pn, 1) == R * N
-                % the tempo transition probability is assumed to differ for
-                % each pattern and each absolute tempo
-                n_r_trans = obj.pn;
-            elseif ismember(size(obj.pn, 1), [1, 2])
-                if (size(obj.pn, 1) == 1)
-                    % prob of tempo increase and decrease are the same (pn)
-                    obj.pn = ones(2, 1) * obj.pn;
-                end
-                % pn specifies one probability for tempo speed up (pn(1)),
-                % and one for tempo slowing down pn(2)
-                n_r_trans = zeros(R * N, N);
-                for ri = 1:R
-                    n_const = diag(ones(N, 1) * (1-sum(obj.pn)), 0);
-                    % Also adjust for values at minN and maxN
-                    if max_tempo_ss(ri) > min_tempo_ss(ri)
-                        n_const(min_tempo_ss(ri), min_tempo_ss(ri)) = ...
-                            1 - obj.pn(1);
-                        n_const(max_tempo_ss(ri),max_tempo_ss(ri)) = ...
-                            1 - obj.pn(2);
-                    elseif max_tempo_ss(ri) == min_tempo_ss(ri)
-                        n_const(min_tempo_ss(ri), min_tempo_ss(ri)) = 1;
+            % Set up tempo transition matrix [R, R, N, N]
+            if (size(obj.pn, 1) == 1)
+                % prob of tempo increase and decrease are the same (pn)
+                obj.pn = ones(2, 1) * obj.pn;
+            end
+            n_r_trans_bar_cross = zeros(R, R, N, N);
+            n_r_trans_within_bar = zeros(R, N, N);
+            for ri = 1:R
+                for rj = 1:R
+                    n_trans = zeros(N, N);
+                    for ni = min_tempo_ss(ri):max_tempo_ss(ri)
+                        % tempo constant
+                        nj = ni;
+                        if (nj >= min_tempo_ss(rj)) && (nj <= max_tempo_ss(rj))
+                            n_trans(ni, nj) = (1 - sum(obj.pn));
+                        end
+                        % tempo decrease
+                        nj = ni - 1;
+                        if (nj >= min_tempo_ss(rj)) && (nj <= max_tempo_ss(rj))
+                            n_trans(ni, nj) = obj.pn(2);
+                        end
+                        % tempo increase
+                        nj = ni + 1;
+                        if (nj >= min_tempo_ss(rj)) && (nj <= max_tempo_ss(rj))
+                            n_trans(ni, nj) = obj.pn(1);
+                        end
+                        % normalise
+                        tempo_idx = max([ni-1, min_tempo_ss(rj)]):...
+                            min([ni+1, max_tempo_ss(rj)]);
+                        n_trans(ni, tempo_idx) = ...
+                            n_trans(ni, tempo_idx) / ...
+                            sum(n_trans(ni, tempo_idx));
                     end
-                    n_up = diag(ones(N, 1) * obj.pn(1), 1);
-                    n_down = diag(ones(N, 1) * obj.pn(2), -1);
-                    % add the three matrices
-                    temp = n_const + n_up(1:N, 1:N) + ...
-                        n_down(1:N, 1:N);
-                    % remove tempo change transitions below minN
-                    temp(1:min_tempo_ss(ri)-1, :) = 0;
-                    temp(:, 1:min_tempo_ss(ri)-1) = 0;
-                    % remove tempo change transitions above maxN
-                    temp(max_tempo_ss(ri)+1:N, :) = 0;
-                    temp(:, max_tempo_ss(ri)+1:N) = 0;
-                    n_r_trans((ri-1) * N + 1:ri * N, :) = temp;
+                    if ri == rj
+                        n_r_trans_within_bar(ri, :, :) = n_trans;
+                    end
+                    n_r_trans_bar_cross(ri, rj, :, :) = n_trans * ...
+                        obj.pr(ri, rj);
                 end
-            else
-                error('p_n has wrong dimensions!\n');
+                % normalise
+                for ni = min_tempo_ss(ri):max_tempo_ss(ri)
+                    n_r_trans_bar_cross(ri, :, ni, :) = ...
+                        n_r_trans_bar_cross(ri, :, ni, :) ./ ...
+                        sum(sum(n_r_trans_bar_cross(ri, :, ni, :)));
+                end
             end
             p = 1;
             % memory allocation:
             ri = zeros(num_state_ids * 3, 1);
             cj = zeros(num_state_ids * 3, 1);
             val = zeros(num_state_ids * 3, 1);
-%             state_start_id = 1;
+            %             state_start_id = 1;
             for rhi = 1:R
                 mi=1:M_from_pattern(rhi);
                 for ni = min_tempo_ss(rhi):max_tempo_ss(rhi)
@@ -92,35 +97,40 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                         repmat(ni, 1, M_from_pattern(rhi)), ...
                         repmat(rhi, 1, M_from_pattern(rhi)));
                     state_ids = state_from_substate(lin_idx);
+                    if ismember(49279, state_ids)
+                        kjh=987;
+                    end
                     % position of state j
-                    mj = mod(mi + ni - 1, M_from_pattern(rhi)) + 1; 
+                    mj = mod(mi + ni - 1, M_from_pattern(rhi)) + 1;
                     % ----------------------------------------------------------
                     bar_crossing = mj < mi;
                     n_bc = sum(bar_crossing);
                     % number of non-bar-crossings
                     nn_bc = length(bar_crossing) - n_bc;
                     % possible transitions: 3 x T x R
-                    ind_rn = (rhi - 1) * N + ni;
-                    for n_ind = 1:3
-                        if n_ind == 1 % tempo decrease
-                            if ni == min_tempo_ss(rhi), continue; end
-                            nj = ni - 1;
-                        elseif n_ind == 2 % tempo constant
-                            nj = ni;
-                        else  % tempo increase
-                            if ni == max_tempo_ss(rhi), continue; end
-                            nj = ni + 1;
-                        end
-                        prob = n_r_trans(ind_rn, nj);
-                        for rhj=1:R
-                            prob2 = obj.pr(rhi, rhj);
+                    for rhj=1:R
+                        for n_ind = 1:3
+                            if n_ind == 1 % tempo decrease
+                                if ni == 1
+                                    continue;
+                                end
+                                nj = ni - 1;
+                            elseif n_ind == 2 % tempo constant
+                                nj = ni;
+                            else  % tempo increase
+                                if ni == N
+                                    continue;
+                                end
+                                nj = ni + 1;
+                            end
+                            prob = n_r_trans_bar_cross(rhi, rhj, ni, nj);
                             lin_idx = sub2ind([M, N, R], mj(bar_crossing), ...
                                 repmat(nj, 1, n_bc), ...
                                 repmat(rhj, 1, n_bc));
                             j = state_from_substate(lin_idx);
                             ri(p:p+n_bc-1) = state_ids(bar_crossing);
                             cj(p:p+n_bc-1) = j;
-                            val(p:p+n_bc-1) = prob * prob2 * (1-obj.p2s);
+                            val(p:p+n_bc-1) = prob * (1-obj.p2s);
                             p = p + n_bc;
                         end
                     end
@@ -138,18 +148,22 @@ classdef BeatTrackingTransitionModel2006 < handle & BeatTrackingTransitionModel
                     % possible transitions: 3
                     for n_ind = 1:3 % decrease, constant, increase
                         if n_ind == 1 % tempo decrease
-                            if ni == min_tempo_ss(rhi), continue; end
+                            if ni == 1
+                                continue;
+                            end
                             nj = ni - 1;
                         elseif n_ind == 2 % tempo constant
                             nj = ni;
                         else  % tempo increase
-                            if ni == max_tempo_ss(rhi), continue; end
+                            if ni == N
+                                continue;
+                            end
                             nj = ni + 1;
                         end
-                        prob = n_r_trans((rhi-1)*N + ni, nj);
+                        prob = n_r_trans_within_bar(rhi, ni, nj);
                         lin_idx = sub2ind([M, N, R], mj(~bar_crossing), ...
-                                repmat(nj, 1, nn_bc), ...
-                                repmat(rhj, 1, nn_bc));
+                            repmat(nj, 1, nn_bc), ...
+                            repmat(rhj, 1, nn_bc));
                         j = state_from_substate(lin_idx);
                         ri(p:p+nn_bc-1) = state_ids(~bar_crossing);
                         cj(p:p+nn_bc-1) = j;
