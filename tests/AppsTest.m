@@ -17,7 +17,7 @@ classdef AppsTest < matlab.unittest.TestCase
             results = load(fullfile(testCase.result_folder, ...
                 [fname, '.beats.txt']));
             % add all beats and compare to expected solution
-            exp_sum_beats = 776.24;
+            exp_sum_beats = 777.36;
             act_sum_beats = sum(results(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
                 1e-3);
