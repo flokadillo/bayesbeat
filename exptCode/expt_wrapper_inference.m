@@ -36,7 +36,7 @@ for ex = 1:numExp
             Params.M = Params.Minit * 4 * max(Params.meters(:,1)./Params.meters(:,2));
         end
         % Set a name to store the results
-        Params.store_name = [Params.store_name '_' num2str(Params.nParticles)];
+        Params.store_name = [Params.store_name '_1500pp'];
         if Params.inferenceMethod(1:2) == 'HM'
             disp('An exact inference using HMM chosen');
         elseif Params.inferenceMethod(1:2) == 'PF'

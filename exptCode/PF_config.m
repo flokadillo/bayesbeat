@@ -23,8 +23,8 @@ Params.system = 'PF_SectionTracker';
 % Params.dataset = 'CretanLeapingDances';
 % Params.dataset = 'CMCMDa_v2';
 % Params.dataset = 'HMDs';
-% Params.dataset = 'HMDf';
-Params.dataset = 'HMDl';
+Params.dataset = 'HMDf';
+% Params.dataset = 'HMDl';
 
 % Path settings
 if exist('base_path', 'var')
@@ -60,7 +60,6 @@ Params.n_folds_for_cross_validation = 0;
 % patterns as given by the cluster_assignment_file. Otherwise, Data.extract_feats_per_file_pattern_barPos_dim 
 %is loaded from file.
 Params.reorganize_bars_into_cluster = 0; % reorganize in Data.extract_feats_per_file_pattern_barPos_dim
-
 %% SYSTEM PARAMETERS:
 % State space size
 % ----------------
@@ -145,7 +144,7 @@ Params.n_initial_clusters = 64;
 %       1) Patterns transitions sampled from prior
 %       2) Mixture observation model (ISMIR 2015)
 %       3) Full model inference (Extended)
-Params.patt_trans_opt = 2;
+Params.patt_trans_opt = 3;
 if Params.patt_trans_opt == 2 && strcmp(Params.pattern_size, 'section')
     disp('Cannot use a mixture observation model with section length patterns. Choosing the full model instead. Setting patt_trans_opt = 3');
     Params.patt_trans_opt = 3;

@@ -15,7 +15,7 @@ end
 numExp = 3;
 folds = 2;
 nTalas = 4;
-numPatts = [2 1];
+numPatts = [1 2];
 % talaIDs = {'rupaka', 'kChapu', 'mChapu', 'adi'};
 talaIDs = {'rupak', 'jhap', 'ek', 'teen'};
 % talaIDs = {'ChaChaCha', 'Jive' , 'Quickstep', 'Rumba' , 'Samba' , 'Tango', 'VienneseWaltz', 'Waltz'};
@@ -64,8 +64,8 @@ for r = 1:length(numPatts)
                         Params.nParticles = 1500*Params.R; % Params.nParticles/nTalas*numPatts(r);  % 1500 particles/pattern/section
                     end
                 end                
-                Params.store_name = [Params.store_name '_' num2str(Params.nParticles)];
-                Params.results_path = fullfile(Params.results_path, Params.dataset,...
+                Params.store_name = [Params.store_name '_1500pp'];
+                Params.results_path = fullfile(Params.results_path, Params.dataset, ...
                     'Tracking', Params.store_name, Params.meter_names{1}, ...
                     ['nPatts_' num2str(Params.R)], num2str(sim_id));
                 if ~isdir(Params.results_path)
