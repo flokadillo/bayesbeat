@@ -18,13 +18,13 @@ classdef BeatTrackerHMM < handle
         correct_beats       % [0, 1, 2] correct beats after detection
         max_shift           % frame shifts that are allowed in forward path
         obs_lik_floor       % obs_lik has to be > floor to avoid overfitting
-        update_interval     % best state sequence is set to the global max each 
+        update_interval     % best state sequence is set to the global max each
         %                       update_interval
         use_silence_state
         use_mex_viterbi     % 1: use it, 0: don't use it (~5 times slower)
-        beat_positions      % cell array; contains the bar positions of the 
+        beat_positions      % cell array; contains the bar positions of the
         %                       beats for each rhythm
-        use_meter_prior     % weight initial probability by frequency of meter 
+        use_meter_prior     % weight initial probability by frequency of meter
         %                       in the training set
     end
     
@@ -41,7 +41,7 @@ classdef BeatTrackerHMM < handle
             % Create state_space
             if strcmp(obj.tm_type, '2015')
                 State_space_params.max_positions = bar_durations;
-                obj.state_space = BeatTrackingStateSpace2015(...
+                obj.state_space = BeatTrackingStateSpaceHMM2015(...
                     State_space_params, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                     Clustering.rhythm2meter, Params.frame_length, ...
@@ -51,7 +51,7 @@ classdef BeatTrackerHMM < handle
                 State_space_params.max_positions = ...
                     round(State_space_params.max_positions * bar_durations / ...
                     max(bar_durations));
-                obj.state_space = BeatTrackingStateSpace2006(...
+                obj.state_space = BeatTrackingStateSpaceHMM2006(...
                     State_space_params, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                     Clustering.rhythm2meter, Params.frame_length, ...
@@ -97,8 +97,9 @@ classdef BeatTrackerHMM < handle
         
         function make_initial_distribution(obj, meters)
             if ~exist('meters', 'var')
-               obj.use_meter_prior = 0;
+                obj.use_meter_prior = 0;
             end
+            fprintf('* Set up initial distribution\n');
             n_states = obj.state_space.n_states;
             if obj.use_silence_state
                 % always start in the silence state
@@ -108,22 +109,22 @@ classdef BeatTrackerHMM < handle
                 obj.initial_prob = ones(n_states, 1) / n_states;
             end
             if obj.use_meter_prior
-               [unique_meters, ~, idx] = unique(meters, 'rows');
-               meter_frequency = hist(idx, max(idx));
-               meter_frequency = meter_frequency / sum(meter_frequency);
-               
-               for r = 1:obj.state_space.n_patterns
-                  idx_r = (obj.state_space.pattern_from_state == r);
-                  idx_m = ismember(unique_meters, ...
-                      obj.state_space.meter_from_pattern(r, :), 'rows');
-                  obj.initial_prob(idx_r) = obj.initial_prob(idx_r) * ...
-                      meter_frequency(idx_m);
-                  fprintf('    Weighting meter %i/%i by %.2f\n', ...
-                      unique_meters(idx_m, 1), ...
-                      unique_meters(idx_m, 2), ...
-                      meter_frequency(idx_m));
-               end
-               obj.initial_prob = obj.initial_prob / sum(obj.initial_prob);
+                [unique_meters, ~, idx] = unique(meters, 'rows');
+                meter_frequency = hist(idx, max(idx));
+                meter_frequency = meter_frequency / sum(meter_frequency);
+                
+                for r = 1:obj.state_space.n_patterns
+                    idx_r = (obj.state_space.pattern_from_state == r);
+                    idx_m = ismember(unique_meters, ...
+                        obj.state_space.meter_from_pattern(r, :), 'rows');
+                    obj.initial_prob(idx_r) = obj.initial_prob(idx_r) * ...
+                        meter_frequency(idx_m);
+                    fprintf('    Weighting meter %i/%i by %.2f\n', ...
+                        unique_meters(idx_m, 1), ...
+                        unique_meters(idx_m, 2), ...
+                        meter_frequency(idx_m));
+                end
+                obj.initial_prob = obj.initial_prob / sum(obj.initial_prob);
             end
         end
         
@@ -144,16 +145,8 @@ classdef BeatTrackerHMM < handle
                         belief_func);
                 else
                     if obj.use_mex_viterbi
-%                         try
-%                             hidden_state_sequence = ...
-%                                 obj.HMM.viterbi(y, obj.use_mex_viterbi);
-%                         catch
-%                             fprintf(['\n    WARNING: viterbi.cpp has to be', ...
-%                                 'compiled, using the pure MATLAB version', ...
-%                                 'instead\n']);
-                            hidden_state_sequence = obj.HMM.viterbi(y, 0);
-                            fprintf('\n');
-%                         end
+                        hidden_state_sequence = obj.HMM.viterbi(y, 0);
+                        fprintf('\n');
                     else
                         hidden_state_sequence = obj.HMM.viterbi(y, ...
                             obj.use_mex_viterbi);
@@ -198,7 +191,7 @@ classdef BeatTrackerHMM < handle
                 % col2: sparse vector that is one for possible states
                 belief_func = cell(length(Constraint.data{c}), 2);
                 beatpositions = obj.beat_positions;
-                bar_pos_per_beat = obj.state_space.max_position ./ ...
+                bar_pos_per_beat = obj.state_space.max_position_from_pattern ./ ...
                     obj.state_space.n_beats_from_pattern;
                 win_pos = tol_downbeats .* bar_pos_per_beat;
                 for i_db = 1:length(Constraint.data{c})
@@ -228,7 +221,7 @@ classdef BeatTrackerHMM < handle
                 beatpositions = obj.beat_positions;
                 % find states which are considered in the window
                 idx = false(obj.trans_model.num_states, 1);
-                state_pos_per_beat = obj.state_space.max_position ./ ...
+                state_pos_per_beat = obj.state_space.max_position_from_pattern ./ ...
                     obj.state_space.n_beats_from_pattern;
                 for i_r = 1:obj.state_space.n_patterns
                     win_pos = tol_beats * state_pos_per_beat(i_r);
@@ -289,11 +282,11 @@ classdef BeatTrackerHMM < handle
         
         function beat_positions = get.beat_positions(obj)
             for i_r = 1:obj.state_space.n_patterns
-                pos_per_beat = obj.state_space.max_position(i_r) / ...
+                pos_per_beat = obj.state_space.max_position_from_pattern(i_r) / ...
                     obj.state_space.n_beats_from_pattern(i_r);
-                % subtract eps to exclude max_position+1
+                % subtract eps to exclude max_position_from_pattern+1
                 obj.beat_positions{i_r} = 1:pos_per_beat:...
-                    (obj.state_space.max_position(i_r)+1);
+                    (obj.state_space.max_position_from_pattern(i_r)+1);
                 obj.beat_positions{i_r} = obj.beat_positions{i_r}(1:...
                     obj.state_space.n_beats_from_pattern(i_r));
             end
@@ -330,7 +323,7 @@ classdef BeatTrackerHMM < handle
             if obj.correct_beats
                 % resolution of observation model in
                 % position_states:
-                res_obs = max(obj.state_space.max_position)/obj.max_bar_cells;
+                res_obs = max(obj.state_space.max_position_from_pattern)/obj.max_bar_cells;
                 [dist, btype] = max(beatpositions{rhythm_state(1)} - ...
                     position_state(1));
                 if (abs(dist) < res_obs/2) && (dist < 0)
@@ -365,9 +358,9 @@ classdef BeatTrackerHMM < handle
                             && (position_state(i+1) < position_state(i)))
                         % bar transition between frame i and frame i+1
                         bt = interp1([position_state(i); ...
-                            obj.state_space.max_position(rhythm_state(i)) + ...
+                            obj.state_space.max_position_from_pattern(rhythm_state(i)) + ...
                             position_state(i+1)], [i; i+1], ...
-                            obj.state_space.max_position(rhythm_state(i)) + ...
+                            obj.state_space.max_position_from_pattern(rhythm_state(i)) + ...
                             beat_pos);
                         beat_detected = true;
                     elseif ((position_state(i) < beat_pos) ...
@@ -462,14 +455,14 @@ classdef BeatTrackerHMM < handle
             elseif strcmp(obj.tm_type, '2015')
                 State_space_params.n_tempi = nan;
             elseif strcmp(obj.tm_type, 'whiteley')
-                State_space_params.n_tempi = 30;                
+                State_space_params.n_tempi = 30;
             end
             if strcmp(obj.tm_type, 'whiteley')
                 if isfield(Params, 'M')
-                    State_space_params.max_positions = Params.M; 
+                    State_space_params.max_positions = Params.M;
                 else
-                    State_space_params.max_positions = 1600; 
-                end 
+                    State_space_params.max_positions = 1600;
+                end
             end
             State_space_params.n_patterns = Params.R;
             if isfield(Params, 'use_meter_prior')

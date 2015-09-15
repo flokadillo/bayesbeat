@@ -1,7 +1,7 @@
 classdef ExamplesTest < matlab.unittest.TestCase
     % ExamplesTest tests the examples in the examples folder
     properties
-        result_folder = fullfile(pwd, 'temp')
+        result_folder = fullfile(pwd, 'results')
         audio_files = {fullfile(pwd, '..', ...
             'examples/data/audio/guitar_duple.flac'), fullfile(pwd, '..', ...
             'examples/data/audio/guitar_triple.flac')}
@@ -54,6 +54,19 @@ classdef ExamplesTest < matlab.unittest.TestCase
             rng('default'); rng(1);
             % Train a HMM and test it
             Results = ex4_train_and_test_hmm(testCase.audio_files{1}, ...
+                testCase.audio_files, testCase.result_folder);
+            % add all beats and compare to expected solution
+            exp_sum_beats = 775.6;
+            act_sum_beats = sum(Results{1}(:, 1));
+            testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), ...
+                1e-3);
+        end
+        
+        function testEx5(testCase)
+            addpath(testCase.example_path)
+            rng('default'); rng(1);
+            % Train a HMM and test it
+            Results = ex5_train_and_test_pf(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);
             % add all beats and compare to expected solution
             exp_sum_beats = 775.6;
