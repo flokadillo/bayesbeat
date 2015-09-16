@@ -1,14 +1,8 @@
 classdef BeatTrackerPF < handle
     % Hidden Markov Model Class
     properties (SetAccess=private)
-        M                           % number of positions in a 4/4 bar
-        Meff                        % number of positions per rhythm [R x 1]
-        N                           % number of tempo states
-        R                           % number of rhythmic pattern states
-        T                           % number of meters
+        state_space
         pr                          % probability of a switch in rhythmic pattern
-        rhythm2meter                % assigns each rhythmic pattern to a
-        %                           meter [R x 1]
         rhythm2meter_state          % assigns each rhythmic pattern to a
         % meter state (1, 2, ...)  - var not needed anymore but keep due to
         % compatibility
@@ -16,6 +10,7 @@ classdef BeatTrackerPF < handle
         % (9/8, 8/8, 4/4) [2 x nMeters] - var not needed anymore but keep due to
         % compatibility
         barGrid                     % number of different observation model params per bar (e.g., 64)
+        max_bar_cells
         minN                        % min tempo (n_min) for each rhythmic pattern
         maxN                        % max tempo (n_max) for each rhythmic pattern
         frame_length                % audio frame length in [sec]
@@ -26,12 +21,12 @@ classdef BeatTrackerPF < handle
         initial_m                   % initial value of m for each particle
         initial_n                   % initial value of n for each particle
         initial_r                   % initial value of r for each particle
-        nParticles                  % number of particles
+        n_particles                  % number of particles
         particles
         particles_grid              % particle grid for viterbi
         sigma_N                     % standard deviation of tempo transition
         bin2decVector               % vector to compute indices for disc_trans_mat quickly
-        ratio_Neff                  % reample if NESS < ratio_Neff * nParticles
+        ratio_Neff                  % reample if NESS < ratio_Neff * n_particles
         resampling_interval         % fixed resampling interval [samples]
         resampling_scheme           % type of resampling employed
         warp_fun                    % function that warps the weights w to a compressed space
@@ -43,7 +38,6 @@ classdef BeatTrackerPF < handle
         inferenceMethod             % 'PF'
         n_max_clusters              % If number of clusters > n_max_clusters, kill cluster with lowest weight
         n_initial_clusters          % Number of cluster to start with
-        rhythm_names                % cell array of rhythmic pattern names
         train_dataset                % dataset, which PF was trained on
         pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
         use_silence_state           % state that describes non-musical content
@@ -51,8 +45,18 @@ classdef BeatTrackerPF < handle
     end
     
     methods
-        function obj = PF(Params, rhythm2meter, rhythm_names)
-            
+        function obj = BeatTrackerPF(Params, Clustering)
+            State_space_params = obj.parse_params(Params, Clustering);
+            if obj.use_silence_state
+                Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
+                    'silence';
+            end
+            % Create state_space
+            obj.state_space = BeatTrackingStateSpace(...
+                    State_space_params, Params.min_tempo_bpm, ...
+                    Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
+                    Clustering.rhythm2meter, Params.frame_length, ...
+                    Clustering.rhythm_names, obj.use_silence_state);
             tempVar = ver('matlab');
             if str2double(tempVar.Release(3:6)) < 2011
                 % Matlab 2010
@@ -64,67 +68,92 @@ classdef BeatTrackerPF < handle
             end
         end
         
+        function train_model(obj, transition_probability_params, train_data, ...
+                cells_per_whole_note)
+            obj.make_initial_distribution(train_data.meters);
+            obj.make_transition_model(transition_probability_params);
+            obj.make_observation_model(train_data, cells_per_whole_note);
+            obj.HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
+                obj.initial_prob);
+        end
+        
+        
         function obj = make_initial_distribution(obj, tempo_per_cluster)
-            
             % TODO: Implement prior initial distribution for tempo
-            obj.initial_m = zeros(obj.nParticles, 1);
-            obj.initial_n = zeros(obj.nParticles, 1);
-            obj.initial_r = zeros(obj.nParticles, 1);
-            
-            % use pseudo random monte carlo
-            n_grid = min(obj.minN):max(obj.maxN);
-            n_m_cells = floor(obj.nParticles / length(n_grid));
-            m_grid_size = sum(obj.Meff) / n_m_cells;
-            r_m = rand(obj.nParticles, 1) - 0.5; % between -0.5 and +0.5
-            r_n = rand(obj.nParticles, 1) - 0.5;
-            nParts = zeros(obj.R, 1);
+            obj.initial_m = zeros(obj.n_particles, 1);
+            obj.initial_n = zeros(obj.n_particles, 1);
+            obj.initial_r = zeros(obj.n_particles, 1);
+            Meff = obj.state_space.max_position_from_pattern;
+            min_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
+                obj.state_space.min_tempo_bpm);
+            max_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
+                obj.state_space.max_tempo_bpm);
+            % use pseudo random monte carlo: divide the state space into
+            % cells and draw the same number of samples per cell
+            n_tempo_cells = floor(sqrt(obj.n_particles / ...
+                obj.state_space.n_patterns));
+            % number of particles per tempo cell
+            n_parts_per_tempo_cell = floor(obj.n_particles / n_tempo_cells);
+            % distribute position equally among state space
+            pos_cell_size = sum(obj.state_space.max_position_from_pattern) / ...
+                n_parts_per_tempo_cell;
+            r_m = rand(obj.n_particles, 1) - 0.5; % between -0.5 and +0.5
+            r_n = rand(obj.n_particles, 1) - 0.5;
+            n_parts_per_pattern = zeros(obj.state_space.n_patterns, 1);
+            max_tempo_range = max(max_tempo_ss - min_tempo_ss);
+            tempo_cell_size = max_tempo_range / n_tempo_cells;
             c=1;
-            for iR = 1:obj.R
-                % create positions between 1 and obj.Meff(obj.rhythm2meter_state(iR))
-                m_grid = (1+m_grid_size/2):m_grid_size:...
-                    (obj.Meff(iR)-m_grid_size/2);
-                n_grid_iR = obj.minN(iR):obj.maxN(iR);
-                nParts(iR) = length(m_grid) * length(n_grid_iR);
-                temp = repmat(m_grid, length(n_grid_iR), 1);
-                obj.initial_m(c:c+nParts(iR)-1) = temp(:)+ ...
-                    r_m(c:c+nParts(iR)-1) * m_grid_size;
-                obj.initial_n(c:c+nParts(iR)-1) = repmat(n_grid_iR, 1, ...
-                    length(m_grid))' + r_n(c:c+nParts(iR)-1);
-                obj.initial_r(c:c+nParts(iR)-1) = iR;
-                c = c + nParts(iR);
+            for iR = 1:obj.state_space.n_patterns
+                % create positions between 1 and Meff(iR)
+                m_grid = (0+pos_cell_size/2):pos_cell_size:...
+                    (Meff(iR)-pos_cell_size/2);
+                n_tempo_cells_iR = round(max([1, n_tempo_cells * ...
+                    (max_tempo_ss(iR) - min_tempo_ss(iR)) / max_tempo_range]));
+                tempo_grid_iR = linspace(min_tempo_ss(iR), max_tempo_ss(iR), ...
+                    n_tempo_cells_iR);
+                n_parts_per_pattern(iR) = length(m_grid) * length(tempo_grid_iR);
+                % create a tempo x position grid matrix
+                position_matrix = repmat(m_grid, length(tempo_grid_iR), 1);
+                obj.initial_m(c:c+n_parts_per_pattern(iR)-1) = ...
+                    position_matrix(:) + ...
+                    r_m(c:c+n_parts_per_pattern(iR)-1) * pos_cell_size + 1;
+                tempo_vec = repmat(tempo_grid_iR, 1, length(m_grid))';
+                obj.initial_n(c:c+n_parts_per_pattern(iR)-1) = tempo_vec + ...
+                    r_n(c:c+n_parts_per_pattern(iR)-1) * tempo_cell_size;
+                obj.initial_r(c:c+n_parts_per_pattern(iR)-1) = iR;
+                c = c + n_parts_per_pattern(iR);
             end
-            if sum(nParts) < obj.nParticles
+            if sum(n_parts_per_pattern) < obj.n_particles
                 % add remaining particles randomly
                 % random pattern assignment
-                obj.initial_r(c:end) = round(rand(obj.nParticles+1-c, 1)) ...
-                    * (obj.R-1) + 1;
-                n_between_0_and_1 = (r_n(c:end) + 0.5)';
-                m_between_0_and_1 = (r_m(c:end) + 0.5);
+                obj.initial_r(c:end) = round(rand(obj.n_particles+1-c, 1)) ...
+                    * (obj.state_space.n_patterns-1) + 1;
+                n_between_0_and_1 = r_n(c:end) + 0.5;
+                m_between_0_and_1 = r_m(c:end) + 0.5;
                 % map n_between_0_and_1 to allowed tempo range
-                obj.initial_n(c:end) = n_between_0_and_1 .* obj.maxN(...
-                    obj.initial_r(c:end)) + (1 - n_between_0_and_1) .* ...
-                    obj.minN(obj.initial_r(c:end));
+                tempo_range = max_tempo_ss - min_tempo_ss;
+                obj.initial_n(c:end) = min_tempo_ss(obj.initial_r(c:end)) + ...
+                    n_between_0_and_1 .* tempo_range(obj.initial_r(c:end));
                 % map m_between_0_and_1 to allowed position range
                 obj.initial_m(c:end) = m_between_0_and_1 .* ...
-                    (obj.Meff(obj.initial_r(c:end))-1) + 1;
+                    (Meff(obj.initial_r(c:end))) + 1;
             end
         end
         
         function obj = make_transition_model(obj, minTempo, maxTempo, ...
                 alpha, sigmaN, pr)
-            
             obj.sigma_N = sigmaN;
             % convert from BPM into barpositions / audio frame
             meter_num = obj.rhythm2meter(:, 1);
             % save pattern change probability and save as matrix [RxR]
-            if (length(pr(:)) == 1) && (obj.R > 1)
+            if (length(pr(:)) == 1) && (obj.state_space.n_patterns > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (pr / (obj.R-1));
+                pr_mat = ones(obj.state_space.n_patterns, obj.state_space.n_patterns) * (pr / (obj.state_space.n_patterns-1));
                 % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-pr);
+                pr_mat(logical(eye(obj.state_space.n_patterns))) = (1-pr);
                 obj.pr = pr_mat;
-            elseif (size(pr, 1) == obj.R) && (size(pr, 2) == obj.R)
+            elseif (size(pr, 1) == obj.state_space.n_patterns) && (size(pr, 2) == obj.state_space.n_patterns)
                 % ok, do nothing
                 obj.pr = pr;
             else
@@ -143,8 +172,8 @@ classdef BeatTrackerPF < handle
                 obj.N = ceil(max(obj.maxN));
             end
             if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.R) * min(obj.minN);
-                obj.maxN = ones(1, obj.R) * max(obj.maxN);
+                obj.minN = ones(1, obj.state_space.n_patterns) * min(obj.minN);
+                obj.maxN = ones(1, obj.state_space.n_patterns) * max(obj.maxN);
                 obj.N = max(obj.maxN);
                 fprintf('    Tempo limited to %i - %i bpm\n', ...
                     round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
@@ -158,7 +187,7 @@ classdef BeatTrackerPF < handle
             
             % Create observation model
             obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.R, obj.barGrid, obj.Meff, ...
+                obj.M, obj.N, obj.state_space.n_patterns, obj.barGrid, obj.Meff, ...
                 train_data.feat_type, obj.use_silence_state);
             
             % Train model
@@ -194,7 +223,7 @@ classdef BeatTrackerPF < handle
             
             % strip of silence state
             if obj.use_silence_state
-                idx = logical(r_path<=obj.R);
+                idx = logical(r_path<=obj.state_space.n_patterns);
             else
                 idx = true(length(r_path), 1);
             end
@@ -238,12 +267,12 @@ classdef BeatTrackerPF < handle
             obj.rhythm2meter_state = obj.rhythm2meter_state(:);
             % In old models, pattern change probability was not saved as
             % matrix [RxR]
-            if (length(obj.pr(:)) == 1) && (obj.R > 1)
+            if (length(obj.pr(:)) == 1) && (obj.state_space.n_patterns > 1)
                 % expand pr to a matrix [R x R]
                 % transitions to other patterns
-                pr_mat = ones(obj.R, obj.R) * (obj.pr / (obj.R-1));
+                pr_mat = ones(obj.state_space.n_patterns, obj.state_space.n_patterns) * (obj.pr / (obj.state_space.n_patterns-1));
                 % pattern self transitions
-                pr_mat(logical(eye(obj.R))) = (1-obj.pr);
+                pr_mat(logical(eye(obj.state_space.n_patterns))) = (1-obj.pr);
                 obj.pr = pr_mat;
             end
             if isempty(obj.rhythm2meter)
@@ -264,11 +293,11 @@ classdef BeatTrackerPF < handle
             subind = floor((states_m_r(:, 1)-1) / m_per_grid) + 1;
             obslik = obslik(:, :, iFrame);
             try
-                ind = sub2ind([obj.R, obj.barGrid], states_m_r(:, 2), subind(:));
+                ind = sub2ind([obj.state_space.n_patterns, obj.barGrid], states_m_r(:, 2), subind(:));
                 lik = obslik(ind);
             catch exception
                 fprintf('dimensions R=%i, barGrid=%i, states_m=%.2f - %.2f, subind = %i - %i, m_per_grid=%.2f\n', ...
-                    obj.R, obj.barGrid, min(states_m_r(:, 1)), max(states_m_r(:, 1)), ...
+                    obj.state_space.n_patterns, obj.barGrid, min(states_m_r(:, 1)), max(states_m_r(:, 1)), ...
                     min(subind), max(subind), m_per_grid);
             end
         end
@@ -289,18 +318,18 @@ classdef BeatTrackerPF < handle
         function obj = forward_filtering(obj, obs_lik, fname)
             nFrames = size(obs_lik, 3);
             if obj.save_inference_data
-                logP_data_pf = log(zeros(obj.nParticles, 5, nFrames, 'single'));
+                logP_data_pf = log(zeros(obj.n_particles, 5, nFrames, 'single'));
             end
             % initialize particles
             iFrame = 1;
-            m = zeros(obj.nParticles, nFrames, 'single');
-            n = zeros(obj.nParticles, nFrames, 'single');
-            r = zeros(obj.nParticles, nFrames, 'single');
+            m = zeros(obj.n_particles, nFrames, 'single');
+            n = zeros(obj.n_particles, nFrames, 'single');
+            r = zeros(obj.n_particles, nFrames, 'single');
             m(:, iFrame) = obj.initial_m;
             n(:, iFrame) = obj.initial_n;
             r(:, iFrame) = obj.initial_r;
             if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                obj.particles_grid = Particles(obj.nParticles, nFrames);
+                obj.particles_grid = Particles(obj.n_particles, nFrames);
                 obj.particles_grid.m(:, iFrame) = obj.initial_m;
                 obj.particles_grid.n(:, iFrame) = obj.initial_n;
                 obj.particles_grid.r(:, iFrame) = obj.initial_r;
@@ -312,10 +341,10 @@ classdef BeatTrackerPF < handle
             weight = log(obs / sum(obs));
             if obj.resampling_scheme > 1
                 % divide particles into clusters by kmeans
-                groups = obj.divide_into_fixed_cells([m(:, iFrame), n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; obj.R], obj.n_initial_clusters);
+                groups = obj.divide_into_fixed_cells([m(:, iFrame), n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; obj.state_space.n_patterns], obj.n_initial_clusters);
                 n_clusters = zeros(nFrames, 1);
             else
-                groups = ones(obj.nParticles, 1);
+                groups = ones(obj.n_particles, 1);
             end
             if obj.save_inference_data
                 % save particle data for visualizing
@@ -337,7 +366,7 @@ classdef BeatTrackerPF < handle
                 crossed_barline = find(m(:, iFrame) < m(:, iFrame-1));
                 for rInd = 1:length(crossed_barline)
                     r(crossed_barline(rInd), iFrame) = ...
-                        randsample(obj.R, 1, true, ...
+                        randsample(obj.state_space.n_patterns, 1, true, ...
                         obj.pr(r(crossed_barline(rInd),iFrame-1),:));
                 end
                 % evaluate particle at iFrame-1
@@ -349,7 +378,7 @@ classdef BeatTrackerPF < handle
                 % ------------------------------------------------------------
                 if obj.resampling_interval == 0
                     Neff = 1/sum(exp(weight).^2);
-                    do_resampling = (Neff < obj.ratio_Neff * obj.nParticles);
+                    do_resampling = (Neff < obj.ratio_Neff * obj.n_particles);
                 else
                     do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
                 end
@@ -358,7 +387,7 @@ classdef BeatTrackerPF < handle
                     if obj.resampling_scheme == 2 || obj.resampling_scheme == 3 % MPF or AMPF
                         groups = obj.divide_into_clusters([m(:, iFrame), ...
                             n(:, iFrame-1), r(:, iFrame)], ...
-                            [obj.M; obj.N; obj.R], groups);
+                            [obj.M; obj.N; obj.state_space.n_patterns], groups);
                         n_clusters(iFrame) = length(unique(groups));
                     end
                     [weight, groups, newIdx] = obj.resample(weight, groups);
@@ -367,7 +396,7 @@ classdef BeatTrackerPF < handle
                     n(:, 1:iFrame) = n(newIdx, 1:iFrame);
                 end
                 % transition from iFrame-1 to iFrame
-                n(:, iFrame) = n(:, iFrame-1) + randn(obj.nParticles, 1) * obj.sigma_N * obj.M;
+                n(:, iFrame) = n(:, iFrame-1) + randn(obj.n_particles, 1) * obj.sigma_N * obj.M;
                 out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
                 out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
@@ -418,8 +447,8 @@ classdef BeatTrackerPF < handle
             % 29.7.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             numframes = length(positionPath);
-            beatpositions = cell(obj.R, 1);
-            for i_r=1:obj.R
+            beatpositions = cell(obj.state_space.n_patterns, 1);
+            for i_r=1:obj.state_space.n_patterns
                 is_compund_meter = ismember(obj.rhythm2meter(i_r, 1), ...
                     [6, 9, 12]);
                 if is_compund_meter
@@ -459,9 +488,9 @@ classdef BeatTrackerPF < handle
         end
         
         function [groups] = divide_into_clusters(obj, states, state_dims, groups_old)
-            % states: [nParticles x nStates]
+            % states: [n_particles x nStates]
             % state_dim: [nStates x 1]
-            % groups_old: [nParticles x 1] group labels of the particles
+            % groups_old: [n_particles x 1] group labels of the particles
             %               after last resampling step (used for initialisation)
             warning('off');
             [group_ids, ~, IC] = unique(groups_old);
@@ -470,7 +499,7 @@ classdef BeatTrackerPF < handle
             
             % adjust the range of each state variable to make equally
             % important for the clustering
-            points = zeros(obj.nParticles, length(state_dims)+1);
+            points = zeros(obj.n_particles, length(state_dims)+1);
             points(:, 1) = (sin(states(:, 1) * 2 * pi ./ ...
                 obj.Meff(states(:, 3))) + 1) * ...
                 obj.state_distance_coefficients(1);
@@ -564,7 +593,7 @@ classdef BeatTrackerPF < handle
         function [weight, groups, newIdx] = resample(obj, weight, groups)
             if obj.resampling_scheme == 0
                 newIdx = obj.resampleSystematic(exp(weight));
-                weight = log(ones(obj.nParticles, 1) / obj.nParticles);
+                weight = log(ones(obj.n_particles, 1) / obj.n_particles);
             elseif obj.resampling_scheme == 1 % APF
                 % warping:
                 w = exp(weight);
@@ -588,38 +617,71 @@ classdef BeatTrackerPF < handle
             end
         end
         
-        function [] = parse_params(obj, Params)
-            obj.M = Params.M;
-            obj.N = Params.N;
-            obj.R = Params.R;
-            obj.T = size(Params.meters, 2);
-            obj.nParticles = Params.nParticles;
-            %             obj.sigma_N = Params.sigmaN; % moved this to
-            %             make_transition_model
-            obj.barGrid = max(Params.whole_note_div * (Params.meters(1, :) ...
-                ./ Params.meters(2, :)));
+        function State_space_params = parse_params(obj, Params, Clustering)
+            bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
+                Clustering.rhythm2meter(:, 2);
+            State_space_params.max_positions = bar_durations;
+            State_space_params.n_patterns = Params.R;
+            if isfield(Params, 'n_particles')
+                obj.n_particles = Params.n_particles;
+            else
+                obj.n_particles = 1000;
+            end
             obj.frame_length = Params.frame_length;
-            obj.dist_type = Params.observationModelType;
-            obj.rhythm2meter = rhythm2meter;
-            bar_durations = rhythm2meter(:, 1) ./ rhythm2meter(:, 2);
-            obj.Meff = round((bar_durations) ...
-                * (Params.M ./ (max(bar_durations)))); obj.Meff = obj.Meff(:);
-            obj.ratio_Neff = Params.ratio_Neff;
-            obj.resampling_scheme = Params.resampling_scheme;
-            obj.warp_fun = Params.warp_fun;
-            obj.do_viterbi_filtering = Params.do_viterbi_filtering;
-            obj.save_inference_data = Params.save_inference_data;
-            obj.state_distance_coefficients = Params.state_distance_coefficients;
-            obj.cluster_merging_thr = Params.cluster_merging_thr;
-            obj.cluster_splitting_thr = Params.cluster_splitting_thr;
-            obj.n_max_clusters = Params.n_max_clusters;
-            obj.n_initial_clusters = Params.n_initial_clusters;
-            obj.rhythm_names = rhythm_names;
-            obj.pattern_size = Params.pattern_size;
-            obj.resampling_interval = Params.res_int;
+            
+            if isfield(Params, 'resampling_scheme')
+                obj.resampling_scheme = Params.resampling_scheme;
+            else
+                obj.resampling_scheme = 3;
+            end
+            if ismember(obj.resampling_scheme, [1, 3]) % APF or AMPF
+                if isfield(Params, 'warp_fun')
+                    obj.warp_fun = Params.warp_fun;
+                else
+                    obj.warp_fun = '@(x)x.^(1/4)';
+                end
+            end
+            if ismember(obj.resampling_scheme, [2, 3]) % MPF or AMPF
+                if isfield(Params, 'state_distance_coefficients')
+                    obj.state_distance_coefficients = ...
+                        Params.state_distance_coefficients;
+                else
+                    obj.state_distance_coefficients = [30, 1, 100];
+                end
+                if isfield(Params, 'cluster_merging_thr')
+                    obj.cluster_merging_thr = Params.cluster_merging_thr;
+                else
+                    obj.cluster_merging_thr = 20;
+                end
+                if isfield(Params, 'cluster_splitting_thr')
+                    obj.cluster_splitting_thr = Params.cluster_splitting_thr;
+                else
+                    obj.cluster_splitting_thr = 30;
+                end
+                if isfield(Params, 'n_initial_clusters')
+                    obj.n_initial_clusters = Params.n_initial_clusters;
+                else
+                    obj.n_initial_clusters = 16 * State_space_params.n_patterns;
+                end
+                if isfield(Params, 'n_max_clusters')
+                    obj.n_max_clusters = Params.n_max_clusters;
+                else
+                    obj.n_max_clusters = 3 * obj.n_initial_clusters;
+                end
+                if isfield(Params, 'res_int')
+                    obj.resampling_interval = Params.res_int;
+                else
+                    obj.resampling_interval = 30;
+                end
+            else
+                if isfield(Params, 'ratio_Neff')
+                    obj.ratio_Neff = Params.ratio_Neff;
+                else
+                    obj.ratio_Neff = 0.1;
+                end
+            end
+            obj.max_bar_cells = max(Params.whole_note_div * bar_durations);
             obj.use_silence_state = Params.use_silence_state;
-            obj.n_depends_on_r = Params.n_depends_on_r;
-        
         end
         
     end
@@ -633,7 +695,7 @@ classdef BeatTrackerPF < handle
         function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
             % divide space into fixed cells with equal number of grid
             % points for position and tempo states
-            % states: [nParticles x nStates]
+            % states: [n_particles x nStates]
             % state_dim: [nStates x 1]
             groups = zeros(size(states, 1), 1);
             n_r_bins = state_dims(3);
