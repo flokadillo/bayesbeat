@@ -1,7 +1,9 @@
 classdef BeatTrackerPF < handle
     % Hidden Markov Model Class
     properties (SetAccess=private)
+        PF
         state_space
+        trans_model
         pr                          % probability of a switch in rhythmic pattern
         rhythm2meter_state          % assigns each rhythmic pattern to a
         % meter state (1, 2, ...)  - var not needed anymore but keep due to
@@ -18,26 +20,18 @@ classdef BeatTrackerPF < handle
         sample_trans_fun            % transition model
         disc_trans_mat              % transition matrices for discrete states
         obs_model                   % observation model
-        initial_m                   % initial value of m for each particle
-        initial_n                   % initial value of n for each particle
-        initial_r                   % initial value of r for each particle
+        initial_particles           % initial location of particles 
+        %                               [n_particles, 3] in the order
+        %                               position, tempo, pattern
         n_particles                  % number of particles
         particles
         particles_grid              % particle grid for viterbi
         sigma_N                     % standard deviation of tempo transition
-        bin2decVector               % vector to compute indices for disc_trans_mat quickly
-        ratio_Neff                  % reample if NESS < ratio_Neff * n_particles
-        resampling_interval         % fixed resampling interval [samples]
         resampling_scheme           % type of resampling employed
-        warp_fun                    % function that warps the weights w to a compressed space
         do_viterbi_filtering
         save_inference_data         % save intermediate output of particle filter for visualisation
-        state_distance_coefficients % distance factors for k-means clustering [1 x nDims]
-        cluster_merging_thr         % if distance < thr: merge
-        cluster_splitting_thr       % if spread > thr: split
+        resampling_params
         inferenceMethod             % 'PF'
-        n_max_clusters              % If number of clusters > n_max_clusters, kill cluster with lowest weight
-        n_initial_clusters          % Number of cluster to start with
         train_dataset                % dataset, which PF was trained on
         pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
         use_silence_state           % state that describes non-musical content
@@ -75,8 +69,15 @@ classdef BeatTrackerPF < handle
             obj.make_transition_model(transition_probability_params);
             obj.make_observation_model(train_data, cells_per_whole_note, ...
                 dist_type);
-            obj.PF = ParticleFilter(obj.trans_model, obj.obs_model, ...
-                            obj.initial_prob);
+            if ismember(obj.resampling_scheme, [2, 3])
+                obj.PF = MixtureParticleFilter(obj.trans_model, obj.obs_model, ...
+                                obj.initial_particles, obj.n_particles, ...
+                                obj.resampling_params);
+            else
+                obj.PF = ParticleFilter(obj.trans_model, obj.obs_model, ...
+                                obj.initial_particles, obj.n_particles, ...
+                                obj.resampling_params);
+            end
             fln = fullfile(results_path, 'model.mat');
             pf = obj;
             save(fln, 'pf');
@@ -86,9 +87,9 @@ classdef BeatTrackerPF < handle
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
             % TODO: Implement prior initial distribution for tempo
-            obj.initial_m = zeros(obj.n_particles, 1);
-            obj.initial_n = zeros(obj.n_particles, 1);
-            obj.initial_r = zeros(obj.n_particles, 1);
+            initial_m = zeros(obj.n_particles, 1);
+            initial_n = zeros(obj.n_particles, 1);
+            initial_r = zeros(obj.n_particles, 1);
             Meff = obj.state_space.max_position_from_pattern;
             min_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
                 obj.state_space.min_tempo_bpm);
@@ -120,35 +121,39 @@ classdef BeatTrackerPF < handle
                 n_parts_per_pattern(iR) = length(m_grid) * length(tempo_grid_iR);
                 % create a tempo x position grid matrix
                 position_matrix = repmat(m_grid, length(tempo_grid_iR), 1);
-                obj.initial_m(c:c+n_parts_per_pattern(iR)-1) = ...
+                initial_m(c:c+n_parts_per_pattern(iR)-1) = ...
                     position_matrix(:) + ...
                     r_m(c:c+n_parts_per_pattern(iR)-1) * pos_cell_size + 1;
                 tempo_vec = repmat(tempo_grid_iR, 1, length(m_grid))';
-                obj.initial_n(c:c+n_parts_per_pattern(iR)-1) = tempo_vec + ...
+                initial_n(c:c+n_parts_per_pattern(iR)-1) = tempo_vec + ...
                     r_n(c:c+n_parts_per_pattern(iR)-1) * tempo_cell_size;
-                obj.initial_r(c:c+n_parts_per_pattern(iR)-1) = iR;
+                initial_r(c:c+n_parts_per_pattern(iR)-1) = iR;
                 c = c + n_parts_per_pattern(iR);
             end
             if sum(n_parts_per_pattern) < obj.n_particles
                 % add remaining particles randomly
                 % random pattern assignment
-                obj.initial_r(c:end) = round(rand(obj.n_particles+1-c, 1)) ...
+                initial_r(c:end) = round(rand(obj.n_particles+1-c, 1)) ...
                     * (obj.state_space.n_patterns-1) + 1;
                 n_between_0_and_1 = r_n(c:end) + 0.5;
                 m_between_0_and_1 = r_m(c:end) + 0.5;
                 % map n_between_0_and_1 to allowed tempo range
                 tempo_range = max_tempo_ss - min_tempo_ss;
-                obj.initial_n(c:end) = min_tempo_ss(obj.initial_r(c:end)) + ...
-                    n_between_0_and_1 .* tempo_range(obj.initial_r(c:end));
+                initial_n(c:end) = min_tempo_ss(initial_r(c:end)) + ...
+                    n_between_0_and_1 .* tempo_range(initial_r(c:end));
                 % map m_between_0_and_1 to allowed position range
-                obj.initial_m(c:end) = m_between_0_and_1 .* ...
-                    (Meff(obj.initial_r(c:end))) + 1;
+                initial_m(c:end) = m_between_0_and_1 .* ...
+                    (Meff(initial_r(c:end))) + 1;
             end
+            % combine coordinates and add a group id for each particles,
+            % which is one in the standard pf
+            obj.initial_particles = [initial_m, initial_n, initial_r, ...
+                ones(obj.n_particles, 1)];
         end
         
-        function [] = make_transition_model(obj, trans_params)
-            obj.sigma_N = trans_params.sigmaN;
-            obj.pr = trans_params.pr;
+        function [] = make_transition_model(obj, transition_params)
+            obj.trans_model = BeatTrackingTransitionModelPF(obj.state_space, ...
+                transition_params);
         end
         
         
@@ -194,6 +199,7 @@ classdef BeatTrackerPF < handle
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
+            [m_path, n_path, r_path] = obj.PF.path_with_best_last_weight(obs_lik);
             obj = obj.forward_filtering(obs_lik, fname);
             [m_path, n_path, r_path] = obj.path_via_best_weight();
             
@@ -580,42 +586,42 @@ classdef BeatTrackerPF < handle
             end
             if ismember(obj.resampling_scheme, [1, 3]) % APF or AMPF
                 if isfield(Params, 'warp_fun')
-                    obj.warp_fun = Params.warp_fun;
+                    obj.resampling_params.warp_fun = Params.warp_fun;
                 else
-                    obj.warp_fun = '@(x)x.^(1/4)';
+                    obj.resampling_params.warp_fun = '@(x)x.^(1/4)';
                 end
             end
             if ismember(obj.resampling_scheme, [2, 3]) % MPF or AMPF
                 if isfield(Params, 'state_distance_coefficients')
-                    obj.state_distance_coefficients = ...
+                    obj.resampling_params.state_distance_coefficients = ...
                         Params.state_distance_coefficients;
                 else
-                    obj.state_distance_coefficients = [30, 1, 100];
+                    obj.resampling_params.state_distance_coefficients = [30, 1, 100];
                 end
                 if isfield(Params, 'cluster_merging_thr')
-                    obj.cluster_merging_thr = Params.cluster_merging_thr;
+                    obj.resampling_params.cluster_merging_thr = Params.cluster_merging_thr;
                 else
-                    obj.cluster_merging_thr = 20;
+                    obj.resampling_params.cluster_merging_thr = 20;
                 end
                 if isfield(Params, 'cluster_splitting_thr')
-                    obj.cluster_splitting_thr = Params.cluster_splitting_thr;
+                    obj.resampling_params.cluster_splitting_thr = Params.cluster_splitting_thr;
                 else
-                    obj.cluster_splitting_thr = 30;
+                    obj.resampling_params.cluster_splitting_thr = 30;
                 end
                 if isfield(Params, 'n_initial_clusters')
-                    obj.n_initial_clusters = Params.n_initial_clusters;
+                    obj.resampling_params.n_initial_clusters = Params.n_initial_clusters;
                 else
-                    obj.n_initial_clusters = 16 * State_space_params.n_patterns;
+                    obj.resampling_params.n_initial_clusters = 16 * State_space_params.n_patterns;
                 end
                 if isfield(Params, 'n_max_clusters')
-                    obj.n_max_clusters = Params.n_max_clusters;
+                    obj.resampling_params.n_max_clusters = Params.n_max_clusters;
                 else
-                    obj.n_max_clusters = 3 * obj.n_initial_clusters;
+                    obj.resampling_params.n_max_clusters = 3 * obj.resampling_params.n_initial_clusters;
                 end
                 if isfield(Params, 'res_int')
-                    obj.resampling_interval = Params.res_int;
+                    obj.resampling_params.resampling_interval = Params.res_int;
                 else
-                    obj.resampling_interval = 30;
+                    obj.resampling_params.resampling_interval = 30;
                 end
             else
                 if isfield(Params, 'ratio_Neff')

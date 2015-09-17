@@ -13,13 +13,14 @@ function Params = fit_distribution(obj, data)
 warning('off');
 [n_files, n_patterns, n_position_cells, ~] = size(data);
 Params = cell(n_patterns, n_position_cells);
-n_mix_components = 2;
+
 % Set options
 switch obj.dist_type
     case 'MOG'
         options = statset('MaxIter', 200);
-        n_replicates = 10;
-%         fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
+        n_replicates = 1;
+        n_mix_components = 2;
+        fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
 end
 for i_pattern=1:n_patterns
     for i_pos=1:n_position_cells
