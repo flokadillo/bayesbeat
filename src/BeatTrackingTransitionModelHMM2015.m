@@ -1,4 +1,4 @@
-classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
+classdef BeatTrackingTransitionModelHMM2015 < handle & BeatTrackingTransitionModelHMM
     %UNTITLED4 Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -7,10 +7,10 @@ classdef BeatTrackingTransitionModel2015 < handle & BeatTrackingTransitionModel
     end
     
     methods
-        function obj = BeatTrackingTransitionModel2015(state_space, ...
+        function obj = BeatTrackingTransitionModelHMM2015(state_space, ...
                 transition_params)
             % call superclass constructor
-            obj@BeatTrackingTransitionModel(state_space, ...
+            obj@BeatTrackingTransitionModelHMM(state_space, ...
                 transition_params);
             obj.transition_lambda = ...
                 transition_params.transition_lambda;

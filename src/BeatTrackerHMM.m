@@ -34,10 +34,6 @@ classdef BeatTrackerHMM < handle
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
             obj.max_bar_cells = max(Params.whole_note_div * bar_durations);
-            if obj.use_silence_state
-                Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
-                    'silence';
-            end
             % Create state_space
             if strcmp(obj.tm_type, '2015')
                 State_space_params.max_positions = bar_durations;
@@ -58,23 +54,32 @@ classdef BeatTrackerHMM < handle
                     Clustering.rhythm_names, obj.use_silence_state, ...
                     store_proximity);
             end
+            if obj.use_silence_state
+                Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
+                    'silence';
+            end
         end
         
         function train_model(obj, transition_probability_params, train_data, ...
-                cells_per_whole_note)
+                cells_per_whole_note, dist_type, results_path)
             obj.make_initial_distribution(train_data.meters);
             obj.make_transition_model(transition_probability_params);
-            obj.make_observation_model(train_data, cells_per_whole_note);
+            obj.make_observation_model(train_data, cells_per_whole_note, ...
+                dist_type);
             obj.HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
                 obj.initial_prob);
+            fln = fullfile(results_path, 'model.mat');
+            hmm = obj;
+            save(fln, 'hmm');
+            fprintf('* Saved model (Matlab) to %s\n', fln);
         end
         
         function make_transition_model(obj, transition_probability_params)
             if strcmp(obj.tm_type, '2015')
-                obj.trans_model = BeatTrackingTransitionModel2015(...
+                obj.trans_model = BeatTrackingTransitionModelHMM2015(...
                     obj.state_space, transition_probability_params);
             elseif strcmp(obj.tm_type, 'whiteley')
-                obj.trans_model = BeatTrackingTransitionModel2006(...
+                obj.trans_model = BeatTrackingTransitionModelHMM2006(...
                     obj.state_space, transition_probability_params);
             end
             % Check transition model
@@ -84,9 +89,9 @@ classdef BeatTrackerHMM < handle
         end
         
         function make_observation_model(obj, train_data, ...
-                cells_per_whole_note)
+                cells_per_whole_note, dist_type)
             obj.obs_model = BeatTrackingObservationModelHMM(obj.state_space, ...
-                train_data.feature.feat_type, obj.dist_type, ...
+                train_data.feature.feat_type, dist_type, ...
                 cells_per_whole_note);
             % Train model
             if ~strcmp(obj.dist_type, 'RNN')
@@ -426,11 +431,7 @@ classdef BeatTrackerHMM < handle
                 obj.tm_type = '2015';
             end
             obj.frame_length = Params.frame_length;
-            if isfield(Params, 'observationModelType')
-                obj.dist_type = Params.observationModelType;
-            else
-                obj.dist_type = 'MOG';
-            end
+            
             if isfield(Params, 'online')
                 obj.max_shift = Params.online.max_shift;
                 obj.update_interval = Params.online.update_interval;

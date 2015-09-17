@@ -39,18 +39,9 @@ classdef BeatTracker < handle
             else
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
-                if strcmp(obj.Params.observationModelType, 'RNN')
-                    obj.train_data.clustering.rhythm2nbeats = 1;
-                    obj.train_data.clustering.rhythm2meter = [1, 4];
-                    obj.train_data.clustering.rhythm_names = {'rnn'};
-                    obj.train_data.clustering.pr = 1;
-                    obj.train_data.feature = obj.feature;
-                    obj.Params.R = 1;
-                else
-                    % initialise training data to see how many pattern states
+                % initialise training data to see how many pattern states
                     % we need and which time signatures have to be modelled
-                    obj.init_train_data();
-                end
+                obj.init_train_data();
                 if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
@@ -103,8 +94,10 @@ classdef BeatTracker < handle
                 obj.train_data = Data(obj.Params.trainLab, ...
                     obj.Params.feat_type, obj.Params.frame_length, ...
                     obj.Params.pattern_size);
-                obj.train_data.organise_feats_into_bars(...
-                    obj.Params.whole_note_div);
+                if ~strcmp(obj.Params.observationModelType, 'RNN')
+                    obj.train_data.organise_feats_into_bars(...
+                        obj.Params.whole_note_div);
+                end
                 % process silence data
                 if obj.Params.use_silence_state
                     fid = fopen(obj.Params.silence_lab, 'r');
@@ -132,18 +125,26 @@ classdef BeatTracker < handle
                 obj.train_data = obj.train_data.read_pattern_bars(...
                     obj.Params.clusterIdFln, obj.Params.pattern_size);
             else
-                fprintf('* Clustering data by %s ...', ...
-                    obj.Params.cluster_type);
-                if ismember(obj.Params.cluster_type, {'meter', ...
-                        'rhythm'})
-                    obj.train_data.cluster_from_labels(...
+                if strcmp(obj.Params.observationModelType, 'RNN')
+                    obj.train_data.clustering.rhythm2nbeats = 1;
+                    obj.train_data.clustering.rhythm2meter = [1, 4];
+                    obj.train_data.clustering.rhythm_names = {'rnn'};
+                    obj.train_data.clustering.pr = 1;
+                    obj.train_data.clustering.n_clusters = 1;
+                else
+                    fprintf('* Clustering data by %s ...', ...
                         obj.Params.cluster_type);
-                elseif strcmp(obj.Params.cluster_type, 'kmeans')
-                    obj.train_data.cluster_from_features(...
-                        obj.Params.n_clusters);
+                    if ismember(obj.Params.cluster_type, {'meter', ...
+                            'rhythm'})
+                        obj.train_data.cluster_from_labels(...
+                            obj.Params.cluster_type);
+                    elseif strcmp(obj.Params.cluster_type, 'kmeans')
+                        obj.train_data.cluster_from_features(...
+                            obj.Params.n_clusters);
+                    end
+                    fprintf('done\n  %i clusters detected.\n', ...
+                        obj.train_data.clustering.n_clusters);
                 end
-                fprintf('done\n  %i clusters detected.\n', ...
-                    obj.train_data.clustering.n_clusters);
             end
             obj.Params.R = obj.train_data.clustering.n_clusters;
             if isempty(obj.train_data.clustering.pr)
@@ -162,17 +163,8 @@ classdef BeatTracker < handle
         function train_model(obj)
             if isempty(obj.init_model_fln)
                 obj.model.train_model(obj.Params.transition_params, ...
-                    obj.train_data, obj.Params.whole_note_div);
-                fln = fullfile(obj.Params.results_path, 'model.mat');
-                switch obj.Params.inferenceMethod(1:2)
-                    case 'HM'
-                        hmm = obj.model;
-                        save(fln, 'hmm');
-                    case 'PF'
-                        pf = obj.model;
-                        save(fln, 'pf');
-                end
-                fprintf('* Saved model (Matlab) to %s\n', fln);
+                    obj.train_data, obj.Params.whole_note_div, ...
+                    obj.Params.observationModelType, obj.Params.results_path);
             end
             if isfield(obj.Params, 'viterbi_learning_iterations') && ...
                     obj.Params.viterbi_learning_iterations > 0
@@ -325,6 +317,12 @@ classdef BeatTracker < handle
                         obj.Params.transition_params.pn = obj.Params.pn;
                     end
                 end
+            elseif strcmp(obj.Params.inferenceMethod(1:2), 'PF')
+                if isfield(obj.Params, 'sigmaN')
+                    obj.Params.transition_params.sigmaN = obj.Params.sigmaN;
+                else
+                    obj.Params.transition_params.sigmaN = 0.0001;
+                end
             end
             if ~isfield(obj.Params, 'pattern_size')
                 obj.Params.pattern_size = 'bar';
@@ -347,10 +345,10 @@ classdef BeatTracker < handle
                 obj.Params.cluster_type = 'meter';
             end
             if ~isfield(obj.Params, 'store_training_data')
-                obj.Params.store_training_data = 0;
+                obj.Params.store_training_data = 1;
             end
             if ~isfield(obj.Params, 'load_training_data')
-                obj.Params.load_training_data = 0;
+                obj.Params.load_training_data = 1;
             end
             if ~isfield(obj.Params, 'stored_train_data_fln') && ...
                     (obj.Params.load_training_data || ...
@@ -361,6 +359,14 @@ classdef BeatTracker < handle
                     featType = strrep(obj.Params.feat_type{iDim}, ...
                         '.', '-');
                     featStr = [featStr, '_', featType];
+                end
+                if ~isfield(obj.Params, 'train_set')
+                    if iscell(obj.Params.trainLab)
+                        obj.Params.train_set = 'custom';
+                    else
+                        [~, obj.Params.train_set, ~] = ...
+                            fileparts(obj.Params.trainLab);
+                    end
                 end
                 obj.Params.stored_train_data_fln = fullfile(...
                     obj.Params.data_path, [obj.Params.train_set, '_', ...

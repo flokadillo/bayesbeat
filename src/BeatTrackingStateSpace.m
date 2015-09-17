@@ -30,12 +30,14 @@ classdef BeatTrackingStateSpace < handle
         end
         
         function [bpm] = convert_tempo_to_bpm(obj, tempo)
-            pos_per_beat = obj.max_position_from_pattern(1) / obj.n_beats_from_pattern(1);
+            pos_per_beat = obj.max_position_from_pattern(1) / ...
+                obj.n_beats_from_pattern(1);
             bpm = 60 * tempo / (pos_per_beat * obj.frame_length);
         end
         
         function [tempo] = convert_tempo_from_bpm(obj, bpm)
-            pos_per_beat = obj.max_position_from_pattern(1) / obj.n_beats_from_pattern(1);
+            pos_per_beat = obj.max_position_from_pattern(1) / ...
+                obj.n_beats_from_pattern(1);
             tempo = bpm * pos_per_beat * obj.frame_length / 60;
         end
     end

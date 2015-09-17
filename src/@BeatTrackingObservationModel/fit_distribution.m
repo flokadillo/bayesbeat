@@ -13,6 +13,7 @@ function Params = fit_distribution(obj, data)
 warning('off');
 [n_files, n_patterns, n_position_cells, ~] = size(data);
 Params = cell(n_patterns, n_position_cells);
+n_mix_components = 2;
 % Set options
 switch obj.dist_type
     case 'MOG'
@@ -37,7 +38,7 @@ for i_pattern=1:n_patterns
         switch obj.dist_type
             case 'MOG'
                 Params{i_pattern, i_pos} = gmdistribution.fit(feature_values, ...
-                    2, 'Options', options, 'Regularize', 1e-10, ...
+                    n_mix_components, 'Options', options, 'Regularize', 1e-10, ...
                     'Replicates', n_replicates);
             otherwise
                 error('distribution type %s unknown !', obj.dist_type);

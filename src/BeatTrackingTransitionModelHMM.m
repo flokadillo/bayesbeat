@@ -1,4 +1,4 @@
-classdef BeatTrackingTransitionModel < handle
+classdef BeatTrackingTransitionModelHMM < handle
     % Transition model base class to be used for Hidden Markov Models
     
     properties
@@ -11,7 +11,7 @@ classdef BeatTrackingTransitionModel < handle
     end
     
     methods
-        function obj = BeatTrackingTransitionModel(state_space, ...
+        function obj = BeatTrackingTransitionModelHMM(state_space, ...
                 transition_params)
             obj.state_space = state_space;
             obj.pr = transition_params.pr;

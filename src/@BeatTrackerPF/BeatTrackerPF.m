@@ -53,10 +53,10 @@ classdef BeatTrackerPF < handle
             end
             % Create state_space
             obj.state_space = BeatTrackingStateSpace(...
-                    State_space_params, Params.min_tempo_bpm, ...
-                    Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
-                    Clustering.rhythm2meter, Params.frame_length, ...
-                    Clustering.rhythm_names, obj.use_silence_state);
+                State_space_params, Params.min_tempo_bpm, ...
+                Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
+                Clustering.rhythm2meter, Params.frame_length, ...
+                Clustering.rhythm_names, obj.use_silence_state);
             tempVar = ver('matlab');
             if str2double(tempVar.Release(3:6)) < 2011
                 % Matlab 2010
@@ -64,17 +64,23 @@ classdef BeatTrackerPF < handle
                 RandStream.setDefaultStream(RandStream('mt19937ar','seed', ...
                     sum(100*clock)));
             else
+                rng('default')
                 rng('shuffle');
             end
         end
         
         function train_model(obj, transition_probability_params, train_data, ...
-                cells_per_whole_note)
+                cells_per_whole_note, dist_type, results_path)
             obj.make_initial_distribution(train_data.meters);
             obj.make_transition_model(transition_probability_params);
-            obj.make_observation_model(train_data, cells_per_whole_note);
-            obj.HMM = HiddenMarkovModel(obj.trans_model, obj.obs_model, ...
-                obj.initial_prob);
+            obj.make_observation_model(train_data, cells_per_whole_note, ...
+                dist_type);
+            obj.PF = ParticleFilter(obj.trans_model, obj.obs_model, ...
+                            obj.initial_prob);
+            fln = fullfile(results_path, 'model.mat');
+            pf = obj;
+            save(fln, 'pf');
+            fprintf('* Saved model (Matlab) to %s\n', fln);
         end
         
         
@@ -140,61 +146,31 @@ classdef BeatTrackerPF < handle
             end
         end
         
-        function obj = make_transition_model(obj, minTempo, maxTempo, ...
-                alpha, sigmaN, pr)
-            obj.sigma_N = sigmaN;
-            % convert from BPM into barpositions / audio frame
-            meter_num = obj.rhythm2meter(:, 1);
-            % save pattern change probability and save as matrix [RxR]
-            if (length(pr(:)) == 1) && (obj.state_space.n_patterns > 1)
-                % expand pr to a matrix [R x R]
-                % transitions to other patterns
-                pr_mat = ones(obj.state_space.n_patterns, obj.state_space.n_patterns) * (pr / (obj.state_space.n_patterns-1));
-                % pattern self transitions
-                pr_mat(logical(eye(obj.state_space.n_patterns))) = (1-pr);
-                obj.pr = pr_mat;
-            elseif (size(pr, 1) == obj.state_space.n_patterns) && (size(pr, 2) == obj.state_space.n_patterns)
-                % ok, do nothing
-                obj.pr = pr;
-            else
-                error('p_r has wrong dimensions!\n');
-            end
-            if strcmp(obj.pattern_size, 'bar')
-                obj.minN = floor(obj.Meff .* obj.frame_length .* minTempo ./ (meter_num * 60));
-                obj.maxN = ceil(obj.Meff .* obj.frame_length .* maxTempo ./ (meter_num * 60));
-            else
-                obj.minN = floor(obj.M * obj.frame_length * minTempo ./ 60);
-                obj.maxN = ceil(obj.M * obj.frame_length * maxTempo ./ 60);
-            end
-            if max(obj.maxN) > obj.N
-                fprintf('    N should be %i instead of %i -> corrected\n', ...
-                    max(obj.maxN), obj.N);
-                obj.N = ceil(max(obj.maxN));
-            end
-            if ~obj.n_depends_on_r % no dependency between n and r
-                obj.minN = ones(1, obj.state_space.n_patterns) * min(obj.minN);
-                obj.maxN = ones(1, obj.state_space.n_patterns) * max(obj.maxN);
-                obj.N = max(obj.maxN);
-                fprintf('    Tempo limited to %i - %i bpm\n', ...
-                    round(min(obj.minN)*60*4/(obj.M * obj.frame_length)), ...
-                    round(max(obj.maxN)*60*4/(obj.M * obj.frame_length)));
-            end
-            % Transition function to propagate particles
-            obj.sample_trans_fun = @(x) obj.propagate_particles_pf(obj, x);
+        function [] = make_transition_model(obj, trans_params)
+            obj.sigma_N = trans_params.sigmaN;
+            obj.pr = trans_params.pr;
         end
         
-        function obj = make_observation_model(obj, train_data)
-            
+        
+        function obj = make_observation_model(obj, train_data, ...
+                cells_per_whole_note, dist_type)
             % Create observation model
-            obj.obs_model = ObservationModel(obj.dist_type, obj.rhythm2meter, ...
-                obj.M, obj.N, obj.state_space.n_patterns, obj.barGrid, obj.Meff, ...
-                train_data.feat_type, obj.use_silence_state);
-            
+            obj.obs_model = BeatTrackingObservationModel(obj.state_space, ...
+                train_data.feature.feat_type, dist_type, ...
+                cells_per_whole_note);
             % Train model
-            obj.obs_model = obj.obs_model.train_model(train_data);
-            
-            obj.train_dataset = train_data.dataset;
-            
+            if ~strcmp(obj.dist_type, 'RNN')
+                obj.obs_model = obj.obs_model.train_model(train_data);
+                obj.train_dataset = train_data.dataset;
+            end
+        end
+        
+        function [n_new] = sample_tempo(obj, n_old)
+            n_new = n_old + randn(obj.n_particles, 1) * obj.sigma_N * obj.M;
+            out_of_range = n_new' > obj.maxN(r(:, iFrame));
+            n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
+            out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
+            n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
         end
         
         function obj = retrain_observation_model(obj, data_file_pattern_barpos_dim, pattern_id)
@@ -212,7 +188,7 @@ classdef BeatTrackerPF < handle
             
         end
         
-        function results = do_inference(obj, y, fname, inference_method, do_output)
+        function results = do_inference(obj, y, fname, inference_method)
             if isempty(strfind(inference_method, 'PF'))
                 error('Inference method %s not compatible with PF model\n', inference_method);
             end
@@ -286,20 +262,17 @@ classdef BeatTrackerPF < handle
     methods (Access=protected)
         
         
-        function lik = compute_obs_lik(obj, states_m_r, iFrame, obslik, m_per_grid)
+        function lik = compute_obs_lik(obj, p_pos, p_pat, iFrame, obslik)
             % states_m_r:   is a [nParts x 2] matrix, where (:, 1) are the
             %               m-values and (:, 2) are the r-values
             % obslik:       likelihood values [R, barGrid, nFrames]
-            subind = floor((states_m_r(:, 1)-1) / m_per_grid) + 1;
+            m_per_grid = obj.state_space.max_position_from_pattern(1) / ...
+                obj.obs_model.cells_from_pattern(1);
+            p_cell = floor((p_pos - 1) / m_per_grid) + 1;
             obslik = obslik(:, :, iFrame);
-            try
-                ind = sub2ind([obj.state_space.n_patterns, obj.barGrid], states_m_r(:, 2), subind(:));
-                lik = obslik(ind);
-            catch exception
-                fprintf('dimensions R=%i, barGrid=%i, states_m=%.2f - %.2f, subind = %i - %i, m_per_grid=%.2f\n', ...
-                    obj.state_space.n_patterns, obj.barGrid, min(states_m_r(:, 1)), max(states_m_r(:, 1)), ...
-                    min(subind), max(subind), m_per_grid);
-            end
+            ind = sub2ind([obj.state_space.n_patterns, ...
+                obj.obs_model.max_cells], p_pat, p_cell(:));
+            lik = obslik(ind);
         end
         
         function [m_path, n_path, r_path] = path_via_best_weight(obj)
@@ -317,9 +290,6 @@ classdef BeatTrackerPF < handle
         
         function obj = forward_filtering(obj, obs_lik, fname)
             nFrames = size(obs_lik, 3);
-            if obj.save_inference_data
-                logP_data_pf = log(zeros(obj.n_particles, 5, nFrames, 'single'));
-            end
             % initialize particles
             iFrame = 1;
             m = zeros(obj.n_particles, nFrames, 'single');
@@ -328,31 +298,18 @@ classdef BeatTrackerPF < handle
             m(:, iFrame) = obj.initial_m;
             n(:, iFrame) = obj.initial_n;
             r(:, iFrame) = obj.initial_r;
-            if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                obj.particles_grid = Particles(obj.n_particles, nFrames);
-                obj.particles_grid.m(:, iFrame) = obj.initial_m;
-                obj.particles_grid.n(:, iFrame) = obj.initial_n;
-                obj.particles_grid.r(:, iFrame) = obj.initial_r;
-            end
             % observation probability
-            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / ...
-                obj.barGrid);
-            obs = eval_lik([obj.initial_m, obj.initial_r], iFrame);
+            eval_lik = @(x, y) obj.compute_obs_lik(x, y, z, obs_lik);
+            obs = eval_lik(obj.initial_m, obj.initial_r, iFrame);
             weight = log(obs / sum(obs));
             if obj.resampling_scheme > 1
                 % divide particles into clusters by kmeans
-                groups = obj.divide_into_fixed_cells([m(:, iFrame), n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; obj.state_space.n_patterns], obj.n_initial_clusters);
+                groups = obj.divide_into_fixed_cells([m(:, iFrame), ...
+                    n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; ...
+                    obj.state_space.n_patterns], obj.n_initial_clusters);
                 n_clusters = zeros(nFrames, 1);
             else
                 groups = ones(obj.n_particles, 1);
-            end
-            if obj.save_inference_data
-                % save particle data for visualizing
-                logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-                logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-                logP_data_pf(:, 3, iFrame) = r(:, iFrame);
-                logP_data_pf(:, 4, iFrame) = weight;
-                logP_data_pf(:, 5, iFrame) = groups;
             end
             resampling_frames = zeros(nFrames, 1);
             for iFrame=2:nFrames
@@ -370,7 +327,7 @@ classdef BeatTrackerPF < handle
                         obj.pr(r(crossed_barline(rInd),iFrame-1),:));
                 end
                 % evaluate particle at iFrame-1
-                obs = eval_lik([m(:, iFrame), r(:, iFrame)], iFrame);
+                obs = eval_lik(m(:, iFrame), r(:, iFrame), iFrame);
                 weight = weight(:) + log(obs(:));
                 % Normalise importance weights
                 [weight, ~] = obj.normalizeLogspace(weight');
@@ -401,19 +358,6 @@ classdef BeatTrackerPF < handle
                 n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
                 out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
                 n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-                if strcmp(obj.inferenceMethod, 'PF_viterbi')
-                    obj.particles_grid.m(:, iFrame) =  obj.particles.m(:, iFrame);
-                    obj.particles_grid.n(:, iFrame) =  obj.particles.n(:, iFrame);
-                    obj.particles_grid.r(:, iFrame) =  obj.particles.r(:, iFrame);
-                end
-                if obj.save_inference_data
-                    % save particle data for visualizing
-                    logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-                    logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-                    logP_data_pf(:, 3, iFrame) = r(:, iFrame);
-                    logP_data_pf(:, 4, iFrame) = weight;
-                    logP_data_pf(:, 5, iFrame) = groups;
-                end
             end
             obj.particles.m = m;
             obj.particles.n = n;

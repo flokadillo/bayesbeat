@@ -100,7 +100,7 @@ for iFile=1:length(obj.file_list)
             labels = [repmat(barPosLin(:), obj.feature.feat_dim, 1) ...             %# Replicate the row indices
                 kron(1:obj.feature.feat_dim, ones(1, numel(barPosLin))).'];  %'# Create column indices
             currBarData = accumarray(labels, featBar(:), ...
-                [bar_grid_eff+2, 2], @(x) {x});
+                [bar_grid_eff+2, obj.feature.feat_dim], @(x) {x});
             % add to bar cell array; last element belongs to next bar -> remove it
             barData(iBar, :, :) = currBarData(1:bar_grid_eff, :);
         end

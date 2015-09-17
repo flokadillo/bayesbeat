@@ -80,7 +80,7 @@ classdef BeatTrackingObservationModel < handle
             means = obj.compute_distribution_means;
             n_patterns = obj.state_space.n_patterns;
             h = figure;
-            set(h, 'Position', [100 100 n_patterns*100 n_patterns*100]);
+            set(h, 'Position', [100 100 n_patterns*200 n_patterns*200]);
             % how many axes next to each other?
             plot_cols = ceil(sqrt(n_patterns));
             colors = hsv(length(obj.feat_type));
@@ -92,8 +92,9 @@ classdef BeatTrackingObservationModel < handle
                     % normalise data to [0, 1] for better visualisation
                     data = data - min(data);
                     data = data / max(data);
-                    data = data + fdim;
-                    stairs([data, data(end)], 'Color', colors(fdim, :));
+                    data = data + (fdim - 1);
+                    stairs(1:length(data)+1, [data, data(end)], 'Color', ...
+                        colors(fdim, :));
                 end
                 title(sprintf('cluster %i', c));
                 xlim([1 length(data)+1])
