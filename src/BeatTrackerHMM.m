@@ -94,7 +94,7 @@ classdef BeatTrackerHMM < handle
                 train_data.feature.feat_type, dist_type, ...
                 cells_per_whole_note);
             % Train model
-            if ~strcmp(obj.dist_type, 'RNN')
+            if ~strcmp(dist_type, 'RNN')
                 obj.obs_model = obj.obs_model.train_model(train_data);
                 obj.train_dataset = train_data.dataset;
             end

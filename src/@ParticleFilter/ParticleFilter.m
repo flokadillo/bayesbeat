@@ -28,6 +28,7 @@ classdef ParticleFilter
             m = zeros(obj.n_particles, n_frames, 'single');
             n = zeros(obj.n_particles, n_frames, 'single');
             r = zeros(obj.n_particles, n_frames, 'single');
+            logP_data_pf = zeros(obj.n_particles, 5, n_frames, 'single');
             m(:, 1) = obj.initial_particles(:, 1);
             n(:, 1) = obj.initial_particles(:, 2);
             r(:, 1) = obj.initial_particles(:, 3);
@@ -36,7 +37,12 @@ classdef ParticleFilter
             obs = obj.likelihood_of_particles(m(:, 1), r(:, 1), ...
                 obs_lik(:, :, 1));
             w = log(obs / sum(obs));   
-            i=1; r_idx=r(:, i)==2; figure(1); scatter(m(r_idx, i), n(r_idx, 1), 50, exp(w(r_idx)));
+            iFrame = 1;
+            logP_data_pf(:, 1, iFrame) = m(:, iFrame);
+            logP_data_pf(:, 2, iFrame) = n(:, iFrame);
+            logP_data_pf(:, 3, iFrame) = r(:, iFrame);
+            logP_data_pf(:, 4, iFrame) = w;
+            logP_data_pf(:, 5, iFrame) = g;
             for iFrame=2:n_frames
                 % sample position and pattern
                 m(:, iFrame) = obj.trans_model.update_position(m(:, iFrame-1), ...
@@ -57,8 +63,13 @@ classdef ParticleFilter
                 % the resampling and we achieve greater tempo diversity.
                 n(:, iFrame) = obj.trans_model.sample_tempo(n(:, iFrame-1), ...
                     r(:, iFrame));
-                i=iFrame; r_idx=r(:, i)==2; figure(1); scatter(m(r_idx, i), n(r_idx, 1), 50, exp(w(r_idx))); xlim([1, 1.75])
+                logP_data_pf(:, 1, iFrame) = m(:, iFrame);
+                logP_data_pf(:, 2, iFrame) = n(:, iFrame);
+                logP_data_pf(:, 3, iFrame) = r(:, iFrame);
+                logP_data_pf(:, 4, iFrame) = w;
+                logP_data_pf(:, 5, iFrame) = g;
             end
+            save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik');
         end
         
         function [m, n, r, g, w_log] = resampling(obj, m, n, r, g, w_log, iFrame)

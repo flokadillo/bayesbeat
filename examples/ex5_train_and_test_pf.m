@@ -19,9 +19,10 @@ Params.testLab = in_file;
 Params.data_path = out_folder;
 Params.results_path = out_folder;
 Params.inferenceMethod = 'PF';
-Params.resampling_scheme = 0;
-Params.n_particles = 2000;
-Params.ratio_Neff = 0.01
+Params.resampling_scheme = 1;
+Params.warp_fun = '@(x) x.^(1/10)';
+Params.n_particles = 5000;
+Params.ratio_Neff = 0.001; % smaller -> less resampling
 
 % TRAINING THE MODEL
 
