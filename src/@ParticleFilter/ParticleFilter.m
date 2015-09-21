@@ -8,87 +8,83 @@ classdef ParticleFilter
         obs_model
         initial_particles
         n_particles
+        resampling_params
     end
     
     methods
         function obj = ParticleFilter(trans_model, obs_model, initial_particles, ...
-                n_particles)
+                n_particles, resampling_params)
             obj.trans_model = trans_model;
             obj.obs_model = obs_model;
             obj.initial_particles = initial_particles;
             obj.n_particles = n_particles;
             obj.state_space = obj.trans_model.state_space;
+            obj.resampling_params = resampling_params;
         end
         
         function [m, n, r, w] = forward_filtering(obj, obs_lik)
-            n_frames = size(obs_lik, 3);
-            
             % initialize particles and preallocate memory
+            n_frames = size(obs_lik, 3);
             m = zeros(obj.n_particles, n_frames, 'single');
             n = zeros(obj.n_particles, n_frames, 'single');
             r = zeros(obj.n_particles, n_frames, 'single');
             m(:, 1) = obj.initial_particles(:, 1);
             n(:, 1) = obj.initial_particles(:, 2);
             r(:, 1) = obj.initial_particles(:, 3);
-            group_id = obj.initial_particles(:, 4);
-            
+            g = obj.initial_particles(:, 4);
             % use first observation
             obs = obj.likelihood_of_particles(m(:, 1), r(:, 1), ...
                 obs_lik(:, :, 1));
-            weight = log(obs / sum(obs));
-            resampling_frames = zeros(n_frames, 1);
-            
+            w = log(obs / sum(obs));   
+            i=1; r_idx=r(:, i)==2; figure(1); scatter(m(r_idx, i), n(r_idx, 1), 50, exp(w(r_idx)));
             for iFrame=2:n_frames
-                % transition from iFrame-1 to iFrame
+                % sample position and pattern
                 m(:, iFrame) = obj.trans_model.update_position(m(:, iFrame-1), ...
                     n(:, iFrame-1), r(:, iFrame-1));
                 r(:, iFrame) = obj.trans_model.sample_pattern(r(:, iFrame-1), ...
                     m(:, iFrame), m(:, iFrame-1), n(:, iFrame-1));
-                % evaluate particle at iFrame-1
+                % evaluate likelihood of particles
                 obs = obj.likelihood_of_particles(m(:, iFrame), r(:, iFrame), ...
                     obs_lik(:, :, iFrame));
-                weight = weight(:) + log(obs(:));
-                % Normalise importance weights
-                [weight, ~] = obj.normalizeLogspace(weight');
-                % Resampling
-                % ------------------------------------------------------------
-                if obj.resampling_interval == 0
-                    Neff = 1/sum(exp(weight).^2);
-                    do_resampling = (Neff < obj.ratio_Neff * obj.n_particles);
-                else
-                    do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
+                w = w(:) + log(obs(:));
+                % normalise importance weights
+                [w, ~] = obj.normalizeLogspace(w');
+                % resampling
+                if iFrame < n_frames
+                    [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
                 end
-                if do_resampling && (iFrame < n_frames)
-                    resampling_frames(iFrame) = iFrame;
-                    if obj.resampling_scheme == 2 || obj.resampling_scheme == 3 % MPF or AMPF
-                        group_id = obj.divide_into_clusters([m(:, iFrame), ...
-                            n(:, iFrame-1), r(:, iFrame)], ...
-                            [obj.M; obj.N; obj.state_space.n_patterns], group_id);
-                        n_clusters(iFrame) = length(unique(group_id));
-                    end
-                    [weight, group_id, newIdx] = obj.resample(weight, group_id);
-                    m(:, 1:iFrame) = m(newIdx, 1:iFrame);
-                    r(:, 1:iFrame) = r(newIdx, 1:iFrame);
-                    n(:, 1:iFrame) = n(newIdx, 1:iFrame);
-                end
-                % transition from iFrame-1 to iFrame
-                n(:, iFrame) = n(:, iFrame-1) + randn(obj.n_particles, 1) * obj.sigma_N * obj.M;
-                out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
-                n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
-                out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
-                n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-            end
-            w = weight;
-            obj.particles.weight = weight;
-            fprintf('    Average resampling interval: %.2f frames\n', ...
-                mean(diff(resampling_frames(resampling_frames>0))));
-            if obj.resampling_scheme > 1
-                fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters(n_clusters>0)));
-            end
-            if obj.save_inference_data
-                save(['./', fname, '_pf.mat'], 'logP_data_pf');
+                % sample tempo after resampling because it has no impact on
+                % the resampling and we achieve greater tempo diversity.
+                n(:, iFrame) = obj.trans_model.sample_tempo(n(:, iFrame-1), ...
+                    r(:, iFrame));
+                i=iFrame; r_idx=r(:, i)==2; figure(1); scatter(m(r_idx, i), n(r_idx, 1), 50, exp(w(r_idx))); xlim([1, 1.75])
             end
         end
+        
+        function [m, n, r, g, w_log] = resampling(obj, m, n, r, g, w_log, iFrame)
+            % compute reampling criterion effective sample size
+            w = exp(w_log);
+            Neff = 1/sum(w.^2);
+            if Neff > (obj.resampling_params.ratio_Neff * obj.n_particles)
+                return
+            end
+            if obj.resampling_params.resampling_scheme == 0 % SISR
+                newIdx = obj.resampleSystematic(w);
+                w_log = log(ones(obj.n_particles, 1) / obj.n_particles);
+            elseif obj.resampling_params.resampling_scheme == 1 % APF
+                % warping:
+                w_warped = obj.resampling_params.warp_fun(w);
+                newIdx = obj.resampleSystematic(w_warped);
+                w_fac = w ./ w_warped;
+                w_log = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
+            else
+                fprintf('WARNING: Unknown resampling scheme!\n');
+            end
+            m(:, 1:iFrame) = m(newIdx, 1:iFrame);
+            r(:, 1:iFrame) = r(newIdx, 1:iFrame);
+            n(:, 1:iFrame) = n(newIdx, 1:iFrame);
+        end
+        
         
         function lik = likelihood_of_particles(obj, position, pattern, ...
                 obs_lik)
@@ -105,21 +101,67 @@ classdef ParticleFilter
                 obs_lik)
             [m, n, r, w] = obj.forward_filtering(obs_lik);
             [~, best_last_particle] = max(w);
-            m_path = m(best_last_particle, :);
-            r_path = r(best_last_particle, :);
+            m_path = m(best_last_particle, :)';
+            r_path = r(best_last_particle, :)';
             n_path = n(best_last_particle, :)';
-            m_path = m_path(:)';
-            n_path = n_path(:)';
-            r_path = r_path(:)';
         end
         
         
     end
     
     methods (Static)
+        function [y, L] = normalizeLogspace(x)
+            % Normalize in logspace while avoiding numerical underflow
+            % Each *row* of x is a log discrete distribution.
+            % y(i,:) = x(i,:) - logsumexp(x,2) = x(i) - log[sum_c exp(x(i,c)]
+            % L is the log normalization constant
+            % eg [logPost, L] = normalizeLogspace(logprior + loglik)
+            % post = exp(logPost);
+            % This file is from pmtk3.googlecode.com
+            L = PF.logsumexp(x, 2);
+            y = bsxfun(@minus, x, L);
+        end
         
+        function r = logsumexp(X,dim)
+            %LOG_SUM_EXP Numerically stable computation of log(sum(exp(X), dim))
+            % [r] = log_sum_exp(X, dim)
+            %
+            % Inputs :
+            %
+            % X : Array
+            %
+            % dim : Sum Dimension <default = 1>, means summing over the columns
+            % This file is from pmtk3.googlecode.com
+            maxval = max(X,[],dim);
+            sizes = size(X);
+            if dim == 1
+                normmat = repmat(maxval,sizes(1),1);
+            else
+                normmat = repmat(maxval,1,sizes(2));
+            end
+            r = maxval + log(sum(exp(X-normmat),dim));
+        end
+        
+        function [ indx ] = resampleSystematic( w, n_samples )
+            % n_samples ... number of samples after resampling
+            w = w(:);
+            if sum(w) > eps
+                w = w / sum(w);
+            else
+                w = ones(size(w)) / length(w);
+            end
+            if exist('n_samples', 'var')
+                N = n_samples;
+            else
+                N = length(w);
+            end
+            Q = cumsum(w);
+            T = linspace(0,1-1/N,N) + rand(1)/N;
+            T(N+1) = 1;
+            [~, indx] = histc(T, [0; Q]);
+            indx = indx(1:end-1);
+        end
         
     end
-    
 end
 

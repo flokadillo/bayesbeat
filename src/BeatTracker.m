@@ -318,10 +318,11 @@ classdef BeatTracker < handle
                     end
                 end
             elseif strcmp(obj.Params.inferenceMethod(1:2), 'PF')
-                if isfield(obj.Params, 'sigmaN')
-                    obj.Params.transition_params.sigmaN = obj.Params.sigmaN;
+                if isfield(obj.Params, 'tempo_bpm_std')
+                    obj.Params.transition_params.tempo_bpm_std = ...
+                        obj.Params.tempo_bpm_std;
                 else
-                    obj.Params.transition_params.sigmaN = 0.0001;
+                    obj.Params.transition_params.tempo_bpm_std = 1;
                 end
             end
             if ~isfield(obj.Params, 'pattern_size')

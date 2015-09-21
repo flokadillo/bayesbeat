@@ -7,7 +7,7 @@ classdef BeatTrackingTransitionModelPF
         pr
         pfs
         p2s
-        tempo_sigma
+        tempo_ss_std
         min_tempo_ss
         max_tempo_ss
     end
@@ -24,7 +24,8 @@ classdef BeatTrackingTransitionModelPF
                 obj.pfs = 0;
                 obj.p2s = 0;
             end
-            obj.tempo_sigma = transition_params.sigmaN;
+            obj.tempo_ss_std = obj.state_space.convert_tempo_from_bpm(...
+                transition_params.tempo_bpm_std);
             obj.min_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
                 obj.state_space.min_tempo_bpm);
             obj.max_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
@@ -32,8 +33,16 @@ classdef BeatTrackingTransitionModelPF
             
         end
         
-        function tempo_new = sample_tempo(obj, tempo_old)
-            
+        function tempo_new = sample_tempo(obj, tempo_old, pattern_new)
+                tempo_new = tempo_old + randn(length(tempo_old), 1) ...
+                    * obj.tempo_ss_std;
+                % sampled tempo is clipped to the tempo limits
+                out_of_range = tempo_new > obj.max_tempo_ss(pattern_new);
+                tempo_new(out_of_range) = ...
+                    obj.max_tempo_ss(pattern_new(out_of_range));
+                out_of_range = tempo_new < obj.min_tempo_ss(pattern_new);
+                tempo_new(out_of_range) = ...
+                    obj.min_tempo_ss(pattern_new(out_of_range));
         end
         
         function position_new = update_position(obj, position_old, tempo_old, ...
@@ -50,17 +59,19 @@ classdef BeatTrackingTransitionModelPF
             % Change the ones for which the bar changed
             crossed_barline = find(position_new < position_old);
             for ri = 1:obj.state_space.n_patterns
-               idx_ri = find(pattern_old(crossed_barline) == ri); 
-               % sample new pattern from pr
-               pattern_new_s = randsample(obj.state_space.n_patterns, ...
-                   length(idx_ri), true, obj.pr(ri, :));
-               % check if the tempo of a particle fits to the tempo range
-               % of the new pattern
-               tempo_valid = (obj.min_tempo_ss(pattern_new_s) <= ...
-                   tempo_old(crossed_barline(idx_ri)) <=...
-                   obj.max_tempo_ss(pattern_new_s));
-               pattern_new(crossed_barline(idx_ri(tempo_valid))) = ...
-                   pattern_new_s(tempo_valid);
+               idx_ri = find(pattern_old(crossed_barline) == ri);
+               if ~isempty(idx_ri)
+                   % sample new pattern from pr
+                   pattern_new_s = randsample(obj.state_space.n_patterns, ...
+                       length(idx_ri), true, obj.pr(ri, :));
+                   % check if the tempo of a particle fits to the tempo range
+                   % of the new pattern
+                   tempo_valid = (obj.min_tempo_ss(pattern_new_s) <= ...
+                       tempo_old(crossed_barline(idx_ri)) <=...
+                       obj.max_tempo_ss(pattern_new_s));
+                   pattern_new(crossed_barline(idx_ri(tempo_valid))) = ...
+                       pattern_new_s(tempo_valid);
+               end
             end
         end
         

@@ -1,6 +1,6 @@
 # Config options for the bayes_beat package
 
-The parameters of the system are controlled by a config file that has to be specified when running the meter extraction. In the following, all possible parameters are listed and explained. If a parameter is omitted in the config file, its default settings are assumed. The default settings for each parameters are listed.  
+In the following, all possible parameters settings are listed and explained together with their default settings.  
  
 
 ### General
@@ -133,8 +133,8 @@ Probability of tempo acceleration (and deceleration) in the *2015* transition mo
 #### PF parameters
 * `nParticles` = 1000  
 Number of particles  
-* `sigmaN` = 0.0001  
-Standard deviation of tempo transition. Note that the tempo n is normalised by dividing by M, so the actual sigma is *sigmaN * M*.
+* `tempo_bpm_std` = 0.0001  
+Standard deviation of the Gaussian tempo transition model in [BPM].   
 * `ratio_Neff` = 0.1  
 If the effective sample size is below *ratio_Neff * nParticles*, resampling is performed.  
 * `res_int` = 30  

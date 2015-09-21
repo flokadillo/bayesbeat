@@ -3,7 +3,7 @@ classdef MixtureParticleFilter < ParticleFilter
     %   Detailed explanation goes here
     
     properties
-        resampling_params
+        
 
     end
     
@@ -12,8 +12,7 @@ classdef MixtureParticleFilter < ParticleFilter
                 initial_particles, n_particles, resampling_params)
             % Call superclass constructor
             obj@ParticleFilter(trans_model, obs_model, initial_particles, ...
-                n_particles);
-            obj.resampling_params = resampling_params;
+                n_particles, resampling_params);
             % divide particles into clusters and store the group id of each
             % particle
             obj.initial_particles(:, 4) = ...
