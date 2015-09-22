@@ -25,32 +25,25 @@ classdef ParticleFilter
         function [m, n, r, w] = forward_filtering(obj, obs_lik)
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
-            m = zeros(obj.n_particles, n_frames, 'single');
-            n = zeros(obj.n_particles, n_frames, 'single');
-            r = zeros(obj.n_particles, n_frames, 'single');
+            % add one frame, which corresponds to the initial distribution
+            % at time 0 before the first observation comes in
+            m = zeros(obj.n_particles, n_frames + 1, 'single');
+            n = zeros(obj.n_particles, n_frames + 1, 'single');
+            r = zeros(obj.n_particles, n_frames + 1, 'single');
             logP_data_pf = zeros(obj.n_particles, 5, n_frames, 'single');
             m(:, 1) = obj.initial_particles(:, 1);
             n(:, 1) = obj.initial_particles(:, 2);
             r(:, 1) = obj.initial_particles(:, 3);
             g = obj.initial_particles(:, 4);
-            % use first observation
-            obs = obj.likelihood_of_particles(m(:, 1), r(:, 1), ...
-                obs_lik(:, :, 1));
-            w = log(obs / sum(obs));   
-            iFrame = 1;
-            logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-            logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-            logP_data_pf(:, 3, iFrame) = r(:, iFrame);
-            logP_data_pf(:, 4, iFrame) = w;
-            logP_data_pf(:, 5, iFrame) = g;
-            for iFrame=2:n_frames
+            w = log(ones(obj.n_particles, 1) / obj.n_particles);   
+            for iFrame=1:n_frames
                 % sample position and pattern
-                m(:, iFrame) = obj.trans_model.update_position(m(:, iFrame-1), ...
-                    n(:, iFrame-1), r(:, iFrame-1));
-                r(:, iFrame) = obj.trans_model.sample_pattern(r(:, iFrame-1), ...
-                    m(:, iFrame), m(:, iFrame-1), n(:, iFrame-1));
+                m(:, iFrame+1) = obj.trans_model.update_position(m(:, iFrame), ...
+                    n(:, iFrame), r(:, iFrame));
+                r(:, iFrame+1) = obj.trans_model.sample_pattern(r(:, iFrame), ...
+                    m(:, iFrame+1), m(:, iFrame), n(:, iFrame));
                 % evaluate likelihood of particles
-                obs = obj.likelihood_of_particles(m(:, iFrame), r(:, iFrame), ...
+                obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
                     obs_lik(:, :, iFrame));
                 w = w(:) + log(obs(:));
                 % normalise importance weights
@@ -61,14 +54,16 @@ classdef ParticleFilter
                 end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
-                n(:, iFrame) = obj.trans_model.sample_tempo(n(:, iFrame-1), ...
-                    r(:, iFrame));
-                logP_data_pf(:, 1, iFrame) = m(:, iFrame);
-                logP_data_pf(:, 2, iFrame) = n(:, iFrame);
-                logP_data_pf(:, 3, iFrame) = r(:, iFrame);
+                n(:, iFrame+1) = obj.trans_model.sample_tempo(n(:, iFrame), ...
+                    r(:, iFrame+1));
+                logP_data_pf(:, 1, iFrame) = m(:, iFrame+1);
+                logP_data_pf(:, 2, iFrame) = n(:, iFrame+1);
+                logP_data_pf(:, 3, iFrame) = r(:, iFrame+1);
                 logP_data_pf(:, 4, iFrame) = w;
                 logP_data_pf(:, 5, iFrame) = g;
             end
+            % remove initial state
+            m = m(:, 2:end); n = n(:, 2:end); r = r(:, 2:end);
             save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik');
         end
         
@@ -133,7 +128,7 @@ classdef ParticleFilter
             y = bsxfun(@minus, x, L);
         end
         
-        function r = logsumexp(X,dim)
+        function r = logsumexp(X, dim)
             %LOG_SUM_EXP Numerically stable computation of log(sum(exp(X), dim))
             % [r] = log_sum_exp(X, dim)
             %
