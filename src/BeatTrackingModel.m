@@ -160,16 +160,13 @@ classdef BeatTrackingModel < handle
                                 size(beat_act, 2)));
                             bt = win_max_offset + i - 1;
                         end
-                        % madmom does not use interpolation. This yields
-                        % ~round(bt)
-%                         beats = [beats; [round(bt), j]];
                         beats = [beats; [bt, j]];
                         break;
                     end
                 end
             end
             if ~isempty(beats)
-                beats(:, 1) = beats(:, 1) * obj.frame_length;
+                beats(:, 1) = round(beats(:, 1)) * obj.frame_length;
             end
         end
     end

@@ -346,10 +346,10 @@ classdef BeatTracker < handle
                 obj.Params.cluster_type = 'meter';
             end
             if ~isfield(obj.Params, 'store_training_data')
-                obj.Params.store_training_data = 1;
+                obj.Params.store_training_data = 0;
             end
             if ~isfield(obj.Params, 'load_training_data')
-                obj.Params.load_training_data = 1;
+                obj.Params.load_training_data = 0;
             end
             if ~isfield(obj.Params, 'stored_train_data_fln') && ...
                     (obj.Params.load_training_data || ...
