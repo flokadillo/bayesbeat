@@ -59,10 +59,10 @@ classdef BeatTracker < handle
                     obj.Params.min_tempo_bpm = tempo_min_per_cluster;
                     obj.Params.max_tempo_bpm = tempo_max_per_cluster;
                 else
-                    obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, 1, ...
-                        obj.Params.R);
-                    obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, 1, ...
-                        obj.Params.R);
+                    obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, ...
+                        obj.Params.R, 1);
+                    obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, ...
+                        obj.Params.R, 1);
                 end
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'

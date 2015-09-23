@@ -83,13 +83,15 @@ classdef MixtureParticleFilter < ParticleFilter
             % adjust the range of each state variable to make equally
             % important for the clustering
             dim_weighting = obj.resampling_params.state_distance_coefficients;
+            bar_durations = obj.state_space.meter_from_pattern(1, :) ./ ...
+                obj.state_space.meter_from_pattern(2, :);
             points = zeros(obj.n_particles, 4);
             points(:, 1) = (sin(m * 2 * pi ./ ...
                 obj.state_space.max_position_from_pattern(r)) + 1) * ...
-                dim_weighting(1);
+                dim_weighting(1) .* bar_durations(r);
             points(:, 2) = (cos(m * 2 * pi ./ ...
                 obj.state_space.max_position_from_pattern(r)) + 1) * ...
-                dim_weighting(1);
+                dim_weighting(1) .* bar_durations(r);
             points(:, 3) = n * dim_weighting(2);
             points(:, 4) =(r-1) * dim_weighting(3) + 1;
             % compute centroid of clusters

@@ -23,6 +23,7 @@ classdef ParticleFilter
         end
         
         function [m, n, r, w] = forward_filtering(obj, obs_lik)
+            debug = 1;
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
             % add one frame, which corresponds to the initial distribution
@@ -30,7 +31,9 @@ classdef ParticleFilter
             m = zeros(obj.n_particles, n_frames + 1, 'single');
             n = zeros(obj.n_particles, n_frames + 1, 'single');
             r = zeros(obj.n_particles, n_frames + 1, 'single');
-            logP_data_pf = zeros(obj.n_particles, 5, n_frames, 'single');
+            if debug, 
+                logP_data_pf = zeros(obj.n_particles, 5, n_frames, 'single');
+            end
             m(:, 1) = obj.initial_particles(:, 1);
             n(:, 1) = obj.initial_particles(:, 2);
             r(:, 1) = obj.initial_particles(:, 3);
@@ -44,13 +47,7 @@ classdef ParticleFilter
                     m(:, iFrame+1), m(:, iFrame), n(:, iFrame));
                 % evaluate likelihood of particles
                 obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
-                    obs_lik(:, :, iFrame));
-                iFrame
-                length(unique(m(:, iFrame+1)))
-                if sum(obs) == 0
-                    lkj=987;
-                end
-                    
+                    obs_lik(:, :, iFrame));                   
                 w = w(:) + log(obs(:));
                 % normalise importance weights
                 [w, ~] = obj.normalizeLogspace(w);
@@ -58,22 +55,21 @@ classdef ParticleFilter
                 if iFrame < n_frames
                     [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
                 end
-                if length(unique(m(:, iFrame+1))) < 100
-                    a=8796;
-                end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
                 n(:, iFrame+1) = obj.trans_model.sample_tempo(n(:, iFrame), ...
                     r(:, iFrame+1));
-                logP_data_pf(:, 1, iFrame) = m(:, iFrame+1);
-                logP_data_pf(:, 2, iFrame) = n(:, iFrame+1);
-                logP_data_pf(:, 3, iFrame) = r(:, iFrame+1);
-                logP_data_pf(:, 4, iFrame) = w;
-                logP_data_pf(:, 5, iFrame) = g;
+                if debug
+                    logP_data_pf(:, 1, iFrame) = m(:, iFrame+1);
+                    logP_data_pf(:, 2, iFrame) = n(:, iFrame+1);
+                    logP_data_pf(:, 3, iFrame) = r(:, iFrame+1);
+                    logP_data_pf(:, 4, iFrame) = w;
+                    logP_data_pf(:, 5, iFrame) = g;
+                end
             end
             % remove initial state
             m = m(:, 2:end); n = n(:, 2:end); r = r(:, 2:end);
-            save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik');
+            if debug, save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik'); end
         end
         
         function [m, n, r, g, w_log] = resampling(obj, m, n, r, g, w_log, iFrame)

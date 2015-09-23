@@ -22,7 +22,7 @@ classdef BeatTrackerPF < handle
         sample_trans_fun            % transition model
         disc_trans_mat              % transition matrices for discrete states
         obs_model                   % observation model
-        initial_particles           % initial location of particles 
+        initial_particles           % initial location of particles
         %                               [n_particles, 3] in the order
         %                               position, tempo, pattern
         n_particles                  % number of particles
@@ -85,12 +85,12 @@ classdef BeatTrackerPF < handle
                 dist_type);
             if ismember(obj.resampling_params.resampling_scheme, [2, 3])
                 obj.PF = MixtureParticleFilter(obj.trans_model, obj.obs_model, ...
-                                obj.initial_particles, obj.n_particles, ...
-                                obj.resampling_params);
+                    obj.initial_particles, obj.n_particles, ...
+                    obj.resampling_params);
             else
                 obj.PF = ParticleFilter(obj.trans_model, obj.obs_model, ...
-                                obj.initial_particles, obj.n_particles, ...
-                                obj.resampling_params);
+                    obj.initial_particles, obj.n_particles, ...
+                    obj.resampling_params);
             end
             fln = fullfile(results_path, 'model.mat');
             pf = obj;
@@ -184,13 +184,6 @@ classdef BeatTrackerPF < handle
             end
         end
         
-        function [n_new] = sample_tempo(obj, n_old)
-            n_new = n_old + randn(obj.n_particles, 1) * obj.sigma_N * obj.M;
-            out_of_range = n_new' > obj.maxN(r(:, iFrame));
-            n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
-            out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
-            n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-        end
         
         function obj = retrain_observation_model(obj, data_file_pattern_barpos_dim, pattern_id)
             %{
@@ -213,7 +206,7 @@ classdef BeatTrackerPF < handle
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
-            [m_path, n_path, r_path] = obj.PF.path_with_best_last_weight(obs_lik);            
+            [m_path, n_path, r_path] = obj.PF.path_with_best_last_weight(obs_lik);
             % strip of silence state
             if obj.use_silence_state
                 idx = logical(r_path<=obj.state_space.n_patterns);
@@ -247,145 +240,10 @@ classdef BeatTrackerPF < handle
             joint_prob.sum = sum(joint_prob.trans) + sum(joint_prob.obslik);
         end
         
-        function obj = convert_old_model_to_new(obj)
-            % check dimensions of member variables. This function might be removed
-            % in future, but is important for compatibility with older models
-            % (in old models Meff and
-            % rhythm2meter_state are row vectors [1 x K] but should be
-            % column vectors)
-            obj.Meff = obj.Meff(:);
-            obj.rhythm2meter_state = obj.rhythm2meter_state(:);
-            % In old models, pattern change probability was not saved as
-            % matrix [RxR]
-            if (length(obj.pr(:)) == 1) && (obj.state_space.n_patterns > 1)
-                % expand pr to a matrix [R x R]
-                % transitions to other patterns
-                pr_mat = ones(obj.state_space.n_patterns, obj.state_space.n_patterns) * (obj.pr / (obj.state_space.n_patterns-1));
-                % pattern self transitions
-                pr_mat(logical(eye(obj.state_space.n_patterns))) = (1-obj.pr);
-                obj.pr = pr_mat;
-            end
-            if isempty(obj.rhythm2meter)
-                obj.rhythm2meter = obj.meter_state2meter(:, ...
-                    obj.rhythm2meter_state)';
-            end
-        end
         
     end
     
     methods (Access=protected)
-        
-        
-        function lik = compute_obs_lik(obj, p_pos, p_pat, iFrame, obslik)
-            % states_m_r:   is a [nParts x 2] matrix, where (:, 1) are the
-            %               m-values and (:, 2) are the r-values
-            % obslik:       likelihood values [R, barGrid, nFrames]
-            m_per_grid = obj.state_space.max_position_from_pattern(1) / ...
-                obj.obs_model.cells_from_pattern(1);
-            p_cell = floor((p_pos - 1) / m_per_grid) + 1;
-            obslik = obslik(:, :, iFrame);
-            ind = sub2ind([obj.state_space.n_patterns, ...
-                obj.obs_model.max_cells], p_pat, p_cell(:));
-            lik = obslik(ind);
-        end
-        
-        function [m_path, n_path, r_path] = path_via_best_weight(obj)
-            % use particle with highest weight
-            % ------------------------------------------------------------
-            [~, bestParticle] = max(obj.particles.weight);
-            m_path = obj.particles.m(bestParticle, :);
-            r_path = obj.particles.r(bestParticle, :);
-            n_path = obj.particles.n(bestParticle, :)';
-            m_path = m_path(:)';
-            n_path = n_path(:)';
-            r_path = r_path(:)';
-        end
-        
-        
-        function obj = forward_filtering(obj, obs_lik, fname)
-            nFrames = size(obs_lik, 3);
-            % initialize particles
-            iFrame = 1;
-            m = zeros(obj.n_particles, nFrames, 'single');
-            n = zeros(obj.n_particles, nFrames, 'single');
-            r = zeros(obj.n_particles, nFrames, 'single');
-            m(:, iFrame) = obj.initial_m;
-            n(:, iFrame) = obj.initial_n;
-            r(:, iFrame) = obj.initial_r;
-            % observation probability
-            eval_lik = @(x, y) obj.compute_obs_lik(x, y, z, obs_lik);
-            obs = eval_lik(obj.initial_m, obj.initial_r, iFrame);
-            weight = log(obs / sum(obs));
-            if obj.resampling_params.resampling_scheme > 1
-                % divide particles into clusters by kmeans
-                groups = obj.divide_into_fixed_cells([m(:, iFrame), ...
-                    n(:, iFrame), r(:, iFrame)], [obj.M; obj.N; ...
-                    obj.state_space.n_patterns], obj.n_initial_clusters);
-                n_clusters = zeros(nFrames, 1);
-            else
-                groups = ones(obj.n_particles, 1);
-            end
-            resampling_frames = zeros(nFrames, 1);
-            for iFrame=2:nFrames
-                % transition from iFrame-1 to iFrame
-                m(:, iFrame) = m(:, iFrame-1) + n(:, iFrame-1);
-                m(:, iFrame) = mod(m(:, iFrame) - 1, ...
-                    obj.Meff(r(:, iFrame-1))) + 1;
-                % Pattern transitions to be handled here
-                r(:, iFrame) = r(:, iFrame-1);
-                % Change the ones for which the bar changed
-                crossed_barline = find(m(:, iFrame) < m(:, iFrame-1));
-                for rInd = 1:length(crossed_barline)
-                    r(crossed_barline(rInd), iFrame) = ...
-                        randsample(obj.state_space.n_patterns, 1, true, ...
-                        obj.pr(r(crossed_barline(rInd),iFrame-1),:));
-                end
-                % evaluate particle at iFrame-1
-                obs = eval_lik(m(:, iFrame), r(:, iFrame), iFrame);
-                weight = weight(:) + log(obs(:));
-                % Normalise importance weights
-                [weight, ~] = obj.normalizeLogspace(weight');
-                % Resampling
-                % ------------------------------------------------------------
-                if obj.resampling_interval == 0
-                    Neff = 1/sum(exp(weight).^2);
-                    do_resampling = (Neff < obj.ratio_Neff * obj.n_particles);
-                else
-                    do_resampling = (rem(iFrame, obj.resampling_interval) == 0);
-                end
-                if do_resampling && (iFrame < nFrames)
-                    resampling_frames(iFrame) = iFrame;
-                    if obj.resampling_params.resampling_scheme == 2 || obj.resampling_params.resampling_scheme == 3 % MPF or AMPF
-                        groups = obj.divide_into_clusters([m(:, iFrame), ...
-                            n(:, iFrame-1), r(:, iFrame)], ...
-                            [obj.M; obj.N; obj.state_space.n_patterns], groups);
-                        n_clusters(iFrame) = length(unique(groups));
-                    end
-                    [weight, groups, newIdx] = obj.resample(weight, groups);
-                    m(:, 1:iFrame) = m(newIdx, 1:iFrame);
-                    r(:, 1:iFrame) = r(newIdx, 1:iFrame);
-                    n(:, 1:iFrame) = n(newIdx, 1:iFrame);
-                end
-                % transition from iFrame-1 to iFrame
-                n(:, iFrame) = n(:, iFrame-1) + randn(obj.n_particles, 1) * obj.sigma_N * obj.M;
-                out_of_range = n(:, iFrame)' > obj.maxN(r(:, iFrame));
-                n(out_of_range, iFrame) = obj.maxN(r(out_of_range, iFrame));
-                out_of_range = n(:, iFrame)' < obj.minN(r(:, iFrame));
-                n(out_of_range, iFrame) = obj.minN(r(out_of_range, iFrame));
-            end
-            obj.particles.m = m;
-            obj.particles.n = n;
-            obj.particles.r = r;
-            obj.particles.weight = weight;
-            fprintf('    Average resampling interval: %.2f frames\n', ...
-                mean(diff(resampling_frames(resampling_frames>0))));
-            if obj.resampling_params.resampling_scheme > 1
-                fprintf('    Average number of clusters: %.2f frames\n', mean(n_clusters(n_clusters>0)));
-            end
-            if obj.save_inference_data
-                save(['./', fname, '_pf.mat'], 'logP_data_pf');
-            end
-        end
         
         function beats = find_beat_times(obj, position_state, rhythm_state, ...
                 beat_act)
@@ -488,135 +346,6 @@ classdef BeatTrackerPF < handle
             end
         end
         
-        function [groups] = divide_into_clusters(obj, states, state_dims, groups_old)
-            % states: [n_particles x nStates]
-            % state_dim: [nStates x 1]
-            % groups_old: [n_particles x 1] group labels of the particles
-            %               after last resampling step (used for initialisation)
-            warning('off');
-            [group_ids, ~, IC] = unique(groups_old);
-            %             fprintf('    %i groups >', length(group_ids));
-            k = length(group_ids); % number of clusters
-            
-            % adjust the range of each state variable to make equally
-            % important for the clustering
-            points = zeros(obj.n_particles, length(state_dims)+1);
-            points(:, 1) = (sin(states(:, 1) * 2 * pi ./ ...
-                obj.Meff(states(:, 3))) + 1) * ...
-                obj.state_distance_coefficients(1);
-            points(:, 2) = (cos(states(:, 1) * 2 * pi ./ ...
-                obj.Meff(states(:, 3))) + 1) * ...
-                obj.state_distance_coefficients(1);
-            points(:, 3) = states(:, 2) * ...
-                obj.state_distance_coefficients(2);
-            points(:, 4) =(states(:, 3)-1) * ...
-                obj.state_distance_coefficients(3) + 1;
-            
-            % compute centroid of clusters
-            % TODO: vectorise!
-            centroids = zeros(k, length(state_dims)+1);
-            for i_dim=1:size(points, 2)
-                %                 centroids(iCluster, :) = mean(points(groups_old == group_ids(iCluster) , :));
-                centroids(:, i_dim) = accumarray(IC, points(:, i_dim), [], @mean);
-            end
-            % do k-means clustering
-            options = statset('MaxIter', 1);
-            [groups, centroids, total_dist_per_cluster] = kmeans(points, k, 'replicates', 1, ...
-                'start', centroids, 'emptyaction', 'drop', 'Distance', 'sqEuclidean', 'options', options);
-            %             remove empty clusters
-            total_dist_per_cluster = total_dist_per_cluster(~isnan(centroids(:, 1)));
-            centroids = centroids(~isnan(centroids(:, 1)), :);
-            [group_ids, ~, j] = unique(groups);
-            group_ids = 1:length(group_ids);
-            groups = group_ids(j)';
-            % check if centroids are too close
-            merging = 1;
-            merged = 0;
-            while merging
-                D = squareform(pdist(centroids, 'euclidean'), 'tomatrix');
-                ind = (tril(D, 0) > 0);
-                D(ind) = nan;
-                D(logical(eye(size(centroids, 1)))) = nan;
-                
-                % find minimum distance
-                [min_D, arg_min] = min(D(:));
-                if min_D > obj.cluster_merging_thr,
-                    merging = 0;
-                else
-                    [c1, c2] = ind2sub(size(D), arg_min);
-                    groups(groups==c2(1)) = c1(1);
-                    % new centroid
-                    centroids(c1(1), :) = mean(points(groups==c1(1), :));
-                    % squared Euclidean distance
-                    total_dist_per_cluster(c1(1)) = sum(sum(bsxfun(@minus, points(groups==c1(1), :), centroids(c1(1), :)).^2));
-                    if length(c1) == 1,  merging = 0;  end
-                    % remove old centroid
-                    centroids = centroids([1:c2(1)-1, c2(1)+1:end], :);
-                    total_dist_per_cluster = total_dist_per_cluster([1:c2(1)-1, c2(1)+1:end]);
-                    merged = 1;
-                end
-            end
-            % check if cluster spread is too high
-            split = 0;
-            [group_ids, ~, j] = unique(groups);
-            group_ids = 1:length(group_ids);
-            groups = group_ids(j)';
-            n_parts_per_cluster = hist(groups, 1:length(group_ids));
-            separate_cl_idx = find((total_dist_per_cluster ./ n_parts_per_cluster') > obj.cluster_splitting_thr);
-            %             separate_cl_idx = find(mean_dist_per_cluster > obj.cluster_splitting_thr);
-            for iCluster = 1:length(separate_cl_idx)
-                % find particles that belong to the cluster to split
-                parts_idx = find((groups == separate_cl_idx(iCluster)));
-                % put second half into a new group
-                groups(parts_idx(round(length(parts_idx)/2)+1:end)) = max(groups) + 1;
-                % update centroid
-                centroids(separate_cl_idx(iCluster), :) = mean(points(parts_idx(1:round(length(parts_idx)/2)), :), 1);
-                % add new centroid
-                centroids = [centroids; mean(points(parts_idx(round(length(parts_idx)/2)+1:end), :), 1)];
-                split = 1;
-            end
-            if split || merged
-                try
-                    [groups, ~, ~] = kmeans(points, [], 'replicates', 1, 'start', centroids, 'emptyaction', 'drop', ...
-                        'Distance', 'sqEuclidean', 'options', options);
-                catch exception
-                    centroids
-                    error('Problem\n');
-                end
-                [group_ids, ~, j] = unique(groups);
-                group_ids = 1:length(group_ids);
-                groups = group_ids(j)';
-            end
-            warning('on');
-        end
-        
-        
-        function [weight, groups, newIdx] = resample(obj, weight, groups)
-            if obj.resampling_params.resampling_scheme == 0
-                newIdx = obj.resampleSystematic(exp(weight));
-                weight = log(ones(obj.n_particles, 1) / obj.n_particles);
-            elseif obj.resampling_params.resampling_scheme == 1 % APF
-                % warping:
-                w = exp(weight);
-                f = str2func(obj.warp_fun);
-                w_warped = f(w);
-                newIdx = obj.resampleSystematic(w_warped);
-                w_fac = w ./ w_warped;
-                weight = log( w_fac(newIdx) / sum(w_fac(newIdx)) );
-            elseif obj.resampling_params.resampling_scheme == 2 % K-MEANS
-                % k-means clustering
-                [newIdx, weight, groups] = obj.resample_in_groups(groups, ...
-                    weight, obj.n_max_clusters);
-                weight = weight';
-            elseif obj.resampling_params.resampling_scheme == 3 % APF + K-MEANS
-                % apf and k-means
-                [newIdx, weight, groups] = obj.resample_in_groups(groups, ...
-                    weight, obj.n_max_clusters, str2func(obj.warp_fun));
-                weight = weight';
-            else
-                fprintf('WARNING: Unknown resampling scheme!\n');
-            end
-        end
         
         function State_space_params = parse_params(obj, Params, Clustering)
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
@@ -687,7 +416,7 @@ classdef BeatTrackerPF < handle
                 if isfield(Params, 'ratio_Neff')
                     obj.resampling_params.ratio_Neff = Params.ratio_Neff;
                 else
-                    obj.resampling_params.ratio_Neff = 0.1;
+                    obj.resampling_params.ratio_Neff = 0.001;
                 end
                 obj.resampling_params.criterion = 'ESS'; % effective sample size
             end
@@ -700,52 +429,6 @@ classdef BeatTrackerPF < handle
             end
         end
         
-
-        
     end
-    
-    methods (Static)
-        
-        outIndex = resampleSystematic( w, n_samples );
-        
-        outIndex = resampleSystematicInGroups( w, n_samples );
-        
-        function [groups] = divide_into_fixed_cells(states, state_dims, nCells)
-            % divide space into fixed cells with equal number of grid
-            % points for position and tempo states
-            % states: [n_particles x nStates]
-            % state_dim: [nStates x 1]
-            groups = zeros(size(states, 1), 1);
-            n_r_bins = state_dims(3);
-            n_n_bins = floor(sqrt(nCells/n_r_bins));
-            n_m_bins = floor(nCells / (n_n_bins * n_r_bins));
-            
-            m_edges = linspace(1, state_dims(1) + 1, n_m_bins + 1);
-            n_edges = linspace(0, state_dims(2) + 1, n_n_bins + 1);
-            for iR=1:state_dims(3)
-                % get all particles that belong to pattern iR
-                ind = find(states(:, 3) == iR);
-                [~, BIN_m] = histc(states(ind, 1), m_edges);
-                [~, BIN_n] = histc(states(ind, 2), n_edges);
-                for m = 1:n_m_bins
-                    for n=1:n_n_bins
-                        ind2 = intersect(ind(BIN_m==m), ind(BIN_n==n));
-                        groups(ind2) = sub2ind([n_m_bins, n_n_bins, state_dims(3)], m, n, iR);
-                    end
-                end
-            end
-            if sum(groups==0) > 0
-                error('group assignment failed\n')
-            end
-        end
-        
-        [outIndex, outWeights, groups] = resample_in_groups(groups, weights, n_max_clusters, warp_fun);
-        
-        [y, L] = normalizeLogspace(x);
-        
-        r = logsumexp(X, dim);
-    end
-    
-    
     
 end

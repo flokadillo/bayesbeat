@@ -19,10 +19,13 @@ Params.testLab = in_file;
 Params.data_path = out_folder;
 Params.results_path = out_folder;
 Params.inferenceMethod = 'PF';
-Params.resampling_scheme = 3;
+Params.min_tempo_bpm = 100;
+Params.max_tempo_bpm = 150;
+Params.learn_tempo_ranges = 0;
+Params.resampling_scheme = 0;
 Params.warp_fun = '@(x) x.^(1/5)';
-Params.n_particles = 2000;
-Params.ratio_Neff = 0.0001; % smaller -> less resampling
+Params.n_particles = 5000;
+Params.ratio_Neff = 0.001; % smaller -> less resampling
 
 % TRAINING THE MODEL
 
