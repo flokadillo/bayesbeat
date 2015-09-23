@@ -55,6 +55,10 @@ classdef ParticleFilter
                 if iFrame < n_frames
                     [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
                 end
+                diffr = sum(diff(r(:, 1:iFrame+1), [], 2), 2);
+                if any(diffr ~= 0)
+                    lkj=987;
+                end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
                 n(:, iFrame+1) = obj.trans_model.sample_tempo(n(:, iFrame), ...
@@ -91,8 +95,8 @@ classdef ParticleFilter
             else
                 fprintf('WARNING: Unknown resampling scheme!\n');
             end
-            m(:, 1:iFrame) = m(newIdx, 1:iFrame);
-            r(:, 1:iFrame) = r(newIdx, 1:iFrame);
+            m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
+            r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
             n(:, 1:iFrame) = n(newIdx, 1:iFrame);
         end
         

@@ -13,12 +13,13 @@ classdef BTModel < handle
         trans_model
         dist_type
         train_dataset
+        use_meter_prior
     end
     
     
     methods
         function obj = BTModel(Params, Clustering)
-            obj.parse_params(Params, Clustering);
+            obj.parse_common_params(Params, Clustering);
         end
         
         function beat_positions = get.beat_positions(obj)
@@ -52,7 +53,7 @@ classdef BTModel < handle
     end
     
     methods (Access=protected)
-        function parse_params(obj, Params, Clustering)
+        function parse_common_params(obj, Params, Clustering)
             obj.frame_length = Params.frame_length;
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
@@ -62,6 +63,11 @@ classdef BTModel < handle
                 obj.correct_beats = Params.correct_beats;
             else
                 obj.correct_beats = 0;
+            end
+            if isfield(Params, 'use_meter_prior')
+                obj.use_meter_prior = Params.use_meter_prior;
+            else
+                obj.use_meter_prior = 1;
             end
         end
         
@@ -156,7 +162,8 @@ classdef BTModel < handle
                         end
                         % madmom does not use interpolation. This yields
                         % ~round(bt)
-                        beats = [beats; [round(bt), j]];
+%                         beats = [beats; [round(bt), j]];
+                        beats = [beats; [bt, j]];
                         break;
                     end
                 end
