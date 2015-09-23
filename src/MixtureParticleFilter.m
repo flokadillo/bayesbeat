@@ -65,8 +65,7 @@ classdef MixtureParticleFilter < ParticleFilter
                 return
             end
             g = obj.cluster(m(:, iFrame+1), n(:, iFrame), r(:, iFrame+1), g);
-            [newIdx, w_log, g] = obj.resample_in_groups(g, w_log, ...
-                obj.resampling_params.n_max_clusters);
+            [newIdx, w_log, g] = obj.resample_in_groups(g, w_log);
             m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
             r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
             n(:, 1:iFrame) = n(newIdx, 1:iFrame);
@@ -182,13 +181,8 @@ classdef MixtureParticleFilter < ParticleFilter
             warning('on');
         end
         
-        
-        
-    end
-    
-    methods (Static)
-        function [outIndex, outWeights, groups_new] = resample_in_groups(...
-                groups, w_log, n_max_clusters, warp_fun)
+        function [outIndex, outWeights, groups_new] = resample_in_groups(obj, ...
+                groups, w_log)
             %  [outIndex] = resample_in_groups(groups, w_log)
             %  resample particles in groups separately
             % ----------------------------------------------------------------------
@@ -203,7 +197,7 @@ classdef MixtureParticleFilter < ParticleFilter
             % 25.09.2012 by Florian Krebs
             % ----------------------------------------------------------------------
             if all(isnan(w_log))
-               error('All weights are zero. Aborting...\n'); 
+                error('All weights are zero. Aborting...\n');
             end
             w_log = w_log(:);
             groups = groups(:);
@@ -219,13 +213,13 @@ classdef MixtureParticleFilter < ParticleFilter
             end
             % kill clusters with lowest weight to prevent more than n_max_clusters
             % clusters
-            if length(tot_w) - length(bad_groups) > n_max_clusters
+            if length(tot_w) - length(bad_groups) > obj.resampling_params.n_max_clusters
                 [~, groups_sorted] = sort(tot_w, 'descend');
                 fprintf('    too many groups (%i)! -> removing %i\n', ...
                     length(tot_w) - length(bad_groups), ...
-                    length(tot_w) - length(bad_groups) - n_max_clusters);
+                    length(tot_w) - length(bad_groups) - obj.resampling_params.n_max_clusters);
                 bad_groups = unique([bad_groups; ...
-                    groups_sorted(n_max_clusters+1:end)]);
+                    groups_sorted(obj.resampling_params.n_max_clusters+1:end)]);
             end
             
             %determine indices of particles for each cluster
@@ -240,9 +234,9 @@ classdef MixtureParticleFilter < ParticleFilter
             parts_per_group = diff(round(linspace(0, length(w_log), n_groups+1)));
             parts_per_group(end) = length(w_log) - sum(parts_per_group(1:end-1));
             w_norm = exp(w_log - tot_w(groups));
-            if exist('warp_fun', 'var')
+            if ~isempty(obj.resampling_params.warp_fun)
                 % do warping
-                w_warped = warp_fun(w_norm);
+                w_warped = obj.resampling_params.warp_fun(w_norm);
                 % normalize weights before resampling
                 sum_warped_per_group = accumarray(groups, w_warped);
                 w_warped_norm = w_warped ./ sum_warped_per_group(groups);
@@ -272,6 +266,11 @@ classdef MixtureParticleFilter < ParticleFilter
                 outWeights = tot_w(groups_new) - log(mean(parts_per_group));
             end
         end
+        
+    end
+    
+    methods (Static)
+        
         
         function [ indx ] = resample_systematic_in_groups( W, n_samples )
             % W ... cell array of normalised weights [n_groups x 1]

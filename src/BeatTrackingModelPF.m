@@ -24,17 +24,6 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
                 Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                 Clustering.rhythm2meter, Params.frame_length, ...
                 Clustering.rhythm_names, obj.use_silence_state);
-            % TODO: introduce parameter to control rng behaviour
-            tempVar = ver('matlab');
-            if str2double(tempVar.Release(3:6)) < 2011
-                % Matlab 2010
-                disp('MATLAB 2010');
-                RandStream.setDefaultStream(RandStream('mt19937ar','seed', ...
-                    sum(100*clock)));
-            else
-                rng('default')
-                rng('shuffle');
-            end
         end
         
         function train_model(obj, transition_probability_params, train_data, ...
@@ -181,6 +170,8 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
                 else
                     obj.resampling_params.warp_fun = @(x) x.^(1/4);
                 end
+            else
+                obj.resampling_params.warp_fun = [];
             end
             if ismember(obj.resampling_params.resampling_scheme, [2, 3]) % MPF or AMPF
                 if isfield(Params, 'state_distance_coefficients')

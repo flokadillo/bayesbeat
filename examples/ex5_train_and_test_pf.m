@@ -22,10 +22,9 @@ Params.inferenceMethod = 'PF';
 Params.min_tempo_bpm = 100;
 Params.max_tempo_bpm = 150;
 Params.learn_tempo_ranges = 0;
-Params.resampling_scheme = 3;
-Params.warp_fun = '@(x) x.^(1/5)';
-Params.n_particles = 2000;
-Params.ratio_Neff = 0.001; % smaller -> less resampling
+Params.resampling_scheme = 3; % AMPF
+Params.warp_fun = '@(x) x.^(1/15)';
+Params.n_particles = 2500;
 
 % TRAINING THE MODEL
 

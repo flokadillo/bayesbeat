@@ -134,7 +134,7 @@ classdef ParticleFilter
             % post = exp(logPost);
             % This file is from pmtk3.googlecode.com
             x = x(:)';
-            L = PF.logsumexp(x(:)', 2);
+            L = ParticleFilter.logsumexp(x(:)', 2);
             y = bsxfun(@minus, x(:), L);
         end
         
