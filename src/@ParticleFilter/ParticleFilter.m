@@ -45,12 +45,21 @@ classdef ParticleFilter
                 % evaluate likelihood of particles
                 obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
                     obs_lik(:, :, iFrame));
+                iFrame
+                length(unique(m(:, iFrame+1)))
+                if sum(obs) == 0
+                    lkj=987;
+                end
+                    
                 w = w(:) + log(obs(:));
                 % normalise importance weights
-                [w, ~] = obj.normalizeLogspace(w');
+                [w, ~] = obj.normalizeLogspace(w);
                 % resampling
                 if iFrame < n_frames
                     [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
+                end
+                if length(unique(m(:, iFrame+1))) < 100
+                    a=8796;
                 end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
@@ -124,8 +133,9 @@ classdef ParticleFilter
             % eg [logPost, L] = normalizeLogspace(logprior + loglik)
             % post = exp(logPost);
             % This file is from pmtk3.googlecode.com
-            L = PF.logsumexp(x, 2);
-            y = bsxfun(@minus, x, L);
+            x = x(:)';
+            L = PF.logsumexp(x(:)', 2);
+            y = bsxfun(@minus, x(:), L);
         end
         
         function r = logsumexp(X, dim)

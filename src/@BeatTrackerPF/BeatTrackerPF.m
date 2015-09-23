@@ -631,7 +631,8 @@ classdef BeatTrackerPF < handle
             obj.frame_length = Params.frame_length;
             
             if isfield(Params, 'resampling_scheme')
-                obj.resampling_params.resampling_scheme = Params.resampling_scheme;
+                obj.resampling_params.resampling_scheme = ...
+                    Params.resampling_scheme;
             else
                 obj.resampling_params.resampling_scheme = 3;
             end
@@ -647,27 +648,34 @@ classdef BeatTrackerPF < handle
                     obj.resampling_params.state_distance_coefficients = ...
                         Params.state_distance_coefficients;
                 else
-                    obj.resampling_params.state_distance_coefficients = [30, 1, 100];
+                    obj.resampling_params.state_distance_coefficients = [30, ...
+                        1100, 100];
                 end
                 if isfield(Params, 'cluster_merging_thr')
-                    obj.resampling_params.cluster_merging_thr = Params.cluster_merging_thr;
+                    obj.resampling_params.cluster_merging_thr = ...
+                        Params.cluster_merging_thr;
                 else
                     obj.resampling_params.cluster_merging_thr = 20;
                 end
                 if isfield(Params, 'cluster_splitting_thr')
-                    obj.resampling_params.cluster_splitting_thr = Params.cluster_splitting_thr;
+                    obj.resampling_params.cluster_splitting_thr = ...
+                        Params.cluster_splitting_thr;
                 else
                     obj.resampling_params.cluster_splitting_thr = 30;
                 end
                 if isfield(Params, 'n_initial_clusters')
-                    obj.resampling_params.n_initial_clusters = Params.n_initial_clusters;
+                    obj.resampling_params.n_initial_clusters = ...
+                        Params.n_initial_clusters;
                 else
-                    obj.resampling_params.n_initial_clusters = 16 * State_space_params.n_patterns;
+                    obj.resampling_params.n_initial_clusters = 16 * ...
+                        State_space_params.n_patterns;
                 end
                 if isfield(Params, 'n_max_clusters')
-                    obj.resampling_params.n_max_clusters = Params.n_max_clusters;
+                    obj.resampling_params.n_max_clusters = ...
+                        Params.n_max_clusters;
                 else
-                    obj.resampling_params.n_max_clusters = 3 * obj.resampling_params.n_initial_clusters;
+                    obj.resampling_params.n_max_clusters = 3 * ...
+                        obj.resampling_params.n_initial_clusters;
                 end
                 if isfield(Params, 'res_int')
                     obj.resampling_params.resampling_interval = Params.res_int;

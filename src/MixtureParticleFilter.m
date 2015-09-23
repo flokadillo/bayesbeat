@@ -65,10 +65,10 @@ classdef MixtureParticleFilter < ParticleFilter
                 return
             end
             g = obj.cluster(m(:, iFrame+1), n(:, iFrame), r(:, iFrame+1), g);
-            [newIdx, w, g] = obj.resample_in_groups(g, w_log, ...
+            [newIdx, w_log, g] = obj.resample_in_groups(g, w_log, ...
                 obj.resampling_params.n_max_clusters);
-            m(:, 1:iFrame) = m(newIdx, 1:iFrame);
-            r(:, 1:iFrame) = r(newIdx, 1:iFrame);
+            m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
+            r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
             n(:, 1:iFrame) = n(newIdx, 1:iFrame);
         end
         
@@ -200,7 +200,11 @@ classdef MixtureParticleFilter < ParticleFilter
             %
             % 25.09.2012 by Florian Krebs
             % ----------------------------------------------------------------------
+            if all(isnan(w_log))
+               error('All weights are zero. Aborting...\n'); 
+            end
             w_log = w_log(:);
+            groups = groups(:);
             % group weights according to groups
             w_per_group = accumarray(groups, w_log, [], @(x) {x});
             % sum weights of each group in the log domain
