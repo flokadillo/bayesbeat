@@ -1,4 +1,4 @@
-classdef BTModel < handle
+classdef BeatTrackingModel < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -18,7 +18,7 @@ classdef BTModel < handle
     
     
     methods
-        function obj = BTModel(Params, Clustering)
+        function obj = BeatTrackingModel(Params, Clustering)
             obj.parse_common_params(Params, Clustering);
         end
         

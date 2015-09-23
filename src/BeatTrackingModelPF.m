@@ -1,46 +1,18 @@
-classdef BeatTrackerPF < handle
-    % Hidden Markov Model Class
-    properties (SetAccess=private)
+classdef BeatTrackingModelPF < handle & BeatTrackingModel
+    %UNTITLED3 Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties
         PF
-        state_space
-        trans_model
-        correct_beats
-        pr                          % probability of a switch in rhythmic pattern
-        beat_positions
-        rhythm2meter_state          % assigns each rhythmic pattern to a
-        % meter state (1, 2, ...)  - var not needed anymore but keep due to
-        % compatibility
-        meter_state2meter           % specifies meter for each meter state
-        % (9/8, 8/8, 4/4) [2 x nMeters] - var not needed anymore but keep due to
-        % compatibility
-        barGrid                     % number of different observation model params per bar (e.g., 64)
-        max_bar_cells
-        minN                        % min tempo (n_min) for each rhythmic pattern
-        maxN                        % max tempo (n_max) for each rhythmic pattern
-        frame_length                % audio frame length in [sec]
-        dist_type                   % type of parametric distribution
-        sample_trans_fun            % transition model
-        disc_trans_mat              % transition matrices for discrete states
-        obs_model                   % observation model
-        initial_particles           % initial location of particles
-        %                               [n_particles, 3] in the order
-        %                               position, tempo, pattern
-        n_particles                  % number of particles
-        particles
-        particles_grid              % particle grid for viterbi
-        sigma_N                     % standard deviation of tempo transition
-        do_viterbi_filtering
-        save_inference_data         % save intermediate output of particle filter for visualisation
+        n_particles
+        initial_particles
         resampling_params
-        inferenceMethod             % 'PF'
-        train_dataset                % dataset, which PF was trained on
-        pattern_size                % size of one rhythmical pattern {'beat', 'bar'}
-        use_silence_state           % state that describes non-musical content
-        n_depends_on_r              % Flag to say if tempo depends on the style/pattern/rhythm
     end
     
     methods
-        function obj = BeatTrackerPF(Params, Clustering)
+        function obj = BeatTrackingModelPF(Params, Clustering)
+            % Call superclass constructor
+            obj@BeatTrackingModel(Params, Clustering);
             State_space_params = obj.parse_params(Params, Clustering);
             if obj.use_silence_state
                 Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
@@ -52,6 +24,7 @@ classdef BeatTrackerPF < handle
                 Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                 Clustering.rhythm2meter, Params.frame_length, ...
                 Clustering.rhythm_names, obj.use_silence_state);
+            % TODO: introduce parameter to control rng behaviour
             tempVar = ver('matlab');
             if str2double(tempVar.Release(3:6)) < 2011
                 % Matlab 2010
@@ -62,19 +35,6 @@ classdef BeatTrackerPF < handle
                 rng('default')
                 rng('shuffle');
             end
-        end
-        
-        function beat_positions = get.beat_positions(obj)
-            for i_r = 1:obj.state_space.n_patterns
-                pos_per_beat = obj.state_space.max_position_from_pattern(i_r) / ...
-                    obj.state_space.n_beats_from_pattern(i_r);
-                % subtract eps to exclude max_position_from_pattern+1
-                obj.beat_positions{i_r} = 1:pos_per_beat:...
-                    (obj.state_space.max_position_from_pattern(i_r)+1);
-                obj.beat_positions{i_r} = obj.beat_positions{i_r}(1:...
-                    obj.state_space.n_beats_from_pattern(i_r));
-            end
-            beat_positions = obj.beat_positions;
         end
         
         function train_model(obj, transition_probability_params, train_data, ...
@@ -97,7 +57,6 @@ classdef BeatTrackerPF < handle
             save(fln, 'pf');
             fprintf('* Saved model (Matlab) to %s\n', fln);
         end
-        
         
         function obj = make_initial_distribution(obj, tempo_per_cluster)
             % TODO: Implement prior initial distribution for tempo
@@ -170,22 +129,6 @@ classdef BeatTrackerPF < handle
                 transition_params);
         end
         
-        
-        function obj = make_observation_model(obj, train_data, ...
-                cells_per_whole_note, dist_type)
-            % Create observation model
-            obj.obs_model = BeatTrackingObservationModel(obj.state_space, ...
-                train_data.feature.feat_type, dist_type, ...
-                cells_per_whole_note);
-            % Train model
-            if ~strcmp(obj.dist_type, 'RNN')
-                obj.obs_model = obj.obs_model.train_model(train_data);
-                obj.train_dataset = train_data.dataset;
-            end
-        end
-        
-        
-       
         function results = do_inference(obj, y, fname, inference_method)
             if isempty(strfind(inference_method, 'PF'))
                 error('Inference method %s not compatible with PF model\n', inference_method);
@@ -213,126 +156,9 @@ classdef BeatTrackerPF < handle
             results{4} = r_path;
         end
         
-        function [ joint_prob ] = compute_joint_of_sequence(obj, state_sequence, obs_lik)
-            %obs_lik [R x barPos x nFrames]
-            nFrames = size(obs_lik, 3);
-            eval_lik = @(x, y) obj.compute_obs_lik(x, y, obs_lik, obj.M / obj.barGrid);
-            joint_prob.obslik = zeros(nFrames, 1);
-            n_diffs = diff(double(state_sequence(:, 2))); % nDiff(1) = s_s(2) - s_s(1)
-            joint_prob.trans = log(normpdf(n_diffs/obj.M, 0, obj.sigma_N));
-            for iFrame = 1:nFrames
-                joint_prob.obslik(iFrame) = log(eval_lik([state_sequence(iFrame, 1), state_sequence(iFrame, 3)], iFrame));
-            end
-            joint_prob.sum = sum(joint_prob.trans) + sum(joint_prob.obslik);
-        end
-        
-        
     end
     
-    methods (Access=protected)
-        
-        function beats = find_beat_times(obj, position_state, rhythm_state, ...
-                beat_act)
-            % ----------------------------------------------------------------------
-            % [beats] = findBeatTimes(position_state, rhythm_state, param_g)
-            %   Find beat times from sequence of bar positions of the HMM beat tracker
-            % ----------------------------------------------------------------------
-            %INPUT parameter:
-            % position_state             : sequence of position states
-            % rhythm_state               : sequence of rhythm states
-            % beat_act                 : beat activation for correction
-            %
-            %OUTPUT parameter:
-            %
-            % beats                    : [nBeats x 2] beat times in [sec] and
-            %                           bar.beatnumber
-            %
-            % 29.7.2012 by Florian Krebs
-            % ----------------------------------------------------------------------
-            n_frames = length(position_state);
-            % set up cell array with beat position for each meter
-            beatpositions = obj.beat_positions;
-            beats = [];
-            if obj.correct_beats
-                % resolution of observation model in
-                % position_states:
-                res_obs = max(obj.state_space.max_position_from_pattern)/obj.max_bar_cells;
-                [dist, btype] = max(beatpositions{rhythm_state(1)} - ...
-                    position_state(1));
-                if (abs(dist) < res_obs/2) && (dist < 0)
-                    % if beat is shortly before (within res_obs/2) the audio start we
-                    % add one beat at the beginning. E.g. m-sequence starts with
-                    % m=2
-                    % find audioframe that corresponds to beat
-                    % position + res_obs
-                    j=1;
-                    while position_state(j) < ...
-                            (beatpositions{rhythm_state(1)}(btype) + res_obs - 1)
-                        j = j + 1;
-                    end
-                    [~, win_max_offset] = max(beat_act(1:j, ...
-                        size(beat_act, 2)));
-                    beats = [beats; [win_max_offset, btype]];
-                end
-            end
-            for i = 1:n_frames-1
-                if rhythm_state(i) == obj.state_space.n_patterns + 1;
-                    % silence state
-                    continue;
-                end
-                for j = 1:length(beatpositions{rhythm_state(i)})
-                    beat_pos = beatpositions{rhythm_state(i)}(j);
-                    beat_detected = false;
-                    if position_state(i) == beat_pos;
-                        % current frame = beat frame
-                        bt = i;
-                        beat_detected = true;
-                    elseif ((position_state(i+1) > beat_pos) ...
-                            && (position_state(i+1) < position_state(i)))
-                        % bar transition between frame i and frame i+1
-                        bt = interp1([position_state(i); ...
-                            obj.state_space.max_position_from_pattern(rhythm_state(i)) + ...
-                            position_state(i+1)], [i; i+1], ...
-                            obj.state_space.max_position_from_pattern(rhythm_state(i)) + ...
-                            beat_pos);
-                        beat_detected = true;
-                    elseif ((position_state(i) < beat_pos) ...
-                            && (position_state(i+1) > beat_pos))
-                        % beat position lies between frame i and frame i+1
-                        bt = interp1([position_state(i); position_state(i+1)], ...
-                            [i; i+1], beat_pos);
-                        beat_detected = true;
-                    end
-                    if beat_detected
-                        if obj.correct_beats
-                            % find audioframe that corresponds to beat
-                            % position + res_obs
-                            max_pos=i;
-                            while (max_pos < length(position_state)) ...
-                                    && (position_state(max_pos) < ...
-                                    (beat_pos + res_obs))
-                                max_pos = max_pos + 1;
-                            end
-                            % find max of last observation feature
-                            % TODO: specify which feature to use for
-                            % correction
-                            [~, win_max_offset] = max(beat_act(floor(bt):max_pos, ...
-                                size(beat_act, 2)));
-                            bt = win_max_offset + i - 1;
-                        end
-                        % madmom does not use interpolation. This yields
-                        % ~round(bt)
-                        beats = [beats; [round(bt), j]];
-                        break;
-                    end
-                end
-            end
-            if ~isempty(beats)
-                beats(:, 1) = beats(:, 1) * obj.frame_length;
-            end
-        end
-        
-        
+    methods (Access = protected)
         function State_space_params = parse_params(obj, Params, Clustering)
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
@@ -343,8 +169,6 @@ classdef BeatTrackerPF < handle
             else
                 obj.n_particles = 1000;
             end
-            obj.frame_length = Params.frame_length;
-            
             if isfield(Params, 'resampling_scheme')
                 obj.resampling_params.resampling_scheme = ...
                     Params.resampling_scheme;
@@ -406,15 +230,9 @@ classdef BeatTrackerPF < handle
                 end
                 obj.resampling_params.criterion = 'ESS'; % effective sample size
             end
-            obj.max_bar_cells = max(Params.whole_note_div * bar_durations);
-            obj.use_silence_state = Params.use_silence_state;
-            if isfield(Params, 'correct_beats')
-                obj.correct_beats = Params.correct_beats;
-            else
-                obj.correct_beats = 0;
-            end
         end
-        
+
     end
     
 end
+
