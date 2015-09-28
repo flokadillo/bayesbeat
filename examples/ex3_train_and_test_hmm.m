@@ -23,8 +23,6 @@ Params.results_path = out_folder;
 
 % create beat tracker object
 BT = BeatTracker(Params);
-% set up test_data
-BT.init_test_data();
 % train model
 BT.train_model();
 

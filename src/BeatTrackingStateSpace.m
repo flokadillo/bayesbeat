@@ -29,16 +29,22 @@ classdef BeatTrackingStateSpace < handle
             obj.use_silence_state = use_silence_state;
         end
         
-        function [bpm] = convert_tempo_to_bpm(obj, tempo)
-            pos_per_beat = obj.max_position_from_pattern(1) / ...
-                obj.n_beats_from_pattern(1);
-            bpm = 60 * tempo / (pos_per_beat * obj.frame_length);
+        function [bpm] = convert_tempo_to_bpm(obj, tempo, pattern)
+            if nargin == 2
+               pattern = (1:obj.n_patterns)';
+            end
+            pos_per_beat = obj.max_position_from_pattern(pattern) ./ ...
+                obj.n_beats_from_pattern(pattern);
+            bpm = 60 * tempo(:)' ./ (pos_per_beat(:)' * obj.frame_length);
         end
         
-        function [tempo] = convert_tempo_from_bpm(obj, bpm)
-            pos_per_beat = obj.max_position_from_pattern(1) / ...
-                obj.n_beats_from_pattern(1);
-            tempo = bpm * pos_per_beat * obj.frame_length / 60;
+        function [tempo] = convert_tempo_from_bpm(obj, bpm, pattern)
+            if nargin == 2
+               pattern = (1:obj.n_patterns)';
+            end
+            pos_per_beat = obj.max_position_from_pattern(pattern) ./ ...
+                obj.n_beats_from_pattern(pattern);
+            tempo = bpm .* pos_per_beat * obj.frame_length / 60;
         end
     end
     

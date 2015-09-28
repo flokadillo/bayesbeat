@@ -122,7 +122,7 @@ In online mode, we reset the trayectory of selected hidden state each *update_in
 
 * `transition_model_type` = '2015'  
 Type of transition model. Can be one of the following:  
-    * 'whiteley': Old transition model as proposed in [2]  
+    * '2006': Old transition model as proposed in [2]  
     * '2015': More efficient transition model as proposed in [3]
 * `pn` = 0.001  
 Probability of tempo acceleration (and deceleration) in the *whiteley* transition model.  

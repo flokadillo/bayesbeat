@@ -21,7 +21,6 @@ Params.use_mex_viterbi = 1;
 Params.testLab = input_file_name;
 % ---------- COMPUTE BEATS --------------------------------------------
 beat_tracker = BeatTracker(Params);
-beat_tracker.init_test_data();
 Results = beat_tracker.do_inference(1);
 % ---------- SAVE BEATS --------------------------
 [~, fname, ~] = fileparts(input_file_name);

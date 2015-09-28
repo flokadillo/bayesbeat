@@ -22,7 +22,7 @@ Params.trainLab = train_files;
 Params.testLab = in_file;
 Params.data_path = out_folder;
 Params.results_path = out_folder;
-Params.transition_model_type = 'whiteley';
+Params.transition_model_type = '2006';
 Params.M = 1200;
 Params.N = 30;
 % Use kmeans clustering with two clusters
@@ -33,8 +33,6 @@ Params.n_clusters = 2;
 
 % create beat tracker object
 BT = BeatTracker(Params);
-% set up test_data
-BT.init_test_data();
 % train model
 BT.train_model();
 

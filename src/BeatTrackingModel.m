@@ -6,7 +6,6 @@ classdef BeatTrackingModel < handle
         state_space
         frame_length
         max_bar_cells
-        use_silence_state
         correct_beats
         beat_positions
         obs_model
@@ -58,7 +57,6 @@ classdef BeatTrackingModel < handle
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
                 Clustering.rhythm2meter(:, 2);
             obj.max_bar_cells = max(Params.whole_note_div * bar_durations);
-            obj.use_silence_state = Params.use_silence_state;
             if isfield(Params, 'correct_beats')
                 obj.correct_beats = Params.correct_beats;
             else
@@ -169,6 +167,28 @@ classdef BeatTrackingModel < handle
                 beats(:, 1) = round(beats(:, 1)) * obj.frame_length;
             end
         end
+        
+        function Results = convert_state_sequence(obj, m_path, n_path, r_path, y)
+            % strip of silence state
+            if obj.state_space.use_silence_state
+                idx = logical(r_path<=obj.state_space.n_patterns);
+            else
+                idx = true(length(r_path), 1);
+            end
+            % compute beat times and bar positions of beats
+            meter = zeros(2, length(r_path));
+            meter(:, idx) = obj.state_space.meter_from_pattern(r_path(idx), :)';
+            beats = obj.find_beat_times(m_path, r_path, y);
+            if ~isempty(n_path)
+                tempo = obj.state_space.convert_tempo_to_bpm(n_path(idx), ...
+                    r_path(idx));
+            end
+            Results{1} = beats;
+            Results{2} = tempo;
+            Results{3} = meter;
+            Results{4} = r_path;
+        end
+        
     end
     
 end

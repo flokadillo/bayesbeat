@@ -35,7 +35,7 @@ classdef BeatTrackingTransitionModelPF
         
         function tempo_new = sample_tempo(obj, tempo_old, pattern_new)
                 tempo_new = tempo_old + randn(length(tempo_old), 1) ...
-                    * obj.tempo_ss_std;
+                    .* obj.tempo_ss_std(pattern_new);
                 % sampled tempo is clipped to the tempo limits
                 out_of_range = tempo_new > obj.max_tempo_ss(pattern_new);
                 tempo_new(out_of_range) = ...

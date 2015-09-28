@@ -23,15 +23,13 @@ Params.min_tempo_bpm = 100;
 Params.max_tempo_bpm = 150;
 Params.learn_tempo_ranges = 0;
 Params.resampling_scheme = 3; % AMPF
-Params.warp_fun = '@(x) x.^(1/15)';
-Params.n_particles = 2500;
+Params.warp_fun = '@(x) x.^(1/10)';
+Params.n_particles = 1000;
 
 % TRAINING THE MODEL
 
 % create beat tracker object
 BT = BeatTracker(Params);
-% set up test_data
-BT.init_test_data();
 % train model
 BT.train_model();
 

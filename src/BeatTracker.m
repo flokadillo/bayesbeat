@@ -17,6 +17,8 @@ classdef BeatTracker < handle
             obj.parse_params(Params);
             % load or create probabilistic model
             obj.init_model();
+            % initialise test data
+            obj.init_test_data();
         end
         
         function init_model(obj)
@@ -203,11 +205,11 @@ classdef BeatTracker < handle
                 Constraint.type = obj.Params.constraint_type;
                 Constraint.data = obj.load_constraints(test_file_id);
                 belief_func = obj.model.make_belief_function(Constraint);
-                results = obj.model.do_inference(observations, fname, ...
-                    obj.Params.inferenceMethod, belief_func);
+                results = obj.model.do_inference(observations, ...
+                    obj.Params.inferenceMethod, fname, belief_func);
             else
-                results = obj.model.do_inference(observations, fname, ...
-                    obj.Params.inferenceMethod);
+                results = obj.model.do_inference(observations, ...
+                    obj.Params.inferenceMethod, fname);
             end
         end
         
@@ -310,7 +312,7 @@ classdef BeatTracker < handle
                         obj.Params.transition_params.transition_lambda = ...
                             obj.Params.alpha;
                     end
-                elseif strcmp(obj.Params.transition_model_type, 'whiteley')
+                elseif strcmp(obj.Params.transition_model_type, '2006')
                     if ~isfield(obj.Params, 'pn')
                         obj.Params.transition_params.pn = 0.01;
                     else

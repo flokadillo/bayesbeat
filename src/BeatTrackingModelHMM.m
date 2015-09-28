@@ -16,8 +16,8 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             % Call superclass constructor
             obj@BeatTrackingModel(Params, Clustering);
             [State_space_params, store_proximity] = obj.parse_params(Params);
-            if obj.use_silence_state
-                Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
+            if State_space_params.use_silence_state
+                Clustering.rhythm_names{State_space_params.n_patterns + 1} = ...
                     'silence';
             end
             bar_durations = Clustering.rhythm2meter(:, 1) ./ ...
@@ -29,9 +29,10 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                     State_space_params, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                     Clustering.rhythm2meter, Params.frame_length, ...
-                    Clustering.rhythm_names, obj.use_silence_state, ...
+                    Clustering.rhythm_names, ...
+                    State_space_params.use_silence_state, ...
                     store_proximity);
-            elseif strcmp(obj.tm_type, 'whiteley') % TODO: rename to 2006
+            elseif strcmp(obj.tm_type, '2006') % TODO: rename to 2006
                 State_space_params.max_positions = ...
                     round(State_space_params.max_positions * bar_durations / ...
                     max(bar_durations));
@@ -39,7 +40,8 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                     State_space_params, Params.min_tempo_bpm, ...
                     Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                     Clustering.rhythm2meter, Params.frame_length, ...
-                    Clustering.rhythm_names, obj.use_silence_state, ...
+                    Clustering.rhythm_names, ...
+                    State_space_params.use_silence_state, ...
                     store_proximity);
             end
         end
@@ -62,7 +64,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             if strcmp(obj.tm_type, '2015')
                 obj.trans_model = BeatTrackingTransitionModelHMM2015(...
                     obj.state_space, transition_probability_params);
-            elseif strcmp(obj.tm_type, 'whiteley')
+            elseif strcmp(obj.tm_type, '2006')
                 obj.trans_model = BeatTrackingTransitionModelHMM2006(...
                     obj.state_space, transition_probability_params);
             end
@@ -90,7 +92,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             end
             fprintf('* Set up initial distribution\n');
             n_states = obj.state_space.n_states;
-            if obj.use_silence_state
+            if obj.state_space.use_silence_state
                 % always start in the silence state
                 obj.initial_prob = zeros(n_states, 1);
                 obj.initial_prob(end) = 1;
@@ -117,7 +119,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             end
         end
         
-        function results = do_inference(obj, y, fname, inference_method, ...
+        function results = do_inference(obj, y, inference_method, fname, ...
                 belief_func)
             if obj.hmm_is_corrupt
                 error('    WARNING: @HMM/do_inference.m: HMM is corrupt\n');
@@ -151,23 +153,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                 hidden_state_sequence)';
             r_path = obj.state_space.pattern_from_state(...
                 hidden_state_sequence)';
-            % strip of silence state
-            if obj.use_silence_state
-                idx = logical(r_path<=obj.state_space.n_patterns);
-            else
-                idx = true(length(r_path), 1);
-            end
-            % compute beat times and bar positions of beats
-            meter = zeros(2, length(r_path));
-            meter(:, idx) = obj.state_space.meter_from_pattern(r_path(idx), :)';
-            beats = obj.find_beat_times(m_path, r_path, y);
-            if ~isempty(n_path)
-                tempo = obj.state_space.convert_tempo_to_bpm(n_path(idx));
-            end
-            results{1} = beats;
-            results{2} = tempo;
-            results{3} = meter;
-            results{4} = r_path;
+            results = obj.convert_state_sequence(m_path, n_path, r_path, y);
         end
         
         function belief_func = make_belief_function(obj, Constraint)
@@ -317,10 +303,10 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                 State_space_params.n_tempi = Params.N;
             elseif strcmp(obj.tm_type, '2015')
                 State_space_params.n_tempi = nan;
-            elseif strcmp(obj.tm_type, 'whiteley')
+            elseif strcmp(obj.tm_type, '2006')
                 State_space_params.n_tempi = 30;
             end
-            if strcmp(obj.tm_type, 'whiteley')
+            if strcmp(obj.tm_type, '2006')
                 if isfield(Params, 'M')
                     State_space_params.max_positions = Params.M;
                 else
@@ -328,6 +314,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                 end
             end
             State_space_params.n_patterns = Params.R;
+            State_space_params.use_silence_state = Params.use_silence_state;
         end
     end    
 end

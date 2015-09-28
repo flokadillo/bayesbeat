@@ -25,8 +25,6 @@ Params.testLab = in_file;
 Params.results_path = out_folder;
 % create beat tracker object
 BT = BeatTracker(Params);
-% set up test data
-BT.init_test_data();
 % do beat tracking
 Results = BT.do_inference(1);
 % save results

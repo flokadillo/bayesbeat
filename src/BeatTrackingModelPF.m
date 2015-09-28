@@ -14,8 +14,8 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
             % Call superclass constructor
             obj@BeatTrackingModel(Params, Clustering);
             State_space_params = obj.parse_params(Params, Clustering);
-            if obj.use_silence_state
-                Clustering.rhythm_names{obj.state_space.n_patterns + 1} = ...
+            if State_space_params.use_silence_state
+                Clustering.rhythm_names{State_space_params.n_patterns + 1} = ...
                     'silence';
             end
             % Create state_space
@@ -23,7 +23,7 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
                 State_space_params, Params.min_tempo_bpm, ...
                 Params.max_tempo_bpm, Clustering.rhythm2nbeats, ...
                 Clustering.rhythm2meter, Params.frame_length, ...
-                Clustering.rhythm_names, obj.use_silence_state);
+                Clustering.rhythm_names, State_space_params.use_silence_state);
         end
         
         function train_model(obj, transition_probability_params, train_data, ...
@@ -118,31 +118,14 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
                 transition_params);
         end
         
-        function results = do_inference(obj, y, fname, inference_method)
+        function results = do_inference(obj, y, inference_method, ~)
             if isempty(strfind(inference_method, 'PF'))
                 error('Inference method %s not compatible with PF model\n', inference_method);
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(y);
             [m_path, n_path, r_path] = obj.PF.path_with_best_last_weight(obs_lik);
-            % strip of silence state
-            if obj.use_silence_state
-                idx = logical(r_path<=obj.state_space.n_patterns);
-            else
-                idx = true(length(r_path), 1);
-            end
-            % compute beat times and bar positions of beats
-            meter = zeros(2, length(r_path));
-            meter(:, idx) = obj.state_space.meter_from_pattern(r_path(idx), :)';
-            % compute beat times and bar positions of beats
-            beats = obj.find_beat_times(m_path, r_path, y);
-            if ~isempty(n_path)
-                tempo = obj.state_space.convert_tempo_to_bpm(n_path(idx));
-            end
-            results{1} = beats;
-            results{2} = tempo;
-            results{3} = meter;
-            results{4} = r_path;
+            results = obj.convert_state_sequence(m_path, n_path, r_path, []);
         end
         
     end
@@ -221,6 +204,8 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
                 end
                 obj.resampling_params.criterion = 'ESS'; % effective sample size
             end
+            State_space_params.use_silence_state = Params.use_silence_state;
+            State_space_params.n_patterns = Params.R;
         end
 
     end
