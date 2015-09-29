@@ -42,8 +42,19 @@ classdef BeatTracker < handle
                 obj.feature = Feature(obj.Params.feat_type, ...
                     obj.Params.frame_length);
                 % initialise training data to see how many pattern states
-                    % we need and which time signatures have to be modelled
+                % we need and which time signatures have to be modelled.
+                % the data is collected and clustered
                 obj.init_train_data();
+                % re-format tempo ranges to have one value per pattern
+                R = obj.train_data.clustering.n_clusters;
+                if (length(obj.Params.min_tempo_bpm) == 1) && (R > 1)
+                    obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, ...
+                        R, 1);
+                end                
+                if (length(obj.Params.max_tempo_bpm) == 1) && (R > 1)
+                    obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, ...
+                        R, 1);
+                end
                 if obj.Params.learn_tempo_ranges
                     % get tempo ranges from data for each file
                     [tempo_min_per_cluster, tempo_max_per_cluster] = ...
@@ -52,19 +63,15 @@ classdef BeatTracker < handle
                     % find min/max for each pattern
                     tempo_min_per_cluster = min(tempo_min_per_cluster)';
                     tempo_max_per_cluster = max(tempo_max_per_cluster)';
-                    % restrict ranges
-                    tempo_min_per_cluster(tempo_min_per_cluster < ...
-                        obj.Params.min_tempo_bpm) = obj.Params.min_tempo_bpm;
-                    tempo_max_per_cluster(tempo_max_per_cluster > ...
-                        obj.Params.max_tempo_bpm) = obj.Params.max_tempo_bpm;
-                    % store modified tempo ranges
-                    obj.Params.min_tempo_bpm = tempo_min_per_cluster;
-                    obj.Params.max_tempo_bpm = tempo_max_per_cluster;
-                else
-                    obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, ...
-                        obj.Params.R, 1);
-                    obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, ...
-                        obj.Params.R, 1);
+                    % restrict ranges and store modified tempo ranges
+                    tempo_above_min = tempo_min_per_cluster > ...
+                        obj.Params.min_tempo_bpm(:);
+                    tempo_below_max = tempo_max_per_cluster < ...
+                        obj.Params.max_tempo_bpm(:);
+                    obj.Params.min_tempo_bpm(tempo_above_min) = ...
+                        tempo_min_per_cluster(tempo_above_min);
+                    obj.Params.max_tempo_bpm(tempo_below_max) = ...
+                        tempo_max_per_cluster(tempo_below_max);
                 end
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'

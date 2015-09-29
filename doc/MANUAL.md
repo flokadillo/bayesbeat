@@ -98,11 +98,11 @@ Probability of leaving the silence state
 * `pr` = 0
 Probability of rhythmic pattern change  
 * `correct_beats` = 0  
-Correct beat position afterwards by shifting it to a loacl max of the onset detection function. This hwas used in the RNNBeatTracker [1] to correct for the rough discretisation of the observation model.
+Correct beat position afterwards by shifting it to a local max of the onset detection function. This hwas used in the RNNBeatTracker [1] to correct for the rough discretisation of the observation model.
 * `min_tempo_bpm` = 60  
-Lower tempo limit in BPM (same for all rhythmic patterns).
+Lower tempo limit in BPM (either give one value for each pattern (vector [Rx1]) or a scalar to be used for all rhythmic patterns).
 * `max_tempo_bpm` = 230  
-Upper tempo limit in BPM (same for all rhythmic patterns).
+Upper tempo limit in BPM (either give one value for each pattern (vector [Rx1]) or a scalar to be used for all rhythmic patterns).
 * `learn_tempo_ranges` = 1
 Learn tempo ranges from training data. If *min_tempo* and *max_tempo* are set, all ranges are restricted to be between *min_tempo* and *max_tempo*  
 * `tempo_outlier_percentile` = 5
