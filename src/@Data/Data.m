@@ -119,6 +119,7 @@ classdef Data < handle
                 obj.clustering.rhythm_names = C.rhythm_names;
                 obj.clustering.bar2cluster = C.bar2rhythm;
                 obj.clustering.rhythm2meter = C.rhythm2meter;
+                obj.clustering.pattern_prior = C.pattern_prior;
                 if isfield(C, 'pr')
                     % only newer models
                     obj.clustering.pr = C.pr;
