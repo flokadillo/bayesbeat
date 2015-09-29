@@ -16,6 +16,7 @@ classdef RhythmCluster < handle
         rhythm_names        % {R x 1} strings
         pr                  % transition probability matrix of the rhythmic 
                             % patterns [R x R]
+        pattern_prior       % prior probability [R x 1]
     end
     
     methods
@@ -252,18 +253,25 @@ classdef RhythmCluster < handle
             % 11.08.2015 by Florian Krebs
             % ------------------------------------------------------------
             if obj.n_clusters > 1
+                pattern_prior = zeros(obj.n_clusters, 1);
                 A = zeros(obj.n_clusters, obj.n_clusters);
                 for iFile=1:max(obj.data.bar2file)
                     bars = find(obj.data.bar2file==iFile);
-                    for iBar=bars(1:end-1)
-                        A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) = ...
-                            A(obj.bar2cluster(iBar), obj.bar2cluster(iBar+1)) + 1;
+                    for iBar=bars(1:end-1)'
+                        pattern_i = obj.bar2cluster(iBar);
+                        A(pattern_i, obj.bar2cluster(iBar+1)) = ...
+                            A(pattern_i, obj.bar2cluster(iBar+1)) + 1;
+                        pattern_prior(pattern_i) = pattern_prior(pattern_i) + 1;
                     end
+                    pattern_prior(obj.bar2cluster(bars(end))) = ...
+                        pattern_prior(obj.bar2cluster(bars(end))) + 1;
                 end
                 % normalise transition matrix
                 obj.pr = bsxfun(@rdivide, A , sum(A , 2));
+                obj.pattern_prior = pattern_prior / sum(pattern_prior);
             else % only one pattern
                 obj.pr = 1;
+                obj.pattern_prior = 1;
             end
         end
         

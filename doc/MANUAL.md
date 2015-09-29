@@ -103,9 +103,11 @@ Correct beat position afterwards by shifting it to a local max of the onset dete
 Lower tempo limit in BPM (either give one value for each pattern (vector [Rx1]) or a scalar to be used for all rhythmic patterns).
 * `max_tempo_bpm` = 230  
 Upper tempo limit in BPM (either give one value for each pattern (vector [Rx1]) or a scalar to be used for all rhythmic patterns).
-* `learn_tempo_ranges` = 1
+* `learn_tempo_ranges` = 1  
 Learn tempo ranges from training data. If *min_tempo* and *max_tempo* are set, all ranges are restricted to be between *min_tempo* and *max_tempo*  
-* `tempo_outlier_percentile` = 5
+* `same_tempo_per_meter` = 0  
+If true, use the same tempo range for the same meters. The tempo range is defined by the biggest possible range (min tempo of all - max tempo of all songs corresponding to one meter).  
+* `tempo_outlier_percentile` = 5  
 When learning tempo ranges, outlier beat intervals can be ignored, e.g., *tempo_outlier_percentile = 50* uses the median tempo of all beat intervals of one song to determine the tempo ranges.  
 
 

@@ -72,6 +72,20 @@ classdef BeatTracker < handle
                         tempo_min_per_cluster(tempo_above_min);
                     obj.Params.max_tempo_bpm(tempo_below_max) = ...
                         tempo_max_per_cluster(tempo_below_max);
+                    if obj.Params.same_tempo_per_meter
+                        [meters, ~, meter_id_from_pattern] = ...
+                            unique(obj.train_data.clustering.rhythm2meter, ...
+                            'rows');
+                        for i_meter = 1:size(meters, 1)
+                            % use min and max of all patterns that belong
+                            % to same meter
+                            is_i_meter = (meter_id_from_pattern == i_meter);
+                            obj.Params.min_tempo_bpm(is_i_meter) = ...
+                                min(obj.Params.min_tempo_bpm(is_i_meter));
+                            obj.Params.max_tempo_bpm(is_i_meter) = ...
+                                max(obj.Params.max_tempo_bpm(is_i_meter));
+                        end
+                    end
                 end
                 switch obj.Params.inferenceMethod(1:2)
                     case 'HM'
@@ -272,6 +286,9 @@ classdef BeatTracker < handle
             end
             if ~isfield(obj.Params, 'max_tempo_bpm')
                 obj.Params.max_tempo_bpm = 220;
+            end
+            if ~isfield(obj.Params, 'same_tempo_per_meter')
+                obj.Params.same_tempo_per_meter = 0;
             end
             if ~isfield(obj.Params, 'frame_length')
                 obj.Params.frame_length = 0.02;
