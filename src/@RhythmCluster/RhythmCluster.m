@@ -257,14 +257,16 @@ classdef RhythmCluster < handle
                 A = zeros(obj.n_clusters, obj.n_clusters);
                 for iFile=1:max(obj.data.bar2file)
                     bars = find(obj.data.bar2file==iFile);
-                    for iBar=bars(1:end-1)'
-                        pattern_i = obj.bar2cluster(iBar);
-                        A(pattern_i, obj.bar2cluster(iBar+1)) = ...
-                            A(pattern_i, obj.bar2cluster(iBar+1)) + 1;
-                        pattern_prior(pattern_i) = pattern_prior(pattern_i) + 1;
+                    if ~isempty(bars)
+                        for iBar=bars(1:end-1)'
+                            pattern_i = obj.bar2cluster(iBar);
+                            A(pattern_i, obj.bar2cluster(iBar+1)) = ...
+                                A(pattern_i, obj.bar2cluster(iBar+1)) + 1;
+                            pattern_prior(pattern_i) = pattern_prior(pattern_i) + 1;
+                        end
+                        pattern_prior(obj.bar2cluster(bars(end))) = ...
+                            pattern_prior(obj.bar2cluster(bars(end))) + 1;
                     end
-                    pattern_prior(obj.bar2cluster(bars(end))) = ...
-                        pattern_prior(obj.bar2cluster(bars(end))) + 1;
                 end
                 % normalise transition matrix
                 obj.pr = bsxfun(@rdivide, A , sum(A , 2));

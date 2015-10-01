@@ -15,7 +15,7 @@ function Results = ex2_beat_tracking_with_pretrained_pf(in_file, ...
 % ----------------------------------------------------------------------
 % Get path of function
 [func_path, ~, ~] = fileparts(mfilename('fullpath'));
-% pre-trained hmm model
+% pre-trained hmm model (APF)
 Params.model_fln = fullfile(func_path, 'models/pf_boeck.mat');
 if ~exist(Params.model_fln, 'file')
    error('Did not find model file: %s\n', Params.model_fln);
