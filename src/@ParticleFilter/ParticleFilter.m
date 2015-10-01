@@ -23,7 +23,7 @@ classdef ParticleFilter
         end
         
         function [m, n, r, w] = forward_filtering(obj, obs_lik)
-            debug = 1;
+            debug = 0;
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
             % add one frame, which corresponds to the initial distribution
@@ -54,10 +54,6 @@ classdef ParticleFilter
                 % resampling
                 if iFrame < n_frames
                     [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
-                end
-                diffr = sum(diff(r(:, 1:iFrame+1), [], 2), 2);
-                if any(diffr ~= 0)
-                    lkj=987;
                 end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
