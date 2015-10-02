@@ -252,17 +252,24 @@ classdef BeatTracker < handle
                 BeatTracker.save_downbeats(results{1}, fullfile(save_dir, ...
                     [fname, '.downbeats.txt']));
             end
-            if obj.Params.save_tempo
-                BeatTracker.save_tempo(results{2}, fullfile(save_dir, ...
+            if obj.Params.save_median_tempo
+                BeatTracker.save_median_tempo(results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.txt']));
+            end
+             if obj.Params.save_tempo_sequence
+                ts = (0:length(results{2})-1) * obj.feature.frame_length;
+                BeatTracker.save_tempo_sequence(results{2}, ts, fullfile(save_dir, ...
+                    [fname, '.bpm.seq.txt']));
             end
             if obj.Params.save_meter
                 BeatTracker.save_meter(results{3}, fullfile(save_dir, ...
                     [fname, '.meter.txt']));
             end
             if obj.Params.save_rhythm
-                BeatTracker.save_rhythm(results{4}, fullfile(save_dir, ...
-                    [fname, '.rhythm.txt']), obj.model.rhythm_names);
+                ts = (0:length(results{4})-1) * obj.feature.frame_length;
+                BeatTracker.save_rhythm(results{4}, ...
+                    obj.model.state_space.pattern_names, ts, fullfile(save_dir, ...
+                    [fname, '.rhythm.txt']));
             end
         end
         
@@ -309,8 +316,11 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'save_downbeats')
                 obj.Params.save_downbeats = 0;
             end
-            if ~isfield(obj.Params, 'save_tempo')
-                obj.Params.save_tempo = 0;
+            if ~isfield(obj.Params, 'save_median_tempo')
+                obj.Params.save_median_tempo = 0;
+            end
+            if ~isfield(obj.Params, 'save_tempo_sequence')
+                obj.Params.save_tempo_sequence = 0;
             end
             if ~isfield(obj.Params, 'save_rhythm')
                 obj.Params.save_rhythm = 0;
@@ -418,17 +428,24 @@ classdef BeatTracker < handle
             fclose(fid);
         end
         
-        function [] = save_tempo(tempo, save_fln)
+        function [] = save_median_tempo(tempo, save_fln)
             fid = fopen(save_fln, 'w');
             fprintf(fid, '%i\n', median(tempo));
             fclose(fid);
         end
         
-        function [] = save_rhythm(rhythm, save_fln, rhythm_names)
-            r = unique(rhythm);
+        function [] = save_tempo_sequence(tempo, ts, save_fln)
+            dlmwrite(save_fln, [ts(:) tempo(:)], 'precision', '%.2f');
+        end
+               
+        function [] = save_rhythm(rhythm, rhythm_names, ts, save_fln)
+            rhythm_change_points = find(diff(rhythm(:)));
+            rhythm_change_points = [1; rhythm_change_points; length(rhythm)];
             fid = fopen(save_fln, 'w');
-            for i=1:length(r)
-                fprintf(fid, '%s\n', rhythm_names{r(i)});
+            for i=1:length(rhythm_change_points)-1
+                    fprintf(fid, '%3.2f\t%3.2f\t%s\n', ts(rhythm_change_points(i)), ...
+                        ts(rhythm_change_points(i+1)), ...
+                        rhythm_names{rhythm(rhythm_change_points(i)+1)});
             end
             fclose(fid);
         end

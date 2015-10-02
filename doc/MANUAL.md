@@ -61,10 +61,12 @@ If *true*, save extracted feature to a folder called *'beat_activations'* relati
 Save beat times and corresponding position within a bar (.beats.txt)  
 * `save_downbeats` = 0  
 Save only downbeats (.downbeats.txt)  
-* `save_tempo` = 0  
+* `save_median_tempo` = 0  
 Save median tempo (.bpm.txt) 
+* `save_tempo_seq` = 0  
+Save tempo sequence (.bpm.seq.txt). First column is the timestamps in seconds, second column are the tempo values in BPM.  
 * `save_rhythm` = 0  
-Save rhythm (.rhythm.txt) 
+Save rhythms (.rhythm.txt). First two columns are start and end time, third column is the rhythm name.   
 * `save_meter` = 0  
 Save time_signature (.meter.txt)  
 * `cluster_type` = 'meter'  
@@ -74,8 +76,6 @@ number of clusters for the kmeans clustering algorithm.
 
 ### Model parameters
 
-* `n_depends_on_r` = 1  
-If n_depends_on_r=true, then use different tempo limits for each rhythm state.
 * `frame_length` = 0.02  
 Audio frame length [sec] of the system  
 * `M = 1600  
