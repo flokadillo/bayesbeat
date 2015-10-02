@@ -368,14 +368,14 @@ classdef RhythmCluster < handle
             bar2rhythm = obj.bar2cluster;
             rhythm_names = obj.rhythm_names;
             pr = obj.pr;
+            pattern_prior = obj.pattern_prior;
             clusters_fln = fullfile(obj.data_save_path, ['ca-', ...
                 obj.dataset, '-', num2str(obj.feature.feat_dim), 'd-', ...
                 num2str(obj.n_clusters), 'R-', cluster_type_string, ...
                 '.mat']);
             save(clusters_fln, '-v7.3', 'bar2rhythm', 'bar2file', ...
-                'rhythm_names', 'rhythm2meter', 'pr');
-            fprintf('    Saved bar2rhythm, bar2file, file2nBars, rhythm_names, ');
-            fprintf('rhythm2meter, pr to %s\n', clusters_fln);
+                'rhythm_names', 'rhythm2meter', 'pr', 'pattern_prior');
+            fprintf('    Saved clustering data to %s\n', clusters_fln);
         end
         
         function [] = plot_patterns(obj, cidx, ctrs, bar_pos, pattern_scope, ...
