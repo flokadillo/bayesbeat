@@ -1,6 +1,10 @@
 classdef BeatTrackingStateSpaceHMM2015 < handle & BeatTrackingStateSpaceHMM
-    %UNTITLED5 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingStateSpaceHMM2015
+    % Sets up a state space as described in
+    %   Krebs Florian, Sebastian Böck, and Gerhard Widmer. 
+    %   An efficient state-space model for joint tempo and meter tracking.
+    %   Proceedings of the 16th International Society for Music Information 
+    %   Retrieval Conference (ISMIR), Malaga, Spain. 2015.
     
     properties
         tempi_from_pattern

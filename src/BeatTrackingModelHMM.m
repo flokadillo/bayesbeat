@@ -1,6 +1,7 @@
 classdef BeatTrackingModelHMM < handle & BeatTrackingModel
-    %UNTITLED2 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingModelHMM class
+    % Subclass of BeatTrackingModel which implements HMM specific
+    % functionality on how to set up a BeatTrackingHMM
     
     properties
         HMM

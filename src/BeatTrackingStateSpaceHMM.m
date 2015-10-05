@@ -1,6 +1,6 @@
 classdef BeatTrackingStateSpaceHMM < handle & BeatTrackingStateSpace
-    %UNTITLED3 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingStateSpaceHMM class
+    % Implements HMM related functionality of the state space
     
     properties
         n_states

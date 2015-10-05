@@ -1,6 +1,7 @@
 classdef BeatTrackingModelPF < handle & BeatTrackingModel
-    %UNTITLED3 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingModelPF class
+    % Sub class of BeatTrackingModel which implements Particle Filter
+    % related functionality
     
     properties
         PF

@@ -1,6 +1,10 @@
 classdef BeatTrackingTransitionModelHMM2006 < handle & BeatTrackingTransitionModelHMM
-    %UNTITLED4 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingTransitionModelHMM2006
+    % Sets up a transition model as described in
+    %   Whiteley Nick, Ali Taylan Cemgil, and Simon J. Godsill. 
+    %   Bayesian Modelling of Temporal Structure in Musical Audio. 
+    %   Proceedings of the 7th International Society for Music Information 
+    %   Retrieval Conference (ISMIR), Victoria, USA. 2006.
     
     properties
         pn  % probability of a tempo change

@@ -1,6 +1,10 @@
 classdef BeatTrackingStateSpaceHMM2006 < handle & BeatTrackingStateSpaceHMM
-    %UNTITLED5 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingStateSpaceHMM2006
+    % Sets up a state space as described in
+    %   Whiteley Nick, Ali Taylan Cemgil, and Simon J. Godsill. 
+    %   Bayesian Modelling of Temporal Structure in Musical Audio. 
+    %   Proceedings of the 7th International Society for Music Information 
+    %   Retrieval Conference (ISMIR), Victoria, USA. 2006.
     
     properties
         min_tempo_ss

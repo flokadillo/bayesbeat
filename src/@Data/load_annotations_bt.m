@@ -21,7 +21,6 @@ function [ data, error ] = load_annotations_bt(filename, ann_type)
 %
 % 16.05.2014 by Florian Krebs
 % ----------------------------------------------------------------------
-
 % supported extensions:
 sup_ext = {'.beats', '.meter', '.onsets', '.bpm', '.dancestyle', ...
     '.rhythm'};
@@ -41,48 +40,54 @@ if ~exist(filename, 'file')
     return;
 end
 error = 0;
-if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
-    % Load meter
-    fid = fopen(filename, 'r');
-    data = double(cell2mat(textscan(fid, '%d%d', 'delimiter', '/')));
-    fclose(fid);
-    if data(2) == 0, data = data(1); end
-elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
-    % Load onset annotations
-    data = load('-ascii', filename);
-elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
-    % Load beat annotations
-    fid = fopen(filename, 'r');
-    temp = textscan(fid, '%f64%s', 'delimiter', '\t');
-    fclose(fid);
-    data = temp{1};
-    if ~isempty(data)
-        if size(temp, 2) == 2
-            % get bar id and beat number
-            temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), temp{2}, ...
-                'UniformOutput', 0);
-            if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
-                beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{2}, ...
-                    temp2));
-            else % no bar_id given, set bar_id to nan
-                beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{1}, ...
-                    temp2));
+try
+    if strcmp(ext, '.meter') || strcmp(ann_type, 'meter')
+        % Load meter
+        fid = fopen(filename, 'r');
+        data = double(cell2mat(textscan(fid, '%d%d', 'delimiter', '/')));
+        fclose(fid);
+        if data(2) == 0, data = data(1); end
+    elseif strcmp(ext, '.onsets') || strcmp(ann_type, 'onsets')
+        % Load onset annotations
+        data = load('-ascii', filename);
+    elseif strcmp(ext, '.beats') || strcmp(ann_type, 'beats')
+        % Load beat annotations
+        fid = fopen(filename, 'r');
+        temp = textscan(fid, '%f64%s', 'delimiter', '\t');
+        fclose(fid);
+        data = temp{1}; % beat times
+        if ~isempty(data)
+            if size(temp, 2) == 2
+                % check if bar number are annotated too.
+                % get bar id and beat number
+                temp2 = cellfun(@(x) textscan(x, '%s%s', 'Delimiter', '.'), ...
+                    temp{2}, ...
+                    'UniformOutput', 0);
+                if strfind(temp{2}{1}, '.') > 0 % bar_id present in annotation file
+                    beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{2}, ...
+                        temp2));
+                else % no bar_id given, set bar_id to nan
+                    beat_number = cellfun(@(x) str2double(x), cellfun(@(x) x{1}, ...
+                        temp2));
+                end
+                data = [data, beat_number];
             end
-            data = [data, beat_number];
         end
+    elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
+        % Load Tempofile
+        data = load('-ascii', filename);
+    elseif strcmp(ext, '.dancestyle') || strcmp(ann_type, 'dancestyle')
+        fid = fopen(filename, 'r');
+        data = textscan(fid, '%s');
+        data = data{1}{1};
+        fclose(fid);
+    elseif strcmp(ext, '.rhythm') || strcmp(ann_type, 'rhythm')
+        fid = fopen(filename, 'r');
+        data = textscan(fid, '%s');
+        data = data{1}{1};
+        fclose(fid);
     end
-elseif strcmp(ext, '.bpm') || strcmp(ann_type, 'bpm')
-    % Load Tempofile
-    data = load('-ascii', filename);
-elseif strcmp(ext, '.dancestyle') || strcmp(ann_type, 'dancestyle')
-    fid = fopen(filename, 'r');
-    data = textscan(fid, '%s');
-    data = data{1}{1};
-    fclose(fid);
-elseif strcmp(ext, '.rhythm') || strcmp(ann_type, 'rhythm')
-    fid = fopen(filename, 'r');
-    data = textscan(fid, '%s');
-    data = data{1}{1};
-    fclose(fid);
+catch
+   fprintf('ERROR: Could not read %s\n', filename); 
 end
 end

@@ -1,4 +1,5 @@
 classdef BeatTrackingTransitionModelHMM < handle
+    % BeatTrackingTransitionModelHMM 
     % Transition model base class to be used for Hidden Markov Models
     
     properties

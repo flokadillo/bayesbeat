@@ -1,5 +1,5 @@
 classdef Feature
-    % feature extracts and loads audio features
+    % Feature class for dealing with audio features
     
     properties
         feat_type       % cell array with one cell per feature dimension,

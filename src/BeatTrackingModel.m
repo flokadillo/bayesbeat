@@ -1,6 +1,6 @@
 classdef BeatTrackingModel < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingModel class
+    % Base class for BeatTracking models.
     
     properties
         state_space

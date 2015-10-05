@@ -1,6 +1,6 @@
 classdef BeatTrackingStateSpacePF < handle & BeatTrackingStateSpace
-    %UNTITLED3 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingStateSpacePF class
+    % Implements Particle Filter state space
     
     properties
         n_states

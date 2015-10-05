@@ -1,6 +1,6 @@
 classdef BeatTrackingObservationModel < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingObservationModel class
+    % Base class for observation models
     
     properties
         state_space
@@ -77,6 +77,7 @@ classdef BeatTrackingObservationModel < handle
         end
         
         function plot_learned_patterns(obj)
+            % plot mean values of the observation likelihood functions
             means = obj.compute_distribution_means;
             n_patterns = obj.state_space.n_patterns;
             h = figure;
@@ -107,6 +108,7 @@ classdef BeatTrackingObservationModel < handle
     
     methods (Access = protected)
         function dist_mean = compute_distribution_mean(obj, params)
+            % compute mean value of a given distribution
             switch obj.dist_type
                 case 'MOG'
                     dist_mean = params.PComponents * params.mu;
@@ -117,7 +119,7 @@ classdef BeatTrackingObservationModel < handle
         end
         
         function mean_params = compute_distribution_means(obj)
-        % Compute mean of distribution
+            % Compute all mean values of likelihood distribution
             % mean_params: [n_patterns x max_cells x feat_dim]
             mean_params = zeros(obj.state_space.n_patterns, obj.max_cells, ...
                 length(obj.feat_type));

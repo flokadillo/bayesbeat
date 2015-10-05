@@ -1,6 +1,5 @@
 classdef BeatTrackingObservationModelHMM < BeatTrackingObservationModel
-    %UNTITLED2 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingObservationModelHMM class
     
     properties
         cell_from_state

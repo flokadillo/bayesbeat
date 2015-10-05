@@ -50,7 +50,7 @@ classdef BeatTracker < handle
                 if (length(obj.Params.min_tempo_bpm) == 1) && (R > 1)
                     obj.Params.min_tempo_bpm = repmat(obj.Params.min_tempo_bpm, ...
                         R, 1);
-                end                
+                end
                 if (length(obj.Params.max_tempo_bpm) == 1) && (R > 1)
                     obj.Params.max_tempo_bpm = repmat(obj.Params.max_tempo_bpm, ...
                         R, 1);
@@ -256,7 +256,7 @@ classdef BeatTracker < handle
                 BeatTracker.save_median_tempo(results{2}, fullfile(save_dir, ...
                     [fname, '.bpm.txt']));
             end
-             if obj.Params.save_tempo_sequence
+            if obj.Params.save_tempo_sequence
                 ts = (0:length(results{2})-1) * obj.feature.frame_length;
                 BeatTracker.save_tempo_sequence(results{2}, ts, fullfile(save_dir, ...
                     [fname, '.bpm.seq.txt']));
@@ -409,6 +409,14 @@ classdef BeatTracker < handle
                     obj.Params.data_path, [obj.Params.train_set, '_', ...
                     obj.Params.pattern_size, featStr, '.mat']);
             end
+            if ~isfield(obj.Params, 'results_path')
+                obj.Params.results_path = '.';
+            else
+                if ~exist(obj.Params.results_path, 'dir')
+                    system(['mkdir ', obj.Params.results_path]);
+                end
+            end
+            
         end
     end
     
@@ -437,15 +445,15 @@ classdef BeatTracker < handle
         function [] = save_tempo_sequence(tempo, ts, save_fln)
             dlmwrite(save_fln, [ts(:) tempo(:)], 'precision', '%.2f');
         end
-               
+        
         function [] = save_rhythm(rhythm, rhythm_names, ts, save_fln)
             rhythm_change_points = find(diff(rhythm(:)));
             rhythm_change_points = [1; rhythm_change_points; length(rhythm)];
             fid = fopen(save_fln, 'w');
             for i=1:length(rhythm_change_points)-1
-                    fprintf(fid, '%3.2f\t%3.2f\t%s\n', ts(rhythm_change_points(i)), ...
-                        ts(rhythm_change_points(i+1)), ...
-                        rhythm_names{rhythm(rhythm_change_points(i)+1)});
+                fprintf(fid, '%3.2f\t%3.2f\t%s\n', ts(rhythm_change_points(i)), ...
+                    ts(rhythm_change_points(i+1)), ...
+                    rhythm_names{rhythm(rhythm_change_points(i)+1)});
             end
             fclose(fid);
         end

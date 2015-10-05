@@ -1,6 +1,6 @@
 classdef HiddenMarkovModel < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    % HiddenMarkovModel class
+    % Covers all HMM related functionality
     
     properties
         trans_model

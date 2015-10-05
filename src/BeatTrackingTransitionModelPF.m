@@ -1,6 +1,6 @@
 classdef BeatTrackingTransitionModelPF
-    %UNTITLED2 Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingTransitionModelPF
+    % Define the Particle Filter transition model
     
     properties
         state_space

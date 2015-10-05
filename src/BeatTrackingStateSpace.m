@@ -1,6 +1,6 @@
 classdef BeatTrackingStateSpace < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    % BeatTrackingStateSpace class
+    % Base class that sets up the state space for a beat tracker.
     
     properties
         n_patterns                  % number of patterns
