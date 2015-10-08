@@ -33,9 +33,9 @@ classdef BeatTrackingTransitionModelHMM < handle
             sum_over_j = full(sum(obj.A, 2));
             % find corrupt states: sum_over_j should be either 0 (if state is
             % never visited) or 1
-            zero_probs_j = abs(sum_over_j) < 1e-4;  % p ≃ 0
-            one_probs_j = abs(sum_over_j - 1) < 1e-4; % p ≃ 1
-            corrupt_states_i = find(~zero_probs_j & ~one_probs_j, 1);
+            zero_probs_j = abs(sum_over_j) < 1e-2;  % p ≃ 0
+            one_probs_j = abs(sum_over_j - 1) < 1e-2; % p ≃ 1
+            corrupt_states_i = find(~zero_probs_j & ~one_probs_j);
             if dooutput
                 fprintf('    Number of non-zero states: %i (%.1f %%)\n', ...
                     sum(sum_over_j==1), sum(sum_over_j==1)*100/size(obj.A,1));
@@ -50,18 +50,18 @@ classdef BeatTrackingTransitionModelHMM < handle
                 fprintf('    Example:\n');
                 [position, tempo, pattern] = obj.state_space.decode_state(...
                     corrupt_states_i(1));
-                fprintf('      State %i (%.1f - %.1f - %i) has transition to:\n', ...
+                fprintf('      State %i (%.3f - %.5f - %i) has transition to:\n', ...
                     corrupt_states_i(1), position, tempo, pattern);
                 to_states = find(obj.A(corrupt_states_i(1), :));
                 for i=1:length(to_states)
                     [position, tempo, pattern] = obj.state_space.decode_state(...
                         to_states(i));
-                    fprintf('        %i (%.1f - %.1f - %i) with p=%.5f\n', ...
+                    fprintf('        %i (%.3f - %.5f - %i) with p=%.10f\n', ...
                         to_states(i), position, tempo, pattern, ...
                         full(obj.A(corrupt_states_i(1), to_states(i))));
                 end
                 sumProb = sum(full(obj.A(corrupt_states_i(1), to_states(:))));
-                fprintf('      sum: p=%.5f\n', sumProb);
+                fprintf('      sum: p=%.10f\n', sumProb);
             end
         end 
         

@@ -1,9 +1,9 @@
 classdef BeatTrackingTransitionModelHMM2015 < handle & BeatTrackingTransitionModelHMM
     % BeatTrackingTransitionModelHMM2015
     % Sets up a transition model as described in
-    %   Krebs Florian, Sebastian Böck, and Gerhard Widmer. 
+    %   Krebs Florian, Sebastian Böck, and Gerhard Widmer.
     %   An efficient state-space model for joint tempo and meter tracking.
-    %   Proceedings of the 16th International Society for Music Information 
+    %   Proceedings of the 16th International Society for Music Information
     %   Retrieval Conference (ISMIR), Malaga, Spain. 2015.
     
     properties
@@ -40,6 +40,7 @@ classdef BeatTrackingTransitionModelHMM2015 < handle & BeatTrackingTransitionMod
             % compute transition matrix for the tempo changes
             tempo_trans = cell(n_patterns, n_patterns);
             % iterate over all tempo states
+            % compute P(nj | ni, ri, rj) for between beats
             for ri = 1:n_patterns
                 for rj = 1:n_patterns
                     tempo_trans{ri, rj} = zeros(tempi_from_pattern(ri), ...
@@ -62,9 +63,35 @@ classdef BeatTrackingTransitionModelHMM2015 < handle & BeatTrackingTransitionMod
                             end
                         end
                         % normalise
-                        tempo_trans{ri, rj}(tempo_state_i, :) = ...
-                            tempo_trans{ri, rj}(tempo_state_i, :) ./ ...
-                            sum(tempo_trans{ri, rj}(tempo_state_i, :));
+                        if sum(tempo_trans{ri, rj}(tempo_state_i, :)) == 0
+                            tempo_trans{ri, rj}(tempo_state_i, :) = 0;
+                        else
+                            tempo_trans{ri, rj}(tempo_state_i, :) = ...
+                                tempo_trans{ri, rj}(tempo_state_i, :) ./ ...
+                                sum(tempo_trans{ri, rj}(tempo_state_i, :));
+                        end
+                    end
+                end
+            end
+            % compute P(nj, rj | ni, ri) for pattern changes
+            tempo_pattern_trans = cell(n_patterns, n_patterns);
+            for ri = 1:n_patterns
+                for ni = 1:length(n_position_states{ri})
+                    temp = 0;
+                    for rj = 1:n_patterns
+                        temp = temp + sum(tempo_trans{ri, rj}(ni, :)) .* ...
+                            obj.pr(ri, rj);
+                    end
+                    if temp == 0
+                        for rj = 1:n_patterns
+                            tempo_pattern_trans{ri, rj}(ni, :) = 0;
+                        end
+                    else
+                        for rj = 1:n_patterns
+                            tempo_pattern_trans{ri, rj}(ni, :) = ...
+                                tempo_trans{ri, rj}(ni, :) .* ...
+                                obj.pr(ri, rj) ./ temp;
+                        end
                     end
                 end
             end
@@ -134,8 +161,8 @@ classdef BeatTrackingTransitionModelHMM2015 < handle & BeatTrackingTransitionMod
                                         % position at beat
                                         col_j(p) = state_at_beat{rj, bi}(nj);
                                         % store probability
-                                        val(p) = tempo_trans{ri, rj}(ni, nj) * ...
-                                            obj.pr(ri, rj);
+                                        val(p) = tempo_pattern_trans{ri, ...
+                                            rj}(ni, nj);
                                         p = p + 1;
                                     end
                                 end
