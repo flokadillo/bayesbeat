@@ -59,16 +59,13 @@ classdef MixtureParticleFilter < ParticleFilter
             end
         end
         
-        function [m, n, r, g, w_log] = resampling(obj, m, n, r, g, w_log, iFrame)
+        function [m, n, r, g, w_log, newIdx] = resampling(obj, m, n, r, g, w_log, iFrame)
             % compute reampling criterion effective sample size
             if (rem(iFrame, obj.resampling_params.resampling_interval) > 0)
                 return
             end
             g = obj.cluster(m(:, iFrame+1), n(:, iFrame), r(:, iFrame+1), g);
             [newIdx, w_log, g] = obj.resample_in_groups(g, w_log);
-            m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
-            r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
-            n(:, 1:iFrame) = n(newIdx, 1:iFrame);
         end
         
         function [groups] = cluster(obj, m, n, r, groups_old)
