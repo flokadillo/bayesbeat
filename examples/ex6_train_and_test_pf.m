@@ -1,5 +1,5 @@
-function Results = ex5_train_and_test_pf(in_file, train_files, out_folder)
-% [Results] = ex5_train_and_test_pf(in_file, train_files, out_folder)
+function Results = ex6_train_and_test_pf(in_file, train_files, out_folder)
+% [Results] = ex6_train_and_test_pf(in_file, out_folder)
 %   Train a PF and test it.
 % ----------------------------------------------------------------------
 % INPUT Parameter:
@@ -10,7 +10,7 @@ function Results = ex5_train_and_test_pf(in_file, train_files, out_folder)
 % OUTPUT Parameter:
 %   Results             : structure array with beat tracking results
 %
-% 30.07.2015 by Florian Krebs
+% 14.10.2015 by Ajay Srinivasamurthy
 % ----------------------------------------------------------------------
 % Train dataset
 % Path to lab file
@@ -19,12 +19,13 @@ Params.testLab = in_file;
 Params.data_path = out_folder;
 Params.results_path = out_folder;
 Params.inferenceMethod = 'PF';
-Params.min_tempo_bpm = 100;
-Params.max_tempo_bpm = 150;
+Params.min_tempo_bpm = 60;
+Params.max_tempo_bpm = 220;
 Params.learn_tempo_ranges = 0;
 Params.resampling_scheme = 3; % AMPF
+Params.patt_trans_opt = 2; % ISMIR'15
 Params.warp_fun = '@(x) x.^(1/10)';
-Params.n_particles = 1000;
+Params.n_particles = 6000;
 
 % TRAINING THE MODEL
 

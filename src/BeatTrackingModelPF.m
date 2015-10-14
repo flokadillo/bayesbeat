@@ -15,6 +15,7 @@ classdef BeatTrackingModelPF < handle & BeatTrackingModel
             % Call superclass constructor
             obj@BeatTrackingModel(Params, Clustering);
             State_space_params = obj.parse_params(Params, Clustering);
+            State_space_params.patt_trans_opt = Params.patt_trans_opt;
             if State_space_params.use_silence_state
                 Clustering.rhythm_names{State_space_params.n_patterns + 1} = ...
                     'silence';

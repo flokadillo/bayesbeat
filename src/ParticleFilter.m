@@ -46,8 +46,13 @@ classdef ParticleFilter
                 r(:, iFrame+1) = obj.trans_model.sample_pattern(r(:, iFrame), ...
                     m(:, iFrame+1), m(:, iFrame), n(:, iFrame));
                 % evaluate likelihood of particles
-                obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
-                    obs_lik(:, :, iFrame));                   
+                if obj.patt_trans_opt == 2
+                    obs = obj.block_likelihood_of_particles(m(:, iFrame+1), ...
+                        obj.state_space.n_patterns, obs_lik(:, :, iFrame));
+                else
+                    obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
+                        obs_lik(:, :, iFrame));                   
+                end
                 w = w(:) + log(obs(:));
                 % normalise importance weights
                 [w, ~] = obj.normalizeLogspace(w);
@@ -106,6 +111,20 @@ classdef ParticleFilter
             ind = sub2ind([obj.state_space.n_patterns, ...
                 obj.obs_model.max_cells], pattern(:), p_cell(:));
             lik = obs_lik(ind);
+        end
+        
+        function lik = block_likelihood_of_particles(obj, position, nPatts, ...
+                obs_lik)
+            % obslik:       likelihood values [R, barGrid]
+            m_per_grid = obj.state_space.max_position_from_pattern(1) / ...
+                obj.obs_model.cells_from_pattern(1);
+            p_cell = floor((position - 1) / m_per_grid) + 1;
+            for rr = 1:nPatts
+                ind = sub2ind([obj.state_space.n_patterns, ...
+                    obj.obs_model.max_cells], ones(size(pattern(:))*rr, p_cell(:));
+                likblk(:,rr) = obs_lik(ind);
+            end
+            lik = sum(likblk,2);
         end
         
         function [m_path, n_path, r_path] = path_with_best_last_weight(obj, ...

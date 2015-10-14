@@ -175,6 +175,9 @@ classdef BeatTracker < handle
             else
                 obj.Params.transition_params.pr = obj.train_data.clustering.pr;
             end
+            if obj.Params.transition_params.trans_opt == 0
+                obj.Params.transition_params.pr = eye(size(obj.Params.transition_params.pr));
+            end
         end
         
         function init_test_data(obj)
@@ -314,7 +317,7 @@ classdef BeatTracker < handle
                 obj.Params.save_beats = 1;
             end
             if ~isfield(obj.Params, 'save_downbeats')
-                obj.Params.save_downbeats = 0;
+                obj.Params.save_downbeats = 1;
             end
             if ~isfield(obj.Params, 'save_median_tempo')
                 obj.Params.save_median_tempo = 0;
@@ -346,7 +349,7 @@ classdef BeatTracker < handle
                         obj.Params.transition_params.transition_lambda = ...
                             obj.Params.alpha;
                     end
-                elseif strcmp(obj.Params.transition_model_type, '2006')
+                elseif strfind(2006, obj.Params.transition_model_type) > 0
                     if ~isfield(obj.Params, 'pn')
                         obj.Params.transition_params.pn = 0.01;
                     else
@@ -364,6 +367,10 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'pattern_size')
                 obj.Params.pattern_size = 'bar';
             end
+            if ~isfield(obj.Params, 'patt_trans_opt')
+                obj.Params.patt_trans_opt = 0;  
+            end
+            obj.Params.transition_params.trans_opt = obj.Params.patt_trans_opt; % Duplicate variable stored - AS
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
