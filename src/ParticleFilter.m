@@ -26,6 +26,7 @@ classdef ParticleFilter
             debug = 0;
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
+            perc = round(0.1*n_frames);
             % add one frame, which corresponds to the initial distribution
             % at time 0 before the first observation comes in
             m = zeros(obj.n_particles, n_frames + 1, 'single');
@@ -40,7 +41,7 @@ classdef ParticleFilter
             g = obj.initial_particles(:, 4);
             w = log(ones(obj.n_particles, 1) / obj.n_particles);
             if obj.trans_model.patt_trans_opt == 2
-                pattMask = (obj.pr(obj.r(:,1),:) > 0);
+                pattMask = (obj.trans_model.pr(r(:,1),:) > 0);
             end
             for iFrame=1:n_frames
                 % sample position and pattern
@@ -49,7 +50,7 @@ classdef ParticleFilter
                 r(:, iFrame+1) = obj.trans_model.sample_pattern(r(:, iFrame), ...
                     m(:, iFrame+1), m(:, iFrame), n(:, iFrame));
                 % evaluate likelihood of particles
-                if obj.patt_trans_opt == 2
+                if obj.trans_model.patt_trans_opt == 2
                     obsBlk = obj.block_likelihood_of_particles(m(:, iFrame+1), ...
                         obj.state_space.n_patterns, obs_lik(:, :, iFrame));
                     obs = sum(obsBlk.*pattMask,2);
@@ -63,11 +64,13 @@ classdef ParticleFilter
                 % resampling
                 if iFrame < n_frames
                     [m, n, r, g, w, newIdx] = resampling(obj, m, n, r, g, w, iFrame);
-                    m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
-                    r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
-                    n(:, 1:iFrame) = n(newIdx, 1:iFrame);
-                    if obj.trans_model.patt_trans_opt == 2
-                        pattMask = pattMask(newIdx,:);
+                    if ~isempty(newIdx)
+                        m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
+                        r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
+                        n(:, 1:iFrame) = n(newIdx, 1:iFrame);
+                        if obj.trans_model.patt_trans_opt == 2
+                            pattMask = pattMask(newIdx,:);
+                        end
                     end
                 end
                 % sample tempo after resampling because it has no impact on
@@ -81,7 +84,11 @@ classdef ParticleFilter
                     logP_data_pf(:, 4, iFrame) = w;
                     logP_data_pf(:, 5, iFrame) = g;
                 end
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
             end
+            fprintf('\n');
             % remove initial state
             m = m(:, 2:end); n = n(:, 2:end); r = r(:, 2:end);
             if debug, save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik'); end
@@ -93,6 +100,7 @@ classdef ParticleFilter
             w = exp(w_log);
             Neff = 1/sum(w.^2);
             if Neff > (obj.resampling_params.ratio_Neff * obj.n_particles)
+                newIdx = [];
                 return
             end
             if obj.resampling_params.resampling_scheme == 0 % SISR
@@ -129,7 +137,7 @@ classdef ParticleFilter
             p_cell = floor((position - 1) / m_per_grid) + 1;
             for rr = 1:nPatts
                 ind = sub2ind([obj.state_space.n_patterns, ...
-                    obj.obs_model.max_cells], ones(size(p_cell(:))*rr, p_cell(:));
+                    obj.obs_model.max_cells], ones(size(p_cell(:)))*rr, p_cell(:));
                 likblk(:,rr) = obs_lik(ind);
             end
         end

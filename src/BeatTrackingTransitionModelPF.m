@@ -7,7 +7,8 @@ classdef BeatTrackingTransitionModelPF
         pr
         pfs
         p2s
-        tempo_ss_std
+        tempo_ss_std      % Measures the std in bpm
+        tempo_ss_std_per  % Measures the std in percentage (better ?)
         min_tempo_ss
         max_tempo_ss
         patt_trans_opt
@@ -28,6 +29,8 @@ classdef BeatTrackingTransitionModelPF
             end
             obj.tempo_ss_std = obj.state_space.convert_tempo_from_bpm(...
                 transition_params.tempo_bpm_std);
+            obj.tempo_ss_std_per = transition_params.tempo_std_per * ones(...
+                obj.state_space.n_patterns,1); 
             obj.min_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
                 obj.state_space.min_tempo_bpm);
             obj.max_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
@@ -36,8 +39,13 @@ classdef BeatTrackingTransitionModelPF
         end
         
         function tempo_new = sample_tempo(obj, tempo_old, pattern_new)
-                tempo_new = tempo_old + randn(length(tempo_old), 1) ...
-                    .* obj.tempo_ss_std(pattern_new);
+                % First way using absolute tempo_ss_std in bpm
+                % tempo_new = tempo_old + randn(length(tempo_old), 1) ...
+                %    .* obj.tempo_ss_std(pattern_new);
+                % AS: Another way of defining tempo transitions, using
+                % tempo_ss_std_per - fraction of the tempo
+                tempo_new = tempo_old + tempo_old .* obj.tempo_ss_std_per(pattern_new)...
+                    .* randn(length(tempo_old), 1);
                 % sampled tempo is clipped to the tempo limits
                 out_of_range = tempo_new > obj.max_tempo_ss(pattern_new);
                 tempo_new(out_of_range) = ...

@@ -48,7 +48,10 @@ classdef RhythmCluster < handle
             % -------------------------------------------------------------
             % INPUT parameters:          
             % n_clusters         number of clusters
-            % pattern_scope      can be either 'bar' or 'song'. With 'song',
+            % 'dist_cluster'     can be either 'data' (clusters per meter assigned
+            %                    based on amount of data per meter) or 'equal' 
+            %                    (each meter has the same number of clusters): 
+            % 'pattern_scope'    can be either 'bar' or 'song'. With 'song',
             %                    all bars of one song are averaged into one
             %                    song_pattern and these are then clustered
             % 'meters'           [num_meters x 2] meters that are expected
@@ -70,10 +73,15 @@ classdef RhythmCluster < handle
             default_scope = 'bar';
             valid_scope = {'bar', 'song'};
             check_scope = @(x) any(validatestring(x, valid_scope));
+            valid_dist_clust = {'data', 'equal'};
+            default_dist_clust = valid_dist_clust{1};
+            check_dist_clust = @(x) any(validatestring(x, valid_dist_clust));
             default_plotting_path = '/tmp/';
             % add inputs
             addRequired(parser, 'obj', @isobject);
             addRequired(parser, 'n_clusters', @isnumeric);
+            addOptional(parser, 'dist_cluster', default_dist_clust, ...
+                check_dist_clust);
             addOptional(parser, 'pattern_scope', default_scope, ...
                 check_scope);
             addParamValue(parser, 'meter_names', '', @iscell);
@@ -86,6 +94,7 @@ classdef RhythmCluster < handle
             % -------------------------------------------------------------
             obj.n_clusters = n_clusters;
             pattern_scope = parser.Results.pattern_scope;
+            dist_cluster = parser.Results.dist_cluster;
             % summarise features for clustering
             S = cellfun(@mean, obj.data.features_per_bar);
             bar_pos = size(S, 2);
@@ -134,6 +143,7 @@ classdef RhythmCluster < handle
                         '-', num2str(meters(i_meter, 2))];
                 end
             else
+                meter_names = parser.Results.meter_names;
                 same_num_meters = (size(meters, 1) == ...
                     size(parser.Results.meters, 1));
                 same_content = ismember(meters, parser.Results.meters, ...
@@ -149,14 +159,17 @@ classdef RhythmCluster < handle
                 n_items_per_meter = hist(meter_per_item(:, 1), ...
                     sort(meters(:, 1), 'ascend'));
             end
-            % Ajay/Andre: distribute patterns equally among meters
-            % n_clusters_per_meter = ceil(n_clusters/size(meters,1))*
-            % ones(1,size(meters,1));
-            % Now: distribute patterns among meters according to the
-            % amount of data we have per meter
-            clusters_per_meter = n_items_per_meter * obj.n_clusters ...
-                / sum(n_items_per_meter);
-            n_clusters_per_meter = ceil(clusters_per_meter);
+            if strcmp(dist_cluster,'equal')
+                % Ajay/Andre: distribute patterns equally among meters
+                n_clusters_per_meter = ceil(n_clusters/size(meters,1))*...
+                ones(1,size(meters,1));
+            else
+                % Or: distribute patterns among meters according to the
+                % amount of data we have per meter
+                clusters_per_meter = n_items_per_meter * obj.n_clusters ...
+                    / sum(n_items_per_meter);
+                n_clusters_per_meter = ceil(clusters_per_meter);
+            end
             while sum(n_clusters_per_meter) > obj.n_clusters % check because of ceil
                 % find least crowded cluster
                 overhead = clusters_per_meter - n_clusters_per_meter + 1;

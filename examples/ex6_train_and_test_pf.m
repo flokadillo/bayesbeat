@@ -1,31 +1,34 @@
-function Results = ex6_train_and_test_pf(in_file, train_files, out_folder)
-% [Results] = ex6_train_and_test_pf(in_file, out_folder)
-%   Train a PF and test it.
-% ----------------------------------------------------------------------
-% INPUT Parameter:
-%   in_file             : audio file
-%   out_folder          : folder, where output (beats and model) are stored
-%   train_files         : cell array with training audio files
-%
-% OUTPUT Parameter:
-%   Results             : structure array with beat tracking results
-%
+% Example script to test functionality
+clear
+close all
+clc
 % 14.10.2015 by Ajay Srinivasamurthy
-% ----------------------------------------------------------------------
-% Train dataset
-% Path to lab file
-Params.trainLab = train_files;
-Params.testLab = in_file;
+
+% Prelims
+addpath('../src/');
+basepath = '/media/Code/UPFWork/PhD';
+dataset = 'CMCMDa_small';
+% train_files = textscan(fopen(trainLabFile,'r'),'%s\n');
+% test_files = textscan(fopen(trainLabFile,'r'),'%s\n');
+Params.trainLab = fullfile(basepath, 'Data', dataset, 'train_1_rupaka.lab');
+Params.testLab = fullfile(basepath, 'Data', dataset, 'test_1_rupaka.lab');
+Params.meters = [3 4];
+Params.meter_names = {'rupaka'};
+out_folder = fullfile(basepath, 'BayesResultsCommon', dataset);
 Params.data_path = out_folder;
 Params.results_path = out_folder;
 Params.inferenceMethod = 'PF';
-Params.min_tempo_bpm = 60;
-Params.max_tempo_bpm = 220;
+Params.min_tempo_bpm = 30;
+Params.max_tempo_bpm = 110;
 Params.learn_tempo_ranges = 0;
 Params.resampling_scheme = 3; % AMPF
 Params.patt_trans_opt = 2; % ISMIR'15
 Params.warp_fun = '@(x) x.^(1/10)';
 Params.n_particles = 6000;
+Params.cluster_type = 'kmeans';
+Params.n_clusters = 4;
+Params.dist_cluster = 'equal';
+obj.Params.feat_type = {'lo230_superflux.mvavg.normZ', 'hi250_superflux.mvavg.normZ'};
 
 % TRAINING THE MODEL
 
@@ -36,8 +39,8 @@ BT.train_model();
 
 % TEST THE MODEL
 % do beat tracking
-Results = BT.do_inference(1);
+testFileIndex = 1;
+Results = BT.do_inference(testFileIndex);
 % save results
-[~, fname, ~] = fileparts(Params.testLab);
+[~, fname, ~] = fileparts(BT.test_data.file_list{testFileIndex});
 BT.save_results(Results, out_folder, fname);
-end
