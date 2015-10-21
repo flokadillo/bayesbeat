@@ -189,9 +189,6 @@ classdef BeatTracker < handle
             else
                 obj.Params.transition_params.pr = obj.train_data.clustering.pr;
             end
-            if obj.Params.transition_params.patt_trans_opt == 0
-                obj.Params.transition_params.pr = eye(size(obj.Params.transition_params.pr));
-            end
         end
         
         function init_test_data(obj)
@@ -387,10 +384,6 @@ classdef BeatTracker < handle
             if ~isfield(obj.Params, 'dist_cluster')
                 obj.Params.dist_cluster = 'data';
             end
-            if ~isfield(obj.Params, 'patt_trans_opt')
-                obj.Params.patt_trans_opt = 0;  
-            end
-            obj.Params.transition_params.patt_trans_opt = obj.Params.patt_trans_opt; % Duplicate variable stored - AS
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end

@@ -29,7 +29,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
             Results = ex2_beat_tracking_with_pretrained_pf(...
                 testCase.audio_files{1}, testCase.result_folder);
             % add all beats and compare to expected solution
-            exp_sum_beats = 777.42;
+            exp_sum_beats = 777.6201;
             act_sum_beats = sum(Results{1}(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), 1e-3);
         end
@@ -65,7 +65,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
             Results = ex5_train_and_test_pf(testCase.audio_files{1}, ...
                 testCase.audio_files, testCase.result_folder);
             % add all beats and compare to expected solution
-            exp_sum_beats = 776.8199;
+            exp_sum_beats = 777.02;
             act_sum_beats = sum(Results{1}(:, 1));
             testCase.verifyLessThan(abs(act_sum_beats-exp_sum_beats), 1e-3);
         end
