@@ -1,6 +1,6 @@
 function Results = ex5_train_and_test_pf(in_file, train_files, out_folder)
-% [Results] = ex3_train_and_test_hmm(in_file, out_folder)
-%   Train an HMM and test it.
+% [Results] = ex5_train_and_test_pf(in_file, train_files, out_folder)
+%   Train a PF and test it.
 % ----------------------------------------------------------------------
 % INPUT Parameter:
 %   in_file             : audio file

@@ -33,8 +33,8 @@ classdef BeatTrackingTransitionModelHMM < handle
             sum_over_j = full(sum(obj.A, 2));
             % find corrupt states: sum_over_j should be either 0 (if state is
             % never visited) or 1
-            zero_probs_j = abs(sum_over_j) < 1e-2;  % p ≃ 0
-            one_probs_j = abs(sum_over_j - 1) < 1e-2; % p ≃ 1
+            zero_probs_j = abs(sum_over_j) < 1e-4;  % p ≃ 0
+            one_probs_j = abs(sum_over_j - 1) < 1e-4; % p ≃ 1
             corrupt_states_i = find(~zero_probs_j & ~one_probs_j);
             if dooutput
                 fprintf('    Number of non-zero states: %i (%.1f %%)\n', ...

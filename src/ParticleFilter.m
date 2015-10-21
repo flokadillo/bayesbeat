@@ -26,6 +26,7 @@ classdef ParticleFilter
             debug = 0;
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
+            perc = round(0.1*n_frames);
             % add one frame, which corresponds to the initial distribution
             % at time 0 before the first observation comes in
             m = zeros(obj.n_particles, n_frames + 1, 'single');
@@ -38,7 +39,10 @@ classdef ParticleFilter
             n(:, 1) = obj.initial_particles(:, 2);
             r(:, 1) = obj.initial_particles(:, 3);
             g = obj.initial_particles(:, 4);
-            w = log(ones(obj.n_particles, 1) / obj.n_particles);   
+            w = log(ones(obj.n_particles, 1) / obj.n_particles);
+            if obj.trans_model.patt_trans_opt == 2
+                pattMask = (obj.trans_model.pr(r(:,1),:) > 0);
+            end
             for iFrame=1:n_frames
                 % sample position and pattern
                 m(:, iFrame+1) = obj.trans_model.update_position(m(:, iFrame), ...
@@ -46,14 +50,28 @@ classdef ParticleFilter
                 r(:, iFrame+1) = obj.trans_model.sample_pattern(r(:, iFrame), ...
                     m(:, iFrame+1), m(:, iFrame), n(:, iFrame));
                 % evaluate likelihood of particles
-                obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
-                    obs_lik(:, :, iFrame));                   
+                if obj.trans_model.patt_trans_opt == 2
+                    obsBlk = obj.block_likelihood_of_particles(m(:, iFrame+1), ...
+                        obj.state_space.n_patterns, obs_lik(:, :, iFrame));
+                    obs = sum(obsBlk.*pattMask,2);
+                else
+                    obs = obj.likelihood_of_particles(m(:, iFrame+1), r(:, iFrame+1), ...
+                        obs_lik(:, :, iFrame));                   
+                end
                 w = w(:) + log(obs(:));
                 % normalise importance weights
                 [w, ~] = obj.normalizeLogspace(w);
                 % resampling
                 if iFrame < n_frames
-                    [m, n, r, g, w] = resampling(obj, m, n, r, g, w, iFrame);
+                    [m, n, r, g, w, newIdx] = resampling(obj, m, n, r, g, w, iFrame);
+                    if ~isempty(newIdx)
+                        m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
+                        r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
+                        n(:, 1:iFrame) = n(newIdx, 1:iFrame);
+                        if obj.trans_model.patt_trans_opt == 2
+                            pattMask = pattMask(newIdx,:);
+                        end
+                    end
                 end
                 % sample tempo after resampling because it has no impact on
                 % the resampling and we achieve greater tempo diversity.
@@ -66,17 +84,23 @@ classdef ParticleFilter
                     logP_data_pf(:, 4, iFrame) = w;
                     logP_data_pf(:, 5, iFrame) = g;
                 end
+                if rem(iFrame, perc) == 0
+                    fprintf('.');
+                end
             end
+            fprintf('\n');
             % remove initial state
             m = m(:, 2:end); n = n(:, 2:end); r = r(:, 2:end);
             if debug, save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik'); end
         end
         
-        function [m, n, r, g, w_log] = resampling(obj, m, n, r, g, w_log, iFrame)
-            % compute reampling criterion effective sample size
+        function [m, n, r, g, w_log, newIdx] = resampling(obj, m, n, r, g, w_log, iFrame)
+            % compute resampling criterion effective sample size
+            % Extra input parameters to be consistent with MPF resampling
             w = exp(w_log);
             Neff = 1/sum(w.^2);
             if Neff > (obj.resampling_params.ratio_Neff * obj.n_particles)
+                newIdx = [];
                 return
             end
             if obj.resampling_params.resampling_scheme == 0 % SISR
@@ -91,21 +115,33 @@ classdef ParticleFilter
             else
                 fprintf('WARNING: Unknown resampling scheme!\n');
             end
-            m(:, 1:iFrame+1) = m(newIdx, 1:iFrame+1);
-            r(:, 1:iFrame+1) = r(newIdx, 1:iFrame+1);
-            n(:, 1:iFrame) = n(newIdx, 1:iFrame);
         end
-        
         
         function lik = likelihood_of_particles(obj, position, pattern, ...
                 obs_lik)
             % obslik:       likelihood values [R, barGrid]
+            %TODO: m_per_grid depends on whether eight or quarter note beats
+            %are used
             m_per_grid = obj.state_space.max_position_from_pattern(1) / ...
                 obj.obs_model.cells_from_pattern(1);
             p_cell = floor((position - 1) / m_per_grid) + 1;
             ind = sub2ind([obj.state_space.n_patterns, ...
                 obj.obs_model.max_cells], pattern(:), p_cell(:));
             lik = obs_lik(ind);
+        end
+        
+        function likblk = block_likelihood_of_particles(obj, position, nPatts, ...
+                obs_lik)
+            % obslik:       likelihood values [R, barGrid]
+            likblk = zeros(size(position,1),nPatts);
+            m_per_grid = obj.state_space.max_position_from_pattern(1) / ...
+                obj.obs_model.cells_from_pattern(1);
+            p_cell = floor((position - 1) / m_per_grid) + 1;
+            for rr = 1:nPatts
+                ind = sub2ind([obj.state_space.n_patterns, ...
+                    obj.obs_model.max_cells], ones(size(p_cell(:)))*rr, p_cell(:));
+                likblk(:,rr) = obs_lik(ind);
+            end
         end
         
         function [m_path, n_path, r_path] = path_with_best_last_weight(obj, ...

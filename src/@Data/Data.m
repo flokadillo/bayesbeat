@@ -73,7 +73,7 @@ classdef Data < handle
             obj.pattern_size = pattern_size;
         end
         
-        function [] = cluster_from_features(obj, n_clusters)
+        function [] = cluster_from_features(obj, n_clusters, varargin)
             %  [] = cluster_from_features(obj, n_clusters, input_args)
             %  Performs clustering of the bars by a kmeans in the feature
             %  space.
@@ -91,7 +91,7 @@ classdef Data < handle
                 obj.organise_feats_into_bars();
             end
             obj.clustering = RhythmCluster(obj);
-            obj.clustering.cluster_from_features(n_clusters);
+            obj.clustering.cluster_from_features(n_clusters, varargin{:});
         end
         
         function [] = cluster_from_labels(obj, cluster_type)
@@ -106,8 +106,7 @@ classdef Data < handle
             obj.clustering = RhythmCluster(obj);
             obj.clustering.cluster_from_labels(cluster_type);
         end
-        
-        
+
         function [] = read_pattern_bars(obj, cluster_fln)
             % Reads bar2file, n_bars, rhythm_names, bar2cluster, and
             % rhythm2meter from file.

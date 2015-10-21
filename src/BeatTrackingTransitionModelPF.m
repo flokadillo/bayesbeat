@@ -7,9 +7,10 @@ classdef BeatTrackingTransitionModelPF
         pr
         pfs
         p2s
-        tempo_ss_std
+        tempo_ss_std_per  % Tempo std in percentage of the absolute tempo
         min_tempo_ss
         max_tempo_ss
+        patt_trans_opt
     end
     
     methods
@@ -17,6 +18,7 @@ classdef BeatTrackingTransitionModelPF
                 transition_params)
             obj.state_space = state_space;
             obj.pr = transition_params.pr;
+            obj.patt_trans_opt = transition_params.patt_trans_opt;
             if obj.state_space.use_silence_state
                 obj.pfs = transition_params.pfs;
                 obj.p2s = transition_params.p2s;
@@ -24,8 +26,7 @@ classdef BeatTrackingTransitionModelPF
                 obj.pfs = 0;
                 obj.p2s = 0;
             end
-            obj.tempo_ss_std = obj.state_space.convert_tempo_from_bpm(...
-                transition_params.tempo_bpm_std);
+            obj.tempo_ss_std_per = transition_params.tempo_std_per; 
             obj.min_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
                 obj.state_space.min_tempo_bpm);
             obj.max_tempo_ss = obj.state_space.convert_tempo_from_bpm(...
@@ -34,8 +35,8 @@ classdef BeatTrackingTransitionModelPF
         end
         
         function tempo_new = sample_tempo(obj, tempo_old, pattern_new)
-                tempo_new = tempo_old + randn(length(tempo_old), 1) ...
-                    .* obj.tempo_ss_std(pattern_new);
+                tempo_new = tempo_old + tempo_old .* obj.tempo_ss_std_per ...
+                    .* randn(length(tempo_old), 1);
                 % sampled tempo is clipped to the tempo limits
                 out_of_range = tempo_new > obj.max_tempo_ss(pattern_new);
                 tempo_new(out_of_range) = ...
@@ -56,26 +57,29 @@ classdef BeatTrackingTransitionModelPF
                 position_old, tempo_old)
             % Pattern transitions to be handled here
             pattern_new = pattern_old;
-            % Change the ones for which the bar changed
-            crossed_barline = find(position_new < position_old);
-            for ri = 1:obj.state_space.n_patterns
-               idx_ri = find(pattern_old(crossed_barline) == ri);
-               if ~isempty(idx_ri)
-                   % sample new pattern from pr
-                   pattern_new_s = randsample(obj.state_space.n_patterns, ...
-                       length(idx_ri), true, obj.pr(ri, :));
-                   % check if the tempo of a particle fits to the tempo range
-                   % of the new pattern
-                   tempo_valid = (obj.min_tempo_ss(pattern_new_s) <= ...
-                       tempo_old(crossed_barline(idx_ri)) <=...
-                       obj.max_tempo_ss(pattern_new_s));
-                   pattern_new(crossed_barline(idx_ri(tempo_valid))) = ...
-                       pattern_new_s(tempo_valid);
-               end
+            if obj.patt_trans_opt ~= 2 || obj.patt_trans_opt ~= 0
+                % Nothing to do
+                return
+            else
+                % Change the ones for which the bar changed
+                crossed_barline = find(position_new < position_old);
+                for ri = 1:obj.state_space.n_patterns
+                   idx_ri = find(pattern_old(crossed_barline) == ri);
+                   if ~isempty(idx_ri)
+                       % sample new pattern from pr
+                       pattern_new_s = randsample(obj.state_space.n_patterns, ...
+                           length(idx_ri), true, obj.pr(ri, :));
+                       % check if the tempo of a particle fits to the tempo range
+                       % of the new pattern
+                       tempo_valid = (obj.min_tempo_ss(pattern_new_s) <= ...
+                           tempo_old(crossed_barline(idx_ri)) <=...
+                           obj.max_tempo_ss(pattern_new_s));
+                       pattern_new(crossed_barline(idx_ri(tempo_valid))) = ...
+                           pattern_new_s(tempo_valid);
+                   end
+                end
             end
         end
-        
-        
     end
     
 end

@@ -135,8 +135,8 @@ Probability of tempo acceleration (and deceleration) in the *2015* transition mo
 #### PF parameters
 * `nParticles` = 1000  
 Number of particles  
-* `tempo_bpm_std` = 0.0001  
-Standard deviation of the Gaussian tempo transition model in [BPM].   
+* `tempo_std_perc` = 0.02 
+Standard deviation of the Gaussian tempo transition model in percentage of the absolute tempo.   
 * `ratio_Neff` = 0.1  
 If the effective sample size is below *ratio_Neff * nParticles*, resampling is performed.  
 * `res_int` = 30  

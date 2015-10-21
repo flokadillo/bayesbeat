@@ -155,15 +155,29 @@ classdef BeatTracker < handle
                     obj.train_data.clustering.pr = 1;
                     obj.train_data.clustering.n_clusters = 1;
                 else
-                    fprintf('* Clustering data by %s ...', ...
+                    fprintf('* Clustering data by %s ...\n', ...
                         obj.Params.cluster_type);
                     if ismember(obj.Params.cluster_type, {'meter', ...
                             'rhythm'})
                         obj.train_data.cluster_from_labels(...
                             obj.Params.cluster_type);
                     elseif strcmp(obj.Params.cluster_type, 'kmeans')
-                        obj.train_data.cluster_from_features(...
-                            obj.Params.n_clusters);
+                        if isfield(obj.Params, 'meters') && ...
+                                isfield(obj.Params, 'meter_names')
+                            obj.train_data.cluster_from_features(...
+                                obj.Params.n_clusters, ...
+                                'pattern_scope', obj.Params.pattern_size, ...
+                                'dist_cluster', obj.Params.dist_cluster, ...
+                                'meters', obj.Params.meters, ...
+                                'meter_names', obj.Params.meter_names, ...
+                                'plotting_path', obj.Params.results_path);  
+                        else
+                            obj.train_data.cluster_from_features(...
+                                obj.Params.n_clusters, ...
+                                'pattern_scope', obj.Params.pattern_size, ...
+                                'dist_cluster', obj.Params.dist_cluster, ...
+                                'plotting_path', obj.Params.results_path);
+                        end
                     end
                     fprintf('done\n  %i clusters detected.\n', ...
                         obj.train_data.clustering.n_clusters);
@@ -175,6 +189,9 @@ classdef BeatTracker < handle
             else
                 obj.Params.transition_params.pr = obj.train_data.clustering.pr;
             end
+            if obj.Params.transition_params.patt_trans_opt == 0
+                obj.Params.transition_params.pr = eye(size(obj.Params.transition_params.pr));
+            end
         end
         
         function init_test_data(obj)
@@ -184,6 +201,8 @@ classdef BeatTracker < handle
         end
         
         function train_model(obj)
+            fprintf('* Training model (%s) ...\n',...
+                obj.Params.inferenceMethod)
             if isempty(obj.init_model_fln)
                 obj.model.train_model(obj.Params.transition_params, ...
                     obj.train_data, obj.Params.whole_note_div, ...
@@ -217,6 +236,7 @@ classdef BeatTracker < handle
         
         function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
+            fprintf('* Started inference on %s', fname);
             % load feature
             observations = obj.feature.load_feature(...
                 obj.test_data.file_list{test_file_id}, ...
@@ -346,7 +366,7 @@ classdef BeatTracker < handle
                         obj.Params.transition_params.transition_lambda = ...
                             obj.Params.alpha;
                     end
-                elseif strcmp(obj.Params.transition_model_type, '2006')
+                elseif strfind(obj.Params.transition_model_type, '2006') > 0
                     if ~isfield(obj.Params, 'pn')
                         obj.Params.transition_params.pn = 0.01;
                     else
@@ -354,16 +374,23 @@ classdef BeatTracker < handle
                     end
                 end
             elseif strcmp(obj.Params.inferenceMethod(1:2), 'PF')
-                if isfield(obj.Params, 'tempo_bpm_std')
-                    obj.Params.transition_params.tempo_bpm_std = ...
-                        obj.Params.tempo_bpm_std;
+                if isfield(obj.Params, 'tempo_std_per')
+                    obj.Params.transition_params.tempo_std_per = ...
+                        obj.Params.tempo_std_per;
                 else
-                    obj.Params.transition_params.tempo_bpm_std = 1;
+                    obj.Params.transition_params.tempo_std_per = 0.02; % 2%
                 end
             end
             if ~isfield(obj.Params, 'pattern_size')
                 obj.Params.pattern_size = 'bar';
             end
+            if ~isfield(obj.Params, 'dist_cluster')
+                obj.Params.dist_cluster = 'data';
+            end
+            if ~isfield(obj.Params, 'patt_trans_opt')
+                obj.Params.patt_trans_opt = 0;  
+            end
+            obj.Params.transition_params.patt_trans_opt = obj.Params.patt_trans_opt; % Duplicate variable stored - AS
             if ~isfield(obj.Params, 'use_silence_state')
                 obj.Params.use_silence_state = 0;
             end
