@@ -177,6 +177,10 @@ classdef BeatTrackingModel < handle
             if ~isempty(beats)
                 beats(:, 1) = round(beats(:, 1) - obj.frame_shift) * ...
                     obj.frame_length;
+                if all(obj.state_space.n_beats_from_pattern == 1)
+                    % do not save beat id if only one beat per bar
+                    beats = beats(:, 1);
+                end
             end
         end
         

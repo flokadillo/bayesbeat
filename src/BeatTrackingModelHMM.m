@@ -49,7 +49,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
         
         function train_model(obj, transition_probability_params, train_data, ...
                 cells_per_whole_note, dist_type, results_path)
-            obj.make_initial_distribution(train_data.meters);
+            obj.make_initial_distribution(train_data);
             obj.make_transition_model(transition_probability_params);
             obj.make_observation_model(train_data, cells_per_whole_note, ...
                 dist_type);
@@ -87,8 +87,11 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             end
         end
         
-        function make_initial_distribution(obj, meters)
-            if ~exist('meters', 'var')
+        function make_initial_distribution(obj, train_data)
+            if exist('train_data', 'var') && isfield(train_data, 'meters') ...
+                    && obj.use_meter_prior
+                meters = train_data.meters;
+            else
                 obj.use_meter_prior = 0;
             end
             fprintf('* Set up initial distribution\n');
@@ -104,7 +107,6 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                 [unique_meters, ~, idx] = unique(meters, 'rows');
                 meter_frequency = hist(idx, max(idx));
                 meter_frequency = meter_frequency / sum(meter_frequency);
-                
                 for r = 1:obj.state_space.n_patterns
                     idx_r = (obj.state_space.pattern_from_state == r);
                     idx_m = ismember(unique_meters, ...
@@ -316,6 +318,11 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             end
             State_space_params.n_patterns = Params.R;
             State_space_params.use_silence_state = Params.use_silence_state;
+            if isfield(Params, 'use_meter_prior')
+                obj.use_meter_prior = Params.use_meter_prior;
+            else
+                obj.use_meter_prior = 1;
+            end
         end
     end    
 end

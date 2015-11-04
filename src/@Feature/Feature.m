@@ -45,10 +45,15 @@ classdef Feature
             detfunc = cell(obj.feat_dim, 1);
             fr = cell(obj.feat_dim, 1);
             for iDim = 1:obj.feat_dim
-                fln = fullfile(fpath, 'beat_activations', [fname, '.', ...
+                % check folder given in the test set
+                fln1 = fullfile(fpath, [fname, '.', obj.feat_type{iDim}]);
+                % check also the beat_activations sub-folder
+                fln2 = fullfile(fpath, 'beat_activations', [fname, '.', ...
                     obj.feat_type{iDim}]);
-                if exist(fln,'file') && load_it % load features
-                    [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln);
+                if exist(fln1, 'file') && load_it % load features
+                    [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln1);
+                elseif exist(fln2, 'file') && load_it % load features
+                    [detfunc{iDim}, fr{iDim}] = obj.read_activations(fln2);
                 else % compute features
                     param.frame_length = obj.frame_length;
                     param.feat_type = obj.feat_type{iDim};
