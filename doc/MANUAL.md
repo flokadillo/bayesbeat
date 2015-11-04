@@ -109,7 +109,8 @@ Learn tempo ranges from training data. If *min_tempo* and *max_tempo* are set, a
 If true, use the same tempo range for the same meters. The tempo range is defined by the biggest possible range (min tempo of all - max tempo of all songs corresponding to one meter).  
 * `tempo_outlier_percentile` = 5  
 When learning tempo ranges, outlier beat intervals can be ignored, e.g., *tempo_outlier_percentile = 50* uses the median tempo of all beat intervals of one song to determine the tempo ranges.  
-
+* `frame_shift` = 0  
+Shift beat output by a certain number of frames to the left. A shift of 0 means the beats are not shifted, meaning that the sequence starts with frame 1 (good for GMM observation models). A shift of one means that the sequence starts with frame 0 (good for RNN observation models).
 
 #### Inference
 
@@ -173,7 +174,7 @@ Distribution type of the observation model:
     * 'MOG' (mixture of Gaussians)  
 * `feat_type` = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'}  
 Cell array of feature file extensions to be used. Each dimension describes one feature.
-* `online.obs_lik_floor` = 1e-7
+* `online.obs_lik_floor` = 1e-7  
 To avoid overfitting and prevent the observation likelihood to become zero in the case of unseen data, we set a floor to the observatin likelihood. Currently, this is only implemented for the forward path.
 
 ### DATA

@@ -13,6 +13,12 @@ classdef BeatTrackingModel < handle
         dist_type
         train_dataset
         use_meter_prior
+        frame_shift         % shift beat output by a certain number of frames 
+        %                     to the left. A shift of 0 means the beats are not 
+        %                     shifted, meaning that the sequence starts with
+        %                     frame 1. A shift of one means that the sequence 
+        %                     starts with frame 0.                     
+                            
     end
     
     
@@ -66,6 +72,11 @@ classdef BeatTrackingModel < handle
                 obj.use_meter_prior = Params.use_meter_prior;
             else
                 obj.use_meter_prior = 1;
+            end
+            if isfield(Params, 'frame_shift')
+                obj.frame_shift = Params.frame_shift;
+            else
+                obj.frame_shift = 0;
             end
         end
         
@@ -164,7 +175,8 @@ classdef BeatTrackingModel < handle
                 end
             end
             if ~isempty(beats)
-                beats(:, 1) = round(beats(:, 1)) * obj.frame_length;
+                beats(:, 1) = round(beats(:, 1) - obj.frame_shift) * ...
+                    obj.frame_length;
             end
         end
         
