@@ -97,7 +97,7 @@ Probability of entering the silence state
 Probability of leaving the silence state  
 * `use_meter_prior` = 1  
 Use an intial distribution that reflects the distribution of time signatures in the training set.   
-* `pr` = 0
+* `pr` = 0  
 Probability of rhythmic pattern change  
 * `correct_beats` = 0  
 Correct beat position afterwards by shifting it to a local max of the onset detection function. This hwas used in the RNNBeatTracker [1] to correct for the rough discretisation of the observation model.
