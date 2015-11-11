@@ -24,8 +24,7 @@ classdef BeatTrackingStateSpaceHMM2006 < handle & BeatTrackingStateSpaceHMM
                 use_silence_state, store_proximity);
             obj.min_tempo_ss = floor(obj.convert_tempo_from_bpm(min_tempo_bpm));
             obj.max_tempo_ss = ceil(obj.convert_tempo_from_bpm(max_tempo_bpm));
-            obj.max_n_tempo_states = max(ones(obj.n_patterns, 1) * ...
-                State_space_params.n_tempi, obj.max_tempo_ss);
+            obj.max_n_tempo_states = max(obj.max_tempo_ss);
             obj.compute_state_mappings();
             obj.n_position_states = State_space_params.max_positions;
         end
