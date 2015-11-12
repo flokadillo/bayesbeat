@@ -104,7 +104,7 @@ classdef BeatTracker < handle
         function init_train_data(obj)
             % set up the training data and load or compute the cluster
             % assignments of the bars/beats
-            fprintf('* Set up training data ...\n');
+            fprintf('* Set up training data\n');
             % check if features are already saved
             if isfield(obj.Params, 'stored_train_data_fln') && ...
                     exist(obj.Params.stored_train_data_fln, 'file') && ...
@@ -156,7 +156,7 @@ classdef BeatTracker < handle
                 obj.train_data = obj.train_data.read_pattern_bars(...
                     obj.Params.clusterIdFln, obj.Params.pattern_size);
             else
-                fprintf('* Clustering data by %s ...\n', ...
+                fprintf('* Clustering data by %s: ', ...
                     obj.Params.cluster_type);
                 if ismember(obj.Params.cluster_type, {'meter', ...
                         'rhythm'})
@@ -180,7 +180,7 @@ classdef BeatTracker < handle
                             'plotting_path', obj.Params.results_path);
                     end
                 end
-                fprintf('done\n  %i clusters detected.\n', ...
+                fprintf('  %i clusters detected.\n', ...
                     obj.train_data.clustering.n_clusters);
             end
             obj.Params.R = obj.train_data.clustering.n_clusters;
@@ -198,7 +198,7 @@ classdef BeatTracker < handle
         end
         
         function train_model(obj)
-            fprintf('* Training model (%s) ...\n',...
+            fprintf('* Training model (%s)\n',...
                 obj.Params.inferenceMethod)
             if isempty(obj.init_model_fln)
                 obj.model.train_model(obj.Params.transition_params, ...
@@ -233,7 +233,7 @@ classdef BeatTracker < handle
         
         function results = do_inference(obj, test_file_id)
             [~, fname, ~] = fileparts(obj.test_data.file_list{test_file_id});
-            fprintf('* Started inference on %s', fname);
+            fprintf('* Inferring meter from %s\n', fname);
             % load feature
             observations = obj.feature.load_feature(...
                 obj.test_data.file_list{test_file_id}, ...

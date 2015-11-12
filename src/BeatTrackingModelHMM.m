@@ -132,7 +132,7 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
                     do_output, fname, y);
             elseif strcmp(inference_method, 'HMM_viterbi')
                 % decode MAP state sequence using Viterbi
-                fprintf('* Decoding (viterbi) .');
+                fprintf('* Decoding (viterbi)');
                 if exist('belief_func', 'var')
                     % use viterbi with belief functions
                     hidden_state_sequence = obj.viterbi_iteration(obs_lik, ...

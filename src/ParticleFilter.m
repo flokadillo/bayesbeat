@@ -25,7 +25,6 @@ classdef ParticleFilter
             debug = 0;
             % initialize particles and preallocate memory
             n_frames = size(obs_lik, 3);
-            perc = round(0.1*n_frames);
             % add one frame, which corresponds to the initial distribution
             % at time 0 before the first observation comes in
             m = zeros(obj.n_particles, n_frames + 1, 'single');
@@ -66,11 +65,7 @@ classdef ParticleFilter
                     logP_data_pf(:, 4, iFrame) = w;
                     logP_data_pf(:, 5, iFrame) = g;
                 end
-                if rem(iFrame, perc) == 0
-                    fprintf('.');
-                end
             end
-            fprintf('\n');
             % remove initial state
             m = m(:, 2:end); n = n(:, 2:end); r = r(:, 2:end);
             if debug, save('/tmp/data_pf.mat', 'logP_data_pf', 'obs_lik'); end

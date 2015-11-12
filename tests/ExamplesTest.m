@@ -11,6 +11,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
     methods (Test)
         function testEx1(testCase)
             addpath(testCase.example_path)
+            fprintf('\ntestEx1: \n');
             % Beat tracking with a pre-trained HMM
             Results = ex1_beat_tracking_with_pretrained_hmm(...
                 testCase.audio_files{1}, testCase.result_folder);
@@ -22,6 +23,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         
         function testEx2(testCase)
             addpath(testCase.example_path)
+            fprintf('\ntestEx2: \n');
             % Beat tracking with a pre-trained PF
             % Initialize the random number generator using a seed of 1 
             % to make the results in this example repeatable
@@ -36,6 +38,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         
         function testEx3(testCase)
             addpath(testCase.example_path)
+            fprintf('\ntestEx3: \n');
             rng('default'); rng(1);
             % Train a HMM and test it
             Results = ex3_train_and_test_hmm(testCase.audio_files{1}, ...
@@ -48,6 +51,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         
         function testEx4(testCase)
             addpath(testCase.example_path)
+            fprintf('\ntestEx4: \n');
             rng('default'); rng(1);
             % Train a HMM and test it
             Results = ex4_train_and_test_hmm(testCase.audio_files{1}, ...
@@ -60,6 +64,7 @@ classdef ExamplesTest < matlab.unittest.TestCase
         
         function testEx5(testCase)
             addpath(testCase.example_path)
+            fprintf('\ntestEx5: \n');
             rng('default'); rng(1);
             % Train a HMM and test it
             Results = ex5_train_and_test_pf(testCase.audio_files{1}, ...

@@ -5,6 +5,6 @@ import matlab.unittest.TestSuite
 suiteFolder = TestSuite.fromFolder(pwd);
 % Add the bayesbeat class to the search path
 [func_path, ~, ~] = fileparts(mfilename('fullpath'));
-addpath(fullfile(func_path, '..'))
+addpath(fullfile(func_path, '../src'))
 % Test it
 result = run(suiteFolder);
