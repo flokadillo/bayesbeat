@@ -167,13 +167,8 @@ Warping function for the weights of the *APF* and *AMPF*.
 #### Observation model
 * `observationModelType` = 'MOG'  
 Distribution type of the observation model:  
-    * 'invGauss'  
-    * 'fixed'  
-    * 'gamma'  
-    * 'histogram'  
-    * 'multivariateHistogram'  
-    * 'bivariateGauss'  
     * 'MOG' (mixture of Gaussians)  
+    * 'RNN' (activations from a recurrent neural network; The code to generate them, is not included in the MATLAB package. If you are interested, see the python [madmom](https://github.com/CPJKU/madmom) package instead).	
 * `feat_type` = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'}  
 Cell array of feature file extensions to be used. Each dimension describes one feature.
 * `online.obs_lik_floor` = 1e-7  
