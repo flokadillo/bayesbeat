@@ -131,7 +131,7 @@ Type of transition model. Can be one of the following:
     * '2015': More efficient transition model as proposed in [3]
 * `pn` = 0.001  
 Probability of tempo acceleration (and deceleration) in the *whiteley* transition model.  
-* `alpha` = 100
+* `alpha` = 100  
 Probability of tempo acceleration (and deceleration) in the *2015* transition model. *alpha* is a squeezing factor for the (exponential) tempo change distribution  (higher values prefer a constant tempo over a tempo change from one beat to the next one). See [3] for details.
 
 
