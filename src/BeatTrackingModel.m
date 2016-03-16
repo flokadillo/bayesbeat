@@ -80,6 +80,16 @@ classdef BeatTrackingModel < handle
             end
         end
         
+        
+%         function beats = find_beat_times(obj, position_state, ~, ~)
+%             % this is the way madmom does it
+%             s = floor((position_state - 1) * 4) + 1;
+%             d = find(diff(s));
+%             beats = d * obj.frame_length;
+%             beats = [beats; ones(size(beats))]';
+%         end
+        
+        
         function beats = find_beat_times(obj, position_state, rhythm_state, ...
                 beat_act)
             % ----------------------------------------------------------------------
