@@ -27,7 +27,9 @@ classdef BeatTracker < handle
                     c = load(obj.Params.model_fln);
                     fields = fieldnames(c);
                     obj.model = c.(fields{1});
-                    %                     obj.model = obj.convert_to_new_model_format(obj.model);
+                    if isempty(obj.model.frame_shift)
+                        obj.model.frame_shift = 0;
+                    end 
                     obj.init_model_fln = obj.Params.model_fln;
                     obj.feature = Feature(obj.model.obs_model.feat_type, ...
                         obj.model.frame_length);
