@@ -56,8 +56,6 @@ classdef Simulation
         function obj = set_up_results_dir(obj)
             % set up folder where results are stored
             obj.Params.paramsName = fullfile(obj.Params.results_path, 'params.mat');
-            %                 Params.obsFileName = fullfile(obj.sim_dir, 'observationModel.mat');
-            %                 Params.transitionMatrixFile = fullfile(obj.sim_dir, 'transitionMatrix.mat');
             % copy config file to simulation folder
             obj.save_results2file = 1;
         end
@@ -75,11 +73,13 @@ classdef Simulation
                 % do testing
                 for iFile=test_file_ids(:)'
                     [~, fname, ~] = fileparts(obj.system.test_data.file_list{iFile});
-                    fprintf('%i/%i) [%i] %s\n', fileCount, length(obj.system.test_data.file_list), iFile, fname);
+                    fprintf('%i/%i) [%i] %s\n', fileCount, ...
+                        length(obj.system.test_data.file_list), iFile, fname);
                     results = obj.test(iFile);
                     if obj.save_results2file
                         % save to file
-                        obj.system.save_results(results, obj.Params.results_path, fname);
+                        obj.system.save_results(results, ...
+                            obj.Params.results_path, fname);
                     end
                     fileCount = fileCount + 1;
                 end
