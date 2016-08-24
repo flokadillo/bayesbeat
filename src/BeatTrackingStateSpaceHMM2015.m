@@ -43,46 +43,63 @@ classdef BeatTrackingStateSpaceHMM2015 < handle & BeatTrackingStateSpaceHMM
             % ------------------------------------------------------------------
             % number of frames per beat (slowest tempo)
             % (python: max_tempo_states)
-            max_frames_per_beat = ceil(60 ./ (obj.min_tempo_bpm * ...
-                obj.frame_length));
-            % number of frames per beat (fastest tempo)
-            % (python: mimax_n_tempo_states)
-            min_frames_per_beat = floor(60 ./ (obj.max_tempo_bpm * ...
-                obj.frame_length));
-            % compute number of position states
-            obj.n_position_states = cell(obj.n_patterns, 1);
-            if isnan(obj.max_n_tempo_states)
-                % use max number of tempi and position states:
-                for ri=1:obj.n_patterns
-                    obj.n_position_states{ri} = ...
-                        max_frames_per_beat(ri):-1:min_frames_per_beat(ri);
-                end
-            else
-                % use N tempi and position states and distribute them
-                % log2 wise
-                for ri=1:obj.n_patterns
-                    gridpoints = obj.max_n_tempo_states;
-                    max_tempi = max_frames_per_beat(ri) - ...
-                        min_frames_per_beat(ri) + 1;
-                    N_ri = min([max_tempi, obj.max_n_tempo_states]);
-                    obj.n_position_states{ri} = ...
-                        2.^(linspace(log2(min_frames_per_beat(ri)), ...
-                        log2(max_frames_per_beat(ri)), gridpoints));
-                    % slowly increase gridpoints, until we have
-                    % tempi_from_pattern tempo states
-                    while (length(unique(round(obj.n_position_states{ri}))) < N_ri)
-                        gridpoints = gridpoints + 1;
+            if length(obj.min_tempo_bpm)==1%edited by AH@ISMIR2016: in this variable, alternatively a vector of tempo candidates can be provided.
+                max_frames_per_beat = ceil(60 ./ (obj.min_tempo_bpm * ...
+                    obj.frame_length));
+                % number of frames per beat (fastest tempo)
+                % (python: mimax_n_tempo_states)
+                min_frames_per_beat = floor(60 ./ (obj.max_tempo_bpm * ...
+                    obj.frame_length));
+                % compute number of position states
+                obj.n_position_states = cell(obj.n_patterns, 1);
+                if isnan(obj.max_n_tempo_states)
+                    % use max number of tempi and position states:
+                    for ri=1:obj.n_patterns
+                        obj.n_position_states{ri} = ...
+                            max_frames_per_beat(ri):-1:min_frames_per_beat(ri);
+                    end
+                else
+                    % use N tempi and position states and distribute them
+                    % log2 wise
+                    for ri=1:obj.n_patterns
+                        gridpoints = obj.max_n_tempo_states;
+                        max_tempi = max_frames_per_beat(ri) - ...
+                            min_frames_per_beat(ri) + 1;
+                        N_ri = min([max_tempi, obj.max_n_tempo_states]);
                         obj.n_position_states{ri} = ...
                             2.^(linspace(log2(min_frames_per_beat(ri)), ...
                             log2(max_frames_per_beat(ri)), gridpoints));
+                        % slowly increase gridpoints, until we have
+                        % tempi_from_pattern tempo states
+                        while (length(unique(round(obj.n_position_states{ri}))) < N_ri)
+                            gridpoints = gridpoints + 1;
+                            obj.n_position_states{ri} = ...
+                                2.^(linspace(log2(min_frames_per_beat(ri)), ...
+                                log2(max_frames_per_beat(ri)), gridpoints));
+                        end
+                        % remove duplicates which would have the same tempo
+                        obj.n_position_states{ri} = unique(round(...
+                            obj.n_position_states{ri}));
+                        % reverse order to be consistent with the N=nan
+                        % case
+                        obj.n_position_states{ri} = ...
+                            obj.n_position_states{ri}(end:-1:1);
                     end
-                    % remove duplicates which would have the same tempo
-                    obj.n_position_states{ri} = unique(round(...
-                        obj.n_position_states{ri}));
-                    % reverse order to be consistent with the N=nan
-                    % case
-                    obj.n_position_states{ri} = ...
-                        obj.n_position_states{ri}(end:-1:1);
+                end
+            else% this is the edition @ISMIR2016 that takes a list of tempo candidates
+                obj.n_position_states = cell(obj.n_patterns, 1);
+                for ri=1:obj.n_patterns
+                    obj.n_position_states{ri} = round(60 ./ (obj.min_tempo_bpm * obj.frame_length));
+                    %Use neighboring tempo states. More sophisticated
+                    %strategies were tried without showing differences.
+                    %Number of neighboring tempo states is determined by
+                    %Params.N
+                    while (length(unique(round(obj.n_position_states{ri}))) < obj.max_n_tempo_states)
+                        faster = obj.n_position_states{ri}-1;%round(60 ./ ((obj.min_tempo_bpm*(100+tempostep)/100) * obj.frame_length));
+                        slower = obj.n_position_states{ri}+1;%round(60 ./ ((obj.min_tempo_bpm*(100-tempostep)/100) * obj.frame_length));
+                        obj.n_position_states{ri} = unique([obj.n_position_states{ri};slower;faster]);
+                    end
+                    obj.n_position_states{ri} = obj.n_position_states{ri}(end:-1:1)';
                 end
             end
         end

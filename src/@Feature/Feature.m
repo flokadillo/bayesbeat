@@ -211,6 +211,7 @@ classdef Feature
             end
             act = textscan(fid, '%f');
             act = act{1};
+            act(act==0) = eps*100;
             fclose(fid);
         end
         

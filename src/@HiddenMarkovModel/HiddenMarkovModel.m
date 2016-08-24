@@ -30,6 +30,10 @@ classdef HiddenMarkovModel < handle
             end
             % compute observation likelihoods
             obs_lik = obj.obs_model.compute_obs_lik(observations);
+            % AH@ISMIR2016: the nonlog Viterbi implementation gets into
+            % trouble for very small numbers, uncomment if there are
+            % problems.
+            %obs_lik = obs_lik+rand(size(obs_lik))*0.0001;
             if use_mex_viterbi
                 try
                     path = obj.viterbi_mex(obs_lik);

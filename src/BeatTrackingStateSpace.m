@@ -9,6 +9,10 @@ classdef BeatTrackingStateSpace < handle
         meter_from_pattern          % [2, n_patterns] time signature
         frame_length                % audio frame length in [sec]
         min_tempo_bpm               % [n_patterns, 1] min tempo in [bpm]
+        %edited in ISMIR2016: min_tempo_bpm can also contain a vector of
+        %tempo candidates for reducing the tempo space. Works in connection
+        %with HMM2015, and should be included into a separate variable if
+        %found useful for a published code version.
         max_tempo_bpm               % [n_patterns, 1] max tempo in [bpm]
         pattern_names               % cell(n_patterns, 1)
         use_silence_state           % true or false

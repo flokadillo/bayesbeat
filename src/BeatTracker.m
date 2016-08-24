@@ -143,13 +143,24 @@ classdef BeatTracker < handle
             end
             % Check if cluster assignment file is given. If yes load
             % cluster assignments from yes, if no compute them.
-            if strcmp(obj.Params.observationModelType, 'RNN')
+            if strcmp(obj.Params.observationModelType, 'RNN_db')%this model type, compared to the RNN, ...
+                % has apart from beat- also downbeat activations
+                % do no clustering
+                obj.train_data.clustering.rhythm2meter = obj.train_data.meters;
+                obj.train_data.clustering.rhythm2nbeats = obj.train_data.beats_per_bar;
+                %obj.train_data.clustering.rhythm2nbeats = 1;% number of beats per bar [nRhythms x 1]
+                %obj.train_data.clustering.rhythm2meter = [1, 4];% [nRhythms x 2]
+                obj.train_data.clustering.rhythm_names = {'cnn1'};% transition probability matrix of the rhythmic patterns [R x R]
+                obj.train_data.clustering.pr = 1;% number of clusters
+                obj.train_data.clustering.n_clusters = 1;
+                obj.train_data.feature.feat_type = obj.Params.feat_type;
+            elseif strcmp(obj.Params.observationModelType, 'RNN')
                 % do no clustering
                 obj.train_data.clustering.rhythm2nbeats = 1;
                 obj.train_data.clustering.rhythm2meter = [1, 4];
                 obj.train_data.clustering.rhythm_names = {'rnn'};
                 obj.train_data.clustering.pr = 1;
-                obj.train_data.clustering.n_clusters = 1;
+                obj.train_data.clustering.n_clusters = 1;% number of clusters
                 obj.train_data.feature.feat_type = obj.Params.feat_type;
             elseif isfield(obj.Params, 'clusterIdFln') && ...
                     exist(obj.Params.clusterIdFln, 'file')

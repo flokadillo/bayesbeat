@@ -20,7 +20,7 @@ function [runtime] = BT_Simulation(sim_id, params)
 % 03.01.2013 modularize code into subfunctions
 % 29.01.2015 added config file name input parameter
 % ------------------------------------------------------------------------
-bayes_beat_path = '~/diss/src/matlab/beat_tracking/bayes_beat';
+bayes_beat_path = '/home/hannover/Documents/experiments/repository/matlabTools/bayesbeat';
 % output hash of current git revision
 % change to base path
 system(['cd ', bayes_beat_path]);

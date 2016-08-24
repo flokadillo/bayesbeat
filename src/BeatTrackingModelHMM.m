@@ -80,10 +80,21 @@ classdef BeatTrackingModelHMM < handle & BeatTrackingModel
             obj.obs_model = BeatTrackingObservationModelHMM(obj.state_space, ...
                 train_data.feature.feat_type, dist_type, ...
                 cells_per_whole_note);
-            % Train model
-            if ~strcmp(dist_type, 'RNN')
+            % Train model, not needed for network activations
+            if ~ismember(dist_type, {'RNN' , 'RNN_db'})
                 obj.obs_model = obj.obs_model.train_model(train_data);
                 obj.train_dataset = train_data.dataset;
+            end
+            %if we have the RNN_db type, we consider beat and downbeat
+            %activations and need to define beat positions for each meter
+            if ismember(dist_type, {'RNN_db'})
+                obj.obs_model.learned_params = cell(obj.state_space.n_patterns, obj.max_bar_cells);
+                for i = 1:obj.state_space.n_patterns
+                    beat_indices = ((obj.beat_positions{i}-1)*cells_per_whole_note)+1;
+                    for j = 1:obj.obs_model.cells_from_pattern(i)
+                        obj.obs_model.learned_params{i,j} = ismember(j,beat_indices);
+                    end
+                end
             end
         end
         

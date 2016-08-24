@@ -207,7 +207,11 @@ classdef RhythmCluster < handle
                         beats_per_bar(iMeter);
                     p=p+n_clusters_per_meter(iMeter);
                 else % only one item per meter -> no kmeans necessary
-                    ctrs(p, :) = mean(S(idx_i, :));
+                    if length(idx_i)>1
+                        ctrs(p, :) = mean(S(idx_i, :));
+                    else
+                        ctrs(p, :) = S(idx_i, :);
+                    end
                     cidx(idx_i) = p;
                     obj.rhythm2meter(p, :) = meters(iMeter, :);
                     obj.rhythm2nbeats(p) = beats_per_bar(iMeter);
