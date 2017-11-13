@@ -131,7 +131,7 @@ Type of transition model. Can be one of the following:
     * '2015': More efficient transition model as proposed in [3]
 * `pn` = 0.001  
 Probability of tempo acceleration (and deceleration) in the *whiteley* transition model.  
-* `alpha` = 100
+* `alpha` = 100  
 Probability of tempo acceleration (and deceleration) in the *2015* transition model. *alpha* is a squeezing factor for the (exponential) tempo change distribution  (higher values prefer a constant tempo over a tempo change from one beat to the next one). See [3] for details.
 
 
@@ -167,13 +167,8 @@ Warping function for the weights of the *APF* and *AMPF*.
 #### Observation model
 * `observationModelType` = 'MOG'  
 Distribution type of the observation model:  
-    * 'invGauss'  
-    * 'fixed'  
-    * 'gamma'  
-    * 'histogram'  
-    * 'multivariateHistogram'  
-    * 'bivariateGauss'  
     * 'MOG' (mixture of Gaussians)  
+    * 'RNN' (activations from a recurrent neural network; The code to generate them, is not included in the MATLAB package. If you are interested, see the python [madmom](https://github.com/CPJKU/madmom) package instead).	
 * `feat_type` = {'lo230_superflux.mvavg', 'hi250_superflux.mvavg'}  
 Cell array of feature file extensions to be used. Each dimension describes one feature.
 * `online.obs_lik_floor` = 1e-7  

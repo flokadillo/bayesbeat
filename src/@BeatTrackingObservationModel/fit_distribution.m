@@ -3,36 +3,27 @@ function Params = fit_distribution(obj, data)
 % Fit a given distribution to the data and return the learned parameters.
 % ------------------------------------------------------------------------
 %INPUT parameters:
-% data      cell array of features [n_files, n_patterns, n_position_cells,
+% data      cell array of features [n_patterns, n_position_cells,
 %               feat_dim]
 %OUTPUT parameters:
 % Params    structure array of learned parameters [n_patterns, n_position_cells]
 %
 % 27.08.2015 by Florian Krebs
+% changed 30.11.2015 by Andre Holzapfel 
 % ------------------------------------------------------------------------
 warning('off');
-[n_files, n_patterns, n_position_cells, ~] = size(data);
+[n_patterns, n_position_cells, ~] = size(data);
 Params = cell(n_patterns, n_position_cells);
-
 % Set options
 switch obj.dist_type
     case 'MOG'
         options = statset('MaxIter', 200);
         n_replicates = 5;
         n_mix_components = 2;
-%         fprintf('WARNING: Don''t forget to reset <n_replicates>\n');
 end
 for i_pattern=1:n_patterns
     for i_pos=1:n_position_cells
-        if n_files == 1
-            % resulting featureValues should be a matrix [nValues x featDim]
-            % if files are squeezed out we have to transpose
-            feature_values = cell2mat(squeeze(...
-                data(:, i_pattern, i_pos, :))');
-        else
-            feature_values = cell2mat(squeeze(...
-                data(:, i_pattern, i_pos, :)));
-        end
+        feature_values = cell2mat(squeeze(data(i_pattern, i_pos, :))');
         if isempty(feature_values),
             break;
         end
