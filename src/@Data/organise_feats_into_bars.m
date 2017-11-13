@@ -126,7 +126,7 @@ for iFile=1:length(obj.file_list)
             [nNewBars, currBarGrid, ~] = size(barData);
             % for shorter metrical cycles fill in empty cells
             if currBarGrid < bar_grid_max,
-                barData = [barData, cell(size(barData, 1), bar_grid_max-size(barData, 2), 2)];
+                barData = [barData, cell(size(barData, 1), bar_grid_max-size(barData, 2), obj.feature.feat_dim)];
             end
             bar_idx = (idLastBar + 1):(idLastBar + nNewBars);
             feat_from_bar_and_gmm(bar_idx, :, :) = barData;
